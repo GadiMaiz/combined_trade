@@ -729,17 +729,19 @@
 								orders_to_export[i].crypto_type, orders_to_export[i].price_fiat, orders_to_export[i].status];
 				data_rows = data_rows + curr_row.join(",") + "\n";
 			}
+			
 			var encodedUri = encodeURI('data:text/csv;charset=utf-8,'+headers_row + "\n" + data_rows);
 			var link = document.createElement("a");
 			link.setAttribute("href", encodedUri);
 			var currentdate = new Date(); 
 			var datetime = currentdate.getFullYear() + "_" + (currentdate.getMonth()+1).toString().padStart(2,"0") + "_" + currentdate.getDate().toString().padStart(2,"0") +
 										"_" + currentdate.getHours().toString().padStart(2,"0") + "_" + currentdate.getMinutes().toString().padStart(2,"0") + "_" + currentdate.getSeconds().toString().padStart(2,"0");
+										
+			// Creating a downloadable link and clicking on it
 			link.setAttribute("download", "sent_orders_" + datetime + ".csv");
 			link.innerHTML= "Click Here to download";
-			
-			document.body.appendChild(link); // Required for FF
-			link.click(); // This will download the data file named "my_data.csv".
+			document.body.appendChild(link);
+			link.click();
 			document.body.removeChild(link);
 		}
         </script>
