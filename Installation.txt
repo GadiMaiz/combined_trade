@@ -1,0 +1,11 @@
+https://answers.microsoft.com/en-us/windows/forum/windows_10-other_settings-winpc/cannot-find-the-option-to-enable-intel-vt-x-in/c9203f8a-da57-43be-8c75-cfe43d55cd70
+installation:
+Set bridged network
+Install VMware tools: https://kb.vmware.com/s/article/1022525, https://askubuntu.com/questions/25347/what-command-do-i-need-to-unzip-extract-a-tar-gz-file
+					  /tmp/vmware-tools-distrib$ sudo vmware-install.pl -d
+Set share: http://theholmesoffice.com/how-to-share-folders-between-windows-and-ubuntu-using-vmware-player/
+sudo apt install python3-venv
+sudo apt install net-tools
+python3 -m venv venv
+bitmain-trade@ubuntu:~/Desktop/CombinedTradeLocal/venv/Lib/site-packages$ cp ~/Desktop/CombinedTradeLocal/* .
+~/Desktop/CombinedTradeLocal/venv/Lib/site-packages$ python3 flask_orderbook_service.py 

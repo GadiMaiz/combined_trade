@@ -1,0 +1,127 @@
+from bitex.api.WSS import BitfinexWSS
+from threading import Thread
+from orderbook_base import OrderbookBase
+
+class BitfinexOrderbook(OrderbookBase):
+    symbols_dict = {'BTCUSD': 'BTC', 'BCHUSD': 'BCH', 'BTC-USD' : 'BTC', 'BCH-USD' : 'BCH'}
+    def __init__(self, asset_pairs):
+        super().__init__(asset_pairs)
+        self._running = False
+        self._orderbook_thread = None
+        self._orderbook = {'BTC': None, 'BCH': None}
+    def _start(self):
+
+        self._bitfinex_client = BitfinexWSS()
+        self._bitfinex_client.start()
+        if self._orderbook_thread is None or not self._orderbook_thread.is_alive():
+            self._orderbook_thread = Thread(target=self._manage_orderbook,
+                                             daemon=True,
+                                             name='Manage Orderbook Thread')
+            self._running = True
+            self._orderbook_thread.start()
+
+    def _stop(self):
+        """
+        Stops Threads. Overwrite this in your child class as necessary.
+        :return:
+        """
+        self._bitfinex_client.stop()
+        self._running = False
+
+    def _manage_orderbook(self):
+        print ("running manage orderbook thread")
+        orderbook_init = { 'BTCUSD': False, 'BCHUSD': False}
+        while self._running:
+            #try:
+            curr_info = self._bitfinex_client.data_q.get()
+            if curr_info[0] == 'order_book' and curr_info[1] in orderbook_init.keys():
+                if not orderbook_init[curr_info[1]]:
+                    #print ("init orderbook", orderbook_init)
+                    self._init_orderbook(curr_info)
+                    orderbook_init[curr_info[1]] = True
+                else:
+                    #print("modify orderbook")
+                    self._modify_orderbook(curr_info)
+
+            #except Exception:
+            #    continue
+
+    def _init_orderbook(self, first_orderbook):
+        #print ("_init_orderbook")
+        asks = []
+        bids = []
+        all_orders = first_orderbook[2][0][0]
+        for curr_order in all_orders:
+            book_order = {'price' : float(curr_order[0]),
+                          'orders_num': int(curr_order[1]),
+                          'size' : abs(float(curr_order[2])),
+                          'source': 'Bitfinex'}
+            if float(curr_order[2]) < 0:
+                asks.append(book_order)
+            else:
+                bids.append(book_order)
+
+        self._orderbook[self.symbols_dict[first_orderbook[1]]] = {'asks': asks,
+                           'bids': bids}
+        #print (self._orderbook)
+
+    def _modify_orderbook(self, orderbook_change):
+        crypto_type = self.symbols_dict[orderbook_change[1]]
+        change_price = float(orderbook_change[2][0][0][0])
+        change_orders_count = int(orderbook_change[2][0][0][1])
+        change_amount = float(orderbook_change[2][0][0][2])
+
+        if change_orders_count > 0:
+            index = 0
+            element_type = None
+            if change_amount > 0:
+                element_type = 'bids'
+                while (index < len(self._orderbook[crypto_type][element_type]) and self._orderbook[crypto_type][element_type][index]['price'] > change_price):
+                    #print (index, self._orderbook[element_type])
+                    index += 1
+            else:
+                element_type = 'asks'
+                while (index < len(self._orderbook[crypto_type][element_type]) and self._orderbook[crypto_type][element_type][index]['price'] < change_price):
+                    # print (index, self._orderbook[element_type])
+                    index += 1
+
+            # Change an existing element
+            if (index < len(self._orderbook[crypto_type][element_type]) and self._orderbook[crypto_type][element_type][index]['price'] == change_price):
+                self._orderbook[crypto_type][element_type][index]['orders_num'] = change_orders_count
+                self._orderbook[crypto_type][element_type][index]['size'] = abs(change_amount)
+
+            # Add a new element
+            else:
+                #print(orderbook_change)
+                #print (element_type, "add new element")
+                new_element = {'price' : change_price,
+                          'orders_num': change_orders_count,
+                          'size' : abs(change_amount),
+                          'source': 'Bitfinex'}
+                self._orderbook[crypto_type][element_type].insert(index, new_element)
+                #print("new element", element, "orderbook", self._orderbook[element_type])
+        elif change_orders_count == 0:
+            element_type = None
+            index = 0
+            if change_amount == 1:
+                element_type = 'bids'
+                while (index < len(self._orderbook[crypto_type][element_type]) and self._orderbook[crypto_type][element_type][index]['price'] > change_price):
+                    index += 1
+            else:
+                element_type = 'asks'
+                while (index < len(self._orderbook[crypto_type][element_type]) and self._orderbook[crypto_type][element_type][index]['price'] < change_price):
+                    index += 1
+
+            # Delete an existing bid
+            if index < len(self._orderbook[crypto_type][element_type]) and self._orderbook[crypto_type][element_type][index]['price'] == change_price:
+                del self._orderbook[crypto_type][element_type][index]
+
+    def get_current_partial_book(self, asset_pair, size):
+        crypto_type = self.symbols_dict[asset_pair]
+        result = { 'asks' : [],
+                   'bids' : []}
+        if self._orderbook[crypto_type] != None:
+            result = { 'asks' : self._orderbook[crypto_type]['asks'][0:size],
+                       'bids' : self._orderbook[crypto_type]['bids'][0:size]}
+
+        return result

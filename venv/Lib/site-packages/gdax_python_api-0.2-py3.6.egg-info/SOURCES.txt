@@ -1,0 +1,11 @@
+setup.cfg
+setup.py
+gdax/__init__.py
+gdax/orderbook.py
+gdax/trader.py
+gdax/utils.py
+gdax_python_api.egg-info/PKG-INFO
+gdax_python_api.egg-info/SOURCES.txt
+gdax_python_api.egg-info/dependency_links.txt
+gdax_python_api.egg-info/requires.txt
+gdax_python_api.egg-info/top_level.txt

@@ -1,0 +1,20 @@
+Metadata-Version: 1.1
+Name: gdax-python-api
+Version: 0.2
+Summary: GDAX API client written in Python3 using async/await
+Home-page: https://github.com/csko/gdax-python-api
+Author: Kornel Csernai
+Author-email: cskornel@gmail.com
+License: MIT License
+Description: UNKNOWN
+Keywords: gdax gdax-api gdax-python python3 python-3.6 coinbase coinbase-api bitcoin ethereum litecoin trading-api
+Platform: any
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Development Status :: 4 - Beta
+Classifier: Natural Language :: English
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Financial and Insurance Industry
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Libraries :: Python Modules

@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <title>Live Order Book</title>
+        <style>
+            body {font-family:'Roboto', sans-serif;/*width:1010px;*/margin:0 auto;}
+            h1 {font-size:30px;color:#666;margin:0 0 0px 0;text-align:center;}
+            .column h2 {text-align:left;}
+            .column:nth-child(3) h2 {text-align:right;}
+            .column:nth-child(3) div {text-align:right;}
+			div.scrollable {width: 100%;height: 100%;margin: 0;padding: 0;overflow: scroll;}
+			input[type=number]{width: 50px;} 
+        </style>
+    <script src="./OrdersTracker_files/sockjs.min.js.download" type="text/javascript" async="true"></script><link href="./OrdersTracker_files/css(2)" rel="stylesheet" type="text/css"></head>
+    <body style="">
+        <h1>Order book&nbsp
+			<select id="crypto_type" name="crypto_type" onchange="set_currency_type()">
+				<option value="BTC">BTC/USD</option>
+				<option value="BCH">BCH/USD</option>
+			</select>
+		</h1>
+		
+		<table border=1>
+		<tr>
+		<td>
+			<font size="2">
+			<B>Bitstamp Account Details</B>
+			<BR>
+			USD Balance:
+			<div style="display: inline" id="bitstamp_usd_balance_placeholder"></div>
+			<BR>
+			<div style="display: inline" id="currency_type_1"></div>
+			<div style="display: inline" id="bitstamp_btc_available_balance_placeholder"></div>
+			<!--<BR><button type=button onclick="refresh_bitstamp_balance()">Refresh</button>-->
+			<BR>
+			</font>
+		</td>
+		<td>
+			<font size="2">
+			<B>Bitfinex Account Details</B>
+			<BR>
+			USD Balance:
+			<div style="display: inline" id="bitfinex_usd_balance_placeholder">N/A</div>
+			<BR>
+			<div style="display: inline" id="currency_type_2"></div>
+			<div style="display: inline" id="bitfinex_btc_available_balance_placeholder">N/A</div>
+			<BR>
+			</font>
+		</td>
+		<td>
+			<font size="2">
+			<B>GDAX Account Details</B>
+			<BR>
+			USD Balance:
+			<div style="display: inline" id="gdax_usd_balance_placeholder">N/A</div>
+			<BR>
+			<div style="display: inline" id="currency_type_3"></div>
+			<div style="display: inline" id="gdax_btc_available_balance_placeholder">N/A</div>			
+			<BR>
+			</font>
+		</td>
+		<td>
+			<font size="2">
+			<B>Unified Account Details</B>
+			<BR>
+			USD Balance:
+			<div style="display: inline" id="unified_usd_balance_placeholder">N/A</div>
+			<BR>
+			<div style="display: inline" id="currency_type_4"></div>
+			<div style="display: inline" id="unified_btc_available_balance_placeholder">N/A</div>
+			<BR>
+			</font>
+		</td>
+		<td>
+			<font size="2">
+			<B>Bitstamp Credentials, Current Signed-in User: </B>
+			<div style="display: inline" id="bitstamp_user_placeholder" name="bitstamp_user_placeholder">N/A</div>
+			<BR>
+			Account number:
+			<input type="number" id="bitstamp_account_number" name="bitstamp_account_number">
+			<BR>
+			API Key:
+			<input id="bitstamp_api_key" name="bitstamp_api_key">
+			<BR>
+			Secret:
+			<input type="password" id="bitstamp_secret" name="bitstamp_secret">
+			<button type=button onclick="set_bitstamp_credentials()" name="btnSetBitstampCredentials" id="btnSetBitstampCredentials">Set Bitstamp Credentials</button>
+			</font>
+		</td>		
+		</tr>
+		<tr>
+		<td style="width:7%">
+			<div style="display: inline" class="column">
+				<font size="2"><B>Bitstamp Asks</B><BR>
+				<div style="display: inline" id="bitstamp_asks_placeholder">Bitstamp Asks<br></div>
+			</div>
+			<B>Spread (USD)<BR>Current: </B><div style="display: inline" id="bitstamp_spread_placeholder"><br></div>
+			<BR>
+			<B>Average: </B><div style="display: inline" id="bitstamp_average_spread_placeholder"><br></div>
+			<div class="column">
+				<B>Bitstamp Bids</B><BR>
+				<div style="display: inline" id="bitstamp_bids_placeholder">Bitstamp Bids<br></div>
+				</font>
+			</div>
+		</td>		
+		<td style="width:7%">
+			<div style="display: inline" class="column">
+				<font size="2"><B>Bitfinex Asks</B><BR>
+				<div style="display: inline" id="bitfinex_asks_placeholder">Bitfinex Asks<br></div>
+			</div>
+			<B>Spread (USD)<BR>Current: </B><div style="display: inline" id="bitfinex_spread_placeholder"><br></div>
+			<BR>
+			<B>Average: </B><div style="display: inline" id="bitfinex_average_spread_placeholder"><br></div>
+			<div class="column">
+				<B>Bitfinex Bids</B><BR>
+				<div style="display: inline" id="bitfinex_bids_placeholder">Bitfinex Bids<br></div>
+				</font>
+			</div>
+		</td>
+		<td style="width:7%">
+			<div style="display: inline" class="column">
+				<font size="2"><B>GDAX Asks</B><BR>
+				<div style="display: inline" id="gdax_asks_placeholder">GDAX Asks<br></div>
+			</div>
+			<B>Spread (USD)<BR>Current: </B><div style="display: inline" id="gdax_spread_placeholder">Bitstamp Spread<br></div>
+			<BR>
+			<B>Average: </B><div style="display: inline" id="gdax_average_spread_placeholder">Bitstamp Spread<br></div>
+			<div class="column">
+				<B>GDAX Bids</B><BR>
+				<div style="display: inline" id="gdax_bids_placeholder">GDAX Bids<br></div>
+				</font>
+			</div>
+		</td>
+		<td style="width:8%">
+			<div style="display: inline" class="column">
+				<font size="2"><B>Unified Asks</B><BR>
+				<div style="display: inline" id="unified_asks_placeholder">Unified Asks<br></div>
+			</div>
+			<B>Spread (USD)<BR>Current: </B><div style="display: inline" id="unified_spread_placeholder">Unified Spread<br></div>			
+			<div class="column">
+				<B>Unified Bids</B><BR>
+				<div style="display: inline" id="unified_bids_placeholder">Unified Bids<br></div>
+				</font>
+			</div>
+		</td>
+		<td style="width:26%">
+		<div class="column">
+			<table>
+				<tr>
+					<td style="height:200px">
+						<BR><B>Sent transactions</B>
+						<select id="orders_limit" name="orders_limit">
+							<option value="100">100</option>
+							<option value="250">250</option>
+							<option value="500">500</option>
+						</select>
+						<button type=button onclick="export_all_orders()">Export all orders</button>
+						<button type=button onclick="export_shown_orders()">Export shown orders</button>
+						<div id="sent_transactions_placeholder" class=scrollable></div>
+					</td>
+				</tr>				
+				<tr>
+					<td style="height:200px">
+						<div class=scrollable>
+							<BR><B>Bitstamp Transactions</B>
+							<div id="bitstamp_transactions_placeholder">Unavailable</div>
+						</div>
+					</td>
+				</tr>
+			</table>
+		</div>
+		</td>
+		</font>		
+		</tr>
+		</table>
+        <form>
+			Size:
+			<input type="number" id="size_coin" name="size_coin">
+			Price:
+			<input type="number" id="price_fiat" name="price_fiat">
+			<select id="fiat_type" name="fiat_type">
+				<option value="USD">USD</option>
+			</select>
+			<select id="action_type" name="action_type" onchange="should_enable_timed_orders()">
+				<option value="sell">Sell</option>
+				<option value="buy">Buy</option>
+				<option value="timed_sell">Timed Sell</option>
+				<option value="timed_buy">Timed Buy</option>
+			</select>
+			<select id="exchange" name="exchange">
+				<option value="Best">Best Exchange</option>
+				<option value="Bitstamp">Bitstamp</option>
+				<option value="Bitfinex">Bitfinex</option>
+			</select>
+			Duration (minutes):
+			<input type="number" step="1" id="order_duration" name="order_duration">
+			Max Order Size:
+			<input type="number" id="max_order_size" name="max_order_size">
+			<button type=button onclick="execute_order()" name="btnExecute" id="btnExecute">Execute</button>
+			<button type=button onclick="cancel_time_action()" name="btnCancelTimeOrder" id="btnCancelTimeOrder">Cancel Timed Order</button>
+		</form>
+		<h4>Timed order status:</h4>
+		<B><div style="display: inline" id="timed_order_status_placeholder">Inactive</div></B>
+		Order details:
+		<B><div style="display: inline" id="timed_order_details_placeholder"></div></B>
+		Sent time:
+		<B><div style="display: inline" id="timed_order_sent_time_placeholder"></div></B>
+		Order size:
+		<B><div style="display: inline" id="timed_order_total_size_placeholder"></div></B>
+		Order duration (min):
+		<B><div style="display: inline" id="timed_order_duration"></div></B>
+		<BR>
+		Execution start time:
+		<B><div style="display: inline" id="timed_order_execution_start_time_placeholder"></div></B>
+		Execution duration (min):
+		<B><div style="display: inline" id="timed_order_execution_duration"></div></B>
+		Executed size:
+		<B><div style="display: inline" id="timed_order_current_size_placeholder"></div></B>
+        <script type="text/javascript">
+		should_enable_timed_orders();
+        var bitstampBidsPlaceholder = document.getElementById("bitstamp_bids_placeholder"),
+            bitstampAsksPlaceholder = document.getElementById("bitstamp_asks_placeholder"),
+			bitstampSpreadPlaceholder = document.getElementById("bitstamp_spread_placeholder"),
+			bitfinexBidsPlaceholder = document.getElementById("bitfinex_bids_placeholder"),
+            bitfinexAsksPlaceholder = document.getElementById("bitfinex_asks_placeholder"),
+			bitfinexSpreadPlaceholder = document.getElementById("bitfinex_spread_placeholder"),
+			gdaxBidsPlaceholder = document.getElementById("gdax_bids_placeholder"),
+            gdaxAsksPlaceholder = document.getElementById("gdax_asks_placeholder"),
+			gdaxSpreadPlaceholder = document.getElementById("gdax_spread_placeholder"),
+			unifiedBidsPlaceholder = document.getElementById("unified_bids_placeholder"),
+            unifiedAsksPlaceholder = document.getElementById("unified_asks_placeholder"),
+			unifiedSpreadPlaceholder = document.getElementById("unified_spread_placeholder"),
+			currency_type = "",
+			transaction_fee = 0,
+			available_crypto = 0,
+			available_fiat = 0,
+			bitstamp_account_signed_in = false,
+			i = 0;
+			const EXCHANGES_NUM = 4;
+			set_currency_type();
+			refresh_bitstamp_balance();
+			refresh_bitstamp_transactions();
+			show_sent_orders();
+			window.setInterval(function(){
+			var orders_request_suffix = currency_type + "-USD";
+			var bitstamp_request = new XMLHttpRequest();
+			bitstamp_request.open("GET", "/Orderbook/Bitstamp/" + orders_request_suffix, true);
+			var bitfinex_request = new XMLHttpRequest();
+			bitfinex_request.open("GET", "/Orderbook/Bitfinex/" + orders_request_suffix, true);
+			var gdax_request = new XMLHttpRequest();
+			gdax_request.open("GET", "/Orderbook/GDAX/" + orders_request_suffix, true);
+			var unified_request = new XMLHttpRequest();
+			unified_request.open("GET", "/UnifiedOrderbook/" + orders_request_suffix, true);
+			
+			function get_orders(orders_request, asksPlaceholder, bidsPlaceholder, spreadPlaceholder, averageSpreadPlaceholder, show_source) {
+				
+				if (orders_request.readyState == 4 && orders_request.status == 200) {
+					var orders_response = JSON.parse(orders_request.responseText.replace(/'/g, '"'));
+					set_commands(bidsPlaceholder, orders_response.bids, show_source, false);
+					set_commands(asksPlaceholder, orders_response.asks, show_source, true);
+					if (averageSpreadPlaceholder != null)
+					{
+						averageSpreadPlaceholder.innerHTML = orders_response.average_spread.toFixed(2);
+					}
+					orders_spread = parseFloat(orders_response.asks[0].price) - parseFloat(orders_response.bids[0].price);
+					spread_html = orders_spread.toFixed(2);
+					if (orders_spread < 0)
+					{
+						spread_html = '<font color = "red">' + spread_html + '</html>';
+					}
+					spreadPlaceholder.innerHTML = spread_html;
+				}
+			}
+			
+			function set_commands(ordersPlaceholder, orders, show_source, reverse_order)
+			{
+				var order_colors = {"Bitstamp" : "Blue", "Bitfinex" : "Green", "GDAX" : "Olive"};
+				ordersPlaceholder.innerHTML = '';
+				for(i = 0; i < orders.length; i += 1) {
+					var new_order_html = orders[i].size.toFixed(4) + ' @ ' + orders[i].price.toFixed(2);
+					if (show_source)
+					{
+						new_order_html = new_order_html + '<font color = "' + order_colors[orders[i].source] + '">(' + 
+										 orders[i].source + ')</font>';
+					}
+					new_order_html = new_order_html + '<br />';
+					if (reverse_order)
+					{
+						ordersPlaceholder.innerHTML = new_order_html + ordersPlaceholder.innerHTML;
+					}
+					else
+					{
+						ordersPlaceholder.innerHTML = ordersPlaceholder.innerHTML + new_order_html;
+					}
+				}
+			}
+			
+			bitstamp_request.onreadystatechange = function() {
+
+				get_orders(bitstamp_request, bitstampAsksPlaceholder, bitstampBidsPlaceholder, bitstampSpreadPlaceholder, bitstamp_average_spread_placeholder, false);
+			};
+
+			bitfinex_request.onreadystatechange = function() {
+				get_orders(bitfinex_request, bitfinexAsksPlaceholder, bitfinexBidsPlaceholder, bitfinexSpreadPlaceholder, bitfinex_average_spread_placeholder, false);
+			};
+			
+			gdax_request.onreadystatechange = function() {
+				get_orders(gdax_request, gdaxAsksPlaceholder, gdaxBidsPlaceholder, gdaxSpreadPlaceholder, gdax_average_spread_placeholder, false);
+			};
+			
+			unified_request.onreadystatechange = function() {
+
+				get_orders(unified_request, unifiedAsksPlaceholder, unifiedBidsPlaceholder, unifiedSpreadPlaceholder, null, true);
+			};
+			
+			bitstamp_request.send();
+			bitfinex_request.send();
+			unified_request.send();
+			gdax_request.send();
+		}, 500);
+		
+		var time_order_running = false;
+		window.setInterval(function(){
+			var time_order_request = new XMLHttpRequest();
+			time_order_request.open("GET", "/GetTimedOrderStatus", true);
+			time_order_request.onreadystatechange = function() {
+				if (time_order_request.readyState == 4 && time_order_request.status == 200) {
+					var time_order_response = JSON.parse(time_order_request.responseText.replace(/'/g, '"'));
+					time_order_running = (time_order_response.timed_order_running == 'True');
+					btnCancelTimeOrder.disabled = !time_order_running;
+					should_enable_timed_orders();
+					var timed_order_status_dict = {"True" : "Active", "False" : "Inactive"};
+					timed_order_status_placeholder.innerHTML = timed_order_status_dict[time_order_response.timed_order_running];
+					timed_order_details_placeholder.innerHTML = time_order_response.action_type + " for " + time_order_response.timed_order_price_fiat + " USD";
+					timed_order_sent_time_placeholder.innerHTML = time_order_response.timed_order_sent_time;
+					timed_order_execution_start_time_placeholder.innerHTML = time_order_response.timed_order_execution_start_time;
+					timed_order_total_size_placeholder.innerHTML = time_order_response.timed_order_required_size;
+					timed_order_current_size_placeholder.innerHTML = time_order_response.timed_order_done_size.toFixed(4);
+					timed_order_duration.innerHTML = (time_order_response.timed_order_duration_sec / 60).toFixed(0);
+					var minutes = Math.floor(time_order_response.timed_order_elapsed_time / 60);
+					var seconds = time_order_response.timed_order_elapsed_time - minutes * 60;
+					timed_order_execution_duration.innerHTML = str_pad_left(minutes,'0',2)+':'+str_pad_left(parseFloat(seconds).toFixed(0),'0',2);
+					timed_order_current_size_placeholder.innerHTML = time_order_response.timed_order_done_size.toFixed(4); 	 	
+				}
+			};
+			time_order_request.send();	
+		}, 5000);
+		
+		function str_pad_left(string,pad,length) {
+			return (new Array(length+1).join(pad)+string).slice(-length);
+		}
+		
+		window.setInterval(function(){
+			show_sent_orders();
+			refresh_bitstamp_balance();
+			refresh_bitstamp_transactions();
+			get_bitstamp_credentials();
+		}, 5000);
+
+		function can_execute_order(action_type, size_crypto, price_fiat, timed_order, duration, max_order_size)
+		{
+			var can_execute = false;
+			if (!bitstamp_account_signed_in)
+			{
+				alert("User not signed in, can't execute orders");
+			}
+			else if (size_crypto == "" || size_crypto <= 0)
+			{
+				alert("Invalid size");
+			}
+			else if (price_fiat == "" || price_fiat <= 0)
+			{
+				alert("Invalid price");
+			}
+			else if(timed_order && (duration == "" || duration < 0))
+			{
+				alert("Invalid duration");
+			}
+			else if(timed_order && (max_order_size == "" || max_order_size < 0))
+			{
+				alert("Invalid max order size");
+			}
+			else if (action_type == 'buy' && available_fiat < size_crypto * price_fiat * (1 + 0.01 * transaction_fee))
+			{
+				var required_fiat = size_crypto * price_fiat * (1 + 0.01 * transaction_fee);
+				alert("Insufficient funds: the order requires " + required_fiat.toFixed(2) + " USD");
+			}
+			else if (action_type == 'sell' && available_crypto < size_crypto)
+			{
+				alert("Insufficient funds: the order requires " + size_crypto + " " + crypto_type.value);
+			}
+			else
+			{
+				can_execute = true;
+			}
+			return can_execute;
+		}
+		
+		function execute_order()
+		{
+			var action_order_duration = 0;
+			var timed_order = false;
+			var alert_text = "";
+			var order_action_type = action_type.value;
+			if (order_action_type == "timed_sell")
+			{
+				order_action_type = "sell";
+				action_order_duration = order_duration.value;
+				alert_text = "Going to sell " + size_coin.value + " " + crypto_type.value + " for at least " + price_fiat.value + " " + 
+							 fiat_type.value + " over " + action_order_duration + " minutes";
+				timed_order = true;
+			}
+			else if(order_action_type == "timed_buy")
+			{
+				order_action_type = "buy";
+				action_order_duration = order_duration.value;
+				alert_text = "Going to buy " + size_coin.value + " " + crypto_type.value + " for up to " + price_fiat.value + " " + 
+							 fiat_type.value + " over " + action_order_duration + " minutes";
+				timed_order = true;
+			}
+			else
+			{
+				alert_text = "Going to " + action_type.value + " " + size_coin.value + " " + crypto_type.value + " for " + price_fiat.value + " " + fiat_type.value;
+			}
+			
+			var confirmed = false
+			if(can_execute_order(order_action_type, size_coin.value, price_fiat.value, timed_order, action_order_duration, max_order_size.value) && 
+				confirm(alert_text))
+			{
+				var max_order_size_num = 0;
+				if (max_order_size.value != "")
+				{
+					max_order_size_num = parseFloat(max_order_size.value);
+				}
+				btnExecute.disabled = true;
+				var order_params = JSON.stringify({"action_type" : action_type.value,
+												   "size_coin" : size_coin.value,
+												   "crypto_type" : crypto_type.value,
+												   "price_fiat" : price_fiat.value,
+												   "fiat_type" : fiat_type.value,
+												   "duration_sec" : action_order_duration * 60,
+												   "max_order_size" : max_order_size_num});
+				var order_request = new XMLHttpRequest();
+				order_request.open("POST", "/SendOrder", true);
+				order_request.setRequestHeader("Content-Type", "application/json");
+				order_request.onreadystatechange = function () {
+					if (order_request.readyState === 4 && order_request.status === 200) {
+						var order_response = JSON.parse(order_request.responseText.replace(/'/g, '"'));
+						if (order_response.order_status == "True")
+						{
+							if (timed_order)
+							{
+								alert("Timed order posted to server successfully");
+							}
+							else
+							{
+								alert("Order executed successfully");
+							}
+						}
+						else
+						{
+							alert("Order execution failed");
+						}
+						btnExecute.disabled = false;
+						should_enable_timed_orders();
+						refresh_bitstamp_balance();
+						show_sent_orders();
+					}
+				};
+				order_request.send(order_params);
+			}
+			
+		}
+		
+		function refresh_bitstamp_balance()
+		{
+			refresh_account_balance("bitstamp_usd_balance_placeholder", "bitstamp_btc_available_balance_placeholder", "Bitstamp", currency_type);
+		}
+		
+		function refresh_account_balance(fiat_balance_id, crypto_balance_id, exchange, currency)
+		{
+			var exchangeFiatPlaceholder = document.getElementById(fiat_balance_id),
+				exchangeCryptoPlaceholder = document.getElementById(crypto_balance_id);
+			var account_request = new XMLHttpRequest();
+			account_request.open("GET", "/AccountBalance/" + exchange + "/" + currency, true);
+			
+			account_request.onreadystatechange = function() {
+				if (account_request.readyState == 4 && account_request.status == 200) {
+					var account_response = JSON.parse(account_request.responseText.replace(/'/g, '"'));
+					available_fiat = "N/A";
+					if (account_response.hasOwnProperty("usd_available"))
+					{
+						available_fiat = account_response.usd_available - account_response.server_usd_reserved;
+						exchangeFiatPlaceholder.innerHTML = account_response.usd_available + "(" + available_fiat.toFixed(2) + ")";
+					}
+					else
+					{
+						exchangeFiatPlaceholder.innerHTML = "N/A";
+					}
+					
+					var available_balance_dict = {"BTC" : "btc_available", "BCH" : "bch_available"};
+					var exchange_available_crypto = "N/A";
+					if (account_response.hasOwnProperty(available_balance_dict[currency_type]))
+					{
+						exchange_available_crypto = parseFloat(account_response[available_balance_dict[currency_type]]);
+						available_crypto = exchange_available_crypto - account_response.reserved_crypto;
+						exchangeCryptoPlaceholder.innerHTML = exchange_available_crypto.toFixed(4) + "(" + available_crypto.toFixed(4) + ")";
+					}
+					else
+					{
+						exchangeCryptoPlaceholder.innerHTML = "N/A";
+					}
+					
+					transaction_fee = 0;
+					if (account_response.hasOwnProperty("fee"))
+					{
+						transaction_fee = parseFloat(account_response.fee);
+					}
+				}
+			};
+			account_request.send();	
+		}
+		
+		function refresh_bitstamp_transactions()
+		{
+			var bitstampTransactionsPlaceholder = document.getElementById("bitstamp_transactions_placeholder");
+			if (!bitstamp_account_signed_in)
+			{
+				bitstampTransactionsPlaceholder.innerHTML = "Unavailable";
+			}
+			else
+			{
+				var bitstamp_transactions_request = new XMLHttpRequest();
+				bitstamp_transactions_request.open("GET", "/BitstampTransactions", true);
+				bitstamp_transactions_request.onreadystatechange = function() {
+					if (bitstamp_transactions_request.readyState == 4 && bitstamp_transactions_request.status == 200) {
+						bitstampTransactionsPlaceholder.innerHTML = '';
+						var bitstamp_transactions_response = JSON.parse(bitstamp_transactions_request.responseText.replace(/'/g, '"'));
+						var transaction_dict = {'btc' : 'btc_usd', 
+												'bch' : 'bch_usd'};
+						var transaction_typesx = Object.keys(bitstamp_transactions_response[0]);
+						for (i = 0; i < bitstamp_transactions_response.length; i += 1)
+						{
+							var found_type = "";
+							var transaction_types = Object.keys(transaction_dict);
+							for (var j = 0; j < transaction_types.length && found_type == ""; ++j)
+							{
+								transaction_keys = Object.keys(bitstamp_transactions_response[i]);
+								if (Object.keys(bitstamp_transactions_response[i]).indexOf(transaction_dict[transaction_types[j]]) != -1)
+								{	
+									found_type = transaction_types[j];
+								}
+							}
+							if (found_type != "")
+							{
+								bitstampTransactionsPlaceholder.innerHTML = bitstampTransactionsPlaceholder.innerHTML + bitstamp_transactions_response[i].datetime +
+									": " + parseFloat(bitstamp_transactions_response[i][found_type]).toFixed(4) + " " + found_type.toUpperCase() + " @" + 
+									parseFloat(bitstamp_transactions_response[i][transaction_dict[found_type]]).toFixed(2) + "<BR>";
+							}
+						}
+					}
+				};
+				bitstamp_transactions_request.send();
+			}
+		}
+		
+		function should_enable_timed_orders()
+		{
+			if (action_type.value == "timed_sell" || action_type.value == "timed_buy")
+			{
+				order_duration.disabled = false;
+				max_order_size.disabled = false;
+				btnExecute.disabled = time_order_running;
+			}
+			else
+			{
+				order_duration.disabled = true;
+				max_order_size.disabled = true;
+				btnExecute.disabled = false;
+			}
+		}
+		
+		function cancel_time_action()
+		{
+			var cancel_time_order_request = new XMLHttpRequest();
+			cancel_time_order_request.open("GET", "/CancelTimedOrder", true);
+			cancel_time_order_request.onreadystatechange = function() {
+				if (cancel_time_order_request.readyState == 4 && cancel_time_order_request.status == 200) {
+					var cancel_time_order_response = JSON.parse(cancel_time_order_request.responseText.replace(/'/g, '"'));
+					var cancel_msg = "Cacel time order: ";
+					if (cancel_time_order_response.cancel_time_order_result)
+					{
+						cancel_msg = cancel_msg + "Success";
+						refresh_account_balance();
+					}
+					else
+					{
+						cancel_msg = cancel_msg + "Failure";
+					}
+					alert(cancel_msg);
+				}
+			};
+			cancel_time_order_request.send();
+		}
+		
+		function get_sent_orders(limit, _callback)
+		{
+			var sent_orders_request = new XMLHttpRequest();
+			sent_orders_request.open("GET", "/GetSentOrders?limit=" + limit, true);
+			sent_orders_request.onreadystatechange = function() {
+				if (sent_orders_request.readyState == 4 && sent_orders_request.status == 200) {
+					var sent_orders_response = JSON.parse(sent_orders_request.responseText.replace(/'/g, '"'));
+					_callback(sent_orders_response);
+					
+				}
+			};
+			sent_orders_request.send();
+		}
+		
+		function show_sent_orders()
+		{
+			var timed_order_dict = {0 : "M", 1 : "T"};
+			var exchange_display_dict = {"Bitstamp" : "BIT"}
+			var action_type_dict = {"buy" : "+", "sell" : "-"};
+			get_sent_orders(orders_limit.value, function(sent_orders_response) {
+			sent_transactions_placeholder.innerHTML = '';
+			var order_type_colors_dict = {'buy':'"Green"', 'sell':'"Red"'};
+			for (i = 0; i < sent_orders_response.length; i++)
+			{
+				sent_transactions_placeholder.innerHTML = sent_transactions_placeholder.innerHTML + '<font color = ' + order_type_colors_dict[sent_orders_response[i].action_type] + ' >' + exchange_display_dict[sent_orders_response[i].exchange] +
+				" " + sent_orders_response[i].order_time + "(" + timed_order_dict[sent_orders_response[i].timed_order] + "): " +
+					action_type_dict[sent_orders_response[i].action_type] + parseFloat(sent_orders_response[i].crypto_size).toFixed(4) + sent_orders_response[i].crypto_type +
+					" @" + sent_orders_response[i].price_fiat + "," + sent_orders_response[i].status + "</font><BR>";
+			}})
+		}
+		
+		function set_currency_type()
+		{
+			currency_type = crypto_type.value;
+			for (var exchange_index = 1; exchange_index <= EXCHANGES_NUM; ++exchange_index)
+			{
+				balance_type_placeholder = document.getElementById("currency_type_" + exchange_index);
+				if (balance_type_placeholder != null)
+				{
+					balance_type_placeholder.innerHTML = currency_type + " Balance: ";
+				}
+			}
+			var placeholder_names = ["bitstamp_bids_placeholder", "bitstamp_asks_placeholder", "bitfinex_bids_placeholder",
+									 "bitfinex_asks_placeholder", "gdax_bids_placeholder", "gdax_asks_placeholder",
+									 "unified_bids_placeholder", "unified_asks_placeholder"];
+			for (var placeholder_index = 0; placeholder_index < placeholder_names.length; ++placeholder_index){
+				curr_placeholder = document.getElementById(placeholder_names[placeholder_index]);
+				if (curr_placeholder != null)
+				{
+					curr_placeholder.innerHTML = "";
+				}
+			}						 
+			refresh_bitstamp_balance();
+		}
+		
+		function set_bitstamp_credentials()
+		{
+			btnSetBitstampCredentials.disabled = true;
+			var credentials_params = JSON.stringify({"username" : bitstamp_account_number.value,
+												     "key" : bitstamp_api_key.value,
+												     "secret" : bitstamp_secret.value});
+			var set_credentials_request = new XMLHttpRequest();
+			set_credentials_request.open("POST", "/SetBitstampCredentials", true);
+			set_credentials_request.setRequestHeader("Content-Type", "application/json");
+			set_credentials_request.onreadystatechange = function () {
+			if (set_credentials_request.readyState === 4 && set_credentials_request.status === 200) 
+				{
+					var set_credentials_response = JSON.parse(set_credentials_request.responseText.replace(/'/g, '"'));
+					if (set_credentials_response.set_credentials_status == "True")
+					{
+						alert("Setting credentials status: success");
+					}
+					else
+					{
+						alert("Setting credentials status: failure");
+					}
+					btnSetBitstampCredentials.disabled = false;
+				}
+			};
+			set_credentials_request.send(credentials_params);
+		}
+		
+		function get_bitstamp_credentials()
+		{
+			var credentials_request = new XMLHttpRequest();
+			credentials_request.open("GET", "/GetSignedInBitstampCredentials", true);
+			credentials_request.onreadystatechange = function() {
+				if (credentials_request.readyState == 4 && credentials_request.status == 200) {
+					var credentials_response = JSON.parse(credentials_request.responseText.replace(/'/g, '"'));
+					if (credentials_response.signed_in_user != '')
+					{
+						bitstamp_user_placeholder.innerHTML = credentials_response.signed_in_user;
+						bitstamp_account_signed_in = true;
+					}
+					else
+					{
+						bitstamp_user_placeholder.innerHTML = "None";
+						bitstamp_account_signed_in = false;
+					}
+				}
+			};
+			credentials_request.send();
+		}
+		
+		function export_all_orders()
+		{
+			get_sent_orders(0, function (sent_orders_response) { export_orders(sent_orders_response)});
+		}
+		
+		function export_shown_orders()
+		{
+			get_sent_orders(orders_limit.value, function (sent_orders_response) { export_orders(sent_orders_response)});
+		}
+		
+		function export_orders(orders_to_export)
+		{
+			headers = ['Type', 'Exchange', 'Order Date and Time', 'Timed / Manual', 'Size', 'Coin', 'Price', 'Status'];
+			headers_row = headers.join(",");
+			var data_rows = '';
+			var timed_order_dict = {0 : "Manual", 1 : "Timed"};
+			for (var i = 0; i < orders_to_export.length; ++i)
+			{
+				var curr_row = [orders_to_export[i].action_type, orders_to_export[i].exchange, orders_to_export[i].order_time,
+								timed_order_dict[orders_to_export[i].timed_order], parseFloat(orders_to_export[i].crypto_size).toFixed(4), 
+								orders_to_export[i].crypto_type, orders_to_export[i].price_fiat, orders_to_export[i].status];
+				data_rows = data_rows + curr_row.join(",") + "\n";
+			}
+			var encodedUri = encodeURI('data:text/csv;charset=utf-8,'+headers_row + "\n" + data_rows);
+			var link = document.createElement("a");
+			link.setAttribute("href", encodedUri);
+			var currentdate = new Date(); 
+			var datetime = currentdate.getFullYear() + "_" + (currentdate.getMonth()+1).toString().padStart(2,"0") + "_" + currentdate.getDate().toString().padStart(2,"0") +
+										"_" + currentdate.getHours().toString().padStart(2,"0") + "_" + currentdate.getMinutes().toString().padStart(2,"0") + "_" + currentdate.getSeconds().toString().padStart(2,"0");
+			link.setAttribute("download", "sent_orders_" + datetime + ".csv");
+			link.innerHTML= "Click Here to download";
+			
+			document.body.appendChild(link); // Required for FF
+			link.click(); // This will download the data file named "my_data.csv".
+			document.body.removeChild(link);
+		}
+        </script>
+
+<div id="st-popup-container" class="st-hidden"></div></body></html>
