@@ -10,7 +10,6 @@
 			div.scrollable {width: 100%;height: 100%;margin: 0;padding: 0;overflow: scroll;}
 			input[type=number]{width: 50px;} 
         </style>
-    <script src="./OrdersTracker_files/sockjs.min.js.download" type="text/javascript" async="true"></script><link href="./OrdersTracker_files/css(2)" rel="stylesheet" type="text/css"></head>
     <body style="">
         <h1>Order book&nbsp
 			<select id="crypto_type" name="crypto_type" onchange="set_currency_type()">
@@ -84,6 +83,7 @@
 			Secret:
 			<input type="password" id="bitstamp_secret" name="bitstamp_secret">
 			<button type=button onclick="set_bitstamp_credentials()" name="btnSetBitstampCredentials" id="btnSetBitstampCredentials">Set Bitstamp Credentials</button>
+			<button type=button onclick="bitstamp_logout()" name="btnBitstampLogout" id="btnBitstampLogout">Logout</button>
 			</font>
 		</td>		
 		</tr>
@@ -236,6 +236,7 @@
 			bitstamp_account_signed_in = false,
 			i = 0;
 			const EXCHANGES_NUM = 4;
+			btnBitstampLogout.disabled = true;
 			set_currency_type();
 			refresh_bitstamp_balance();
 			refresh_bitstamp_transactions();
@@ -261,7 +262,15 @@
 					{
 						averageSpreadPlaceholder.innerHTML = orders_response.average_spread.toFixed(2);
 					}
-					orders_spread = parseFloat(orders_response.asks[0].price) - parseFloat(orders_response.bids[0].price);
+					if (orders_response.asks.length == 0 || orders_response.bids.length == 0)
+					{
+						orders_spread = 0;
+					}
+					else
+					{
+						orders_spread = parseFloat(orders_response.asks[0].price) - parseFloat(orders_response.bids[0].price);
+					}
+					
 					spread_html = orders_spread.toFixed(2);
 					if (orders_spread < 0)
 					{
@@ -679,6 +688,8 @@
 						alert("Setting credentials status: failure");
 					}
 					btnSetBitstampCredentials.disabled = false;
+					refresh_bitstamp_transactions();
+					refresh_account_balance();
 				}
 			};
 			set_credentials_request.send(credentials_params);
@@ -701,6 +712,7 @@
 						bitstamp_user_placeholder.innerHTML = "None";
 						bitstamp_account_signed_in = false;
 					}
+					btnBitstampLogout.disabled = !bitstamp_account_signed_in;
 				}
 			};
 			credentials_request.send();
@@ -743,6 +755,31 @@
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
+		}
+		
+		function bitstamp_logout()
+		{
+			var logout_request = new XMLHttpRequest();
+			logout_request.open("GET", "/Logout", true);
+			logout_request.onreadystatechange = function() {
+				if (logout_request.readyState == 4 && logout_request.status == 200) {
+					var logout_response = JSON.parse(logout_request.responseText.replace(/'/g, '"'));
+					var logout_msg = "Logout status: ";
+					if (logout_response.set_credentials_status == 'True')
+					{
+						logout_msg = logout_msg + "Success";
+						btnBitstampLogout.disabled = true;
+						refresh_bitstamp_transactions();
+						refresh_account_balance();
+					}
+					else
+					{
+						logout_msg = logout_msg + "Failure";
+					}
+					alert(logout_msg);
+				}
+			};
+			logout_request.send();		
 		}
         </script>
 

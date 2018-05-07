@@ -16,6 +16,10 @@ app = Flask(__name__)
 def send_orderbook_page():
     return send_from_directory('','OrdersTracker.html')
 
+@app.route('/favicon.ico')
+def send_favicon():
+    return send_from_directory('','favicon.ico')
+
 @app.route('/Orderbook/<exchange>/<currency>')
 def get_orderbook(exchange, currency):
     request_orders = orderbooks[exchange]
@@ -124,13 +128,16 @@ def set_client_credentials():
                                 'key': request_params['key'],
                                 'secret': request_params['secret']}
         global bitstamp_client
-        if bitstamp_client.GetTimedOrderStatus()['time_order_running']:
-            bitstamp_client.CancelTimedOrder()
-
-        bitstamp_client = BitstampClientWrapper(bitstamp_credentials, bitstamp_orderbook, "./Transactions.data")
+        result['set_credentails_status'] = str(bitstamp_client.set_client_credentails(bitstamp_credentials))
     except:
-        result = {'set_credentails_status': 'False'}
+        result['set_credentails_status'] = 'False'
 
+    return str(result)
+
+@app.route('/Logout')
+def logout():
+    result = {'set_credentials_status': 'False'}
+    result['set_credentials_status'] = str(bitstamp_client.logout())
     return str(result)
 
 @app.route('/SetBitstampCredentials', methods=['POST'])

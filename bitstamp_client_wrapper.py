@@ -426,6 +426,7 @@ class BitstampClientWrapper:
                 self._signed_in_user = username
                 self._balance_changed = {}
             else:
+                self._signed_in_user = ''
                 self._bitstamp_client = None
         except:
             self._bitstamp_client = None
@@ -436,3 +437,7 @@ class BitstampClientWrapper:
 
     def get_signed_in_credentials(self):
         return {'signed_in_user': self._signed_in_user}
+
+    def logout(self):
+        self.set_client_credentails({})
+        return self._bitstamp_client is None
