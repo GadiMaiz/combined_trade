@@ -730,7 +730,7 @@
 		
 		function export_orders(orders_to_export)
 		{
-			headers = ['Type', 'Exchange', 'Order Date and Time', 'Timed / Manual', 'Size', 'Coin', 'Price', 'Status'];
+			headers = ['Type', 'Exchange', 'Order Date and Time', 'Timed / Manual', 'Size', 'Coin', 'Price', 'Status', 'USD Balance', 'Crypto Balance'];
 			headers_row = headers.join(",");
 			var data_rows = '';
 			var timed_order_dict = {0 : "Manual", 1 : "Timed"};
@@ -738,7 +738,8 @@
 			{
 				var curr_row = [orders_to_export[i].action_type, orders_to_export[i].exchange, orders_to_export[i].order_time,
 								timed_order_dict[orders_to_export[i].timed_order], parseFloat(orders_to_export[i].crypto_size).toFixed(4), 
-								orders_to_export[i].crypto_type, orders_to_export[i].price_fiat, orders_to_export[i].status];
+								orders_to_export[i].crypto_type, orders_to_export[i].price_fiat, orders_to_export[i].status, 
+								orders_to_export[i].usd_balance, orders_to_export[i].crypto_available];
 				data_rows = data_rows + curr_row.join(",") + "\n";
 			}
 			

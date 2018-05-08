@@ -179,5 +179,6 @@ if __name__ == '__main__':
 
     bitstamp_credentials = None
     bitstamp_client = BitstampClientWrapper(bitstamp_credentials, bitstamp_orderbook, "./Transactions.data")
-    app.run(host= '0.0.0.0', ssl_context='adhoc')
+    #app.run(host= '0.0.0.0', ssl_context='adhoc')
+    app.run()
 

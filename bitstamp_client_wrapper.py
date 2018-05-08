@@ -335,9 +335,21 @@ class BitstampClientWrapper:
 
 
         print (datetime.datetime.now(), "Order done, size is", execute_size_coin)
+        account_balance = {'usd_available': -1, 'crypto_available': -1}
         if order_info is not None and execute_size_coin > 0:
             for curr_balance_key in self._balance_changed.keys():
                 self._balance_changed[curr_balance_key] = True
+
+            account_balance = self.account_balance(crypto_type)
+            crypto_key = ''
+            for curr_account_balance_key in account_balance.keys():
+                if curr_account_balance_key.endswith("_available") and not curr_account_balance_key.startswith("usd"):
+                    crypto_key = curr_account_balance_key
+                    break
+
+            if crypto_key != '':
+                account_balance['crypto_available'] = account_balance[crypto_key]
+            order_info['balance'] = account_balance
             self.write_order_to_db(order_info)
         return {'order_status' : order_done, 'execution_size' : execute_size_coin, 'execution_message' : execution_message}
 
@@ -347,8 +359,9 @@ class BitstampClientWrapper:
             print("Can't connect to DB")
         else:
             try:
-                insert_str = "INSERT INTO sent_orders VALUES('{}', '{}', {}, {}, {}, '{}', '{}', {}, '{}')".format(order_info['exchange'], order_info['action_type'], order_info['crypto_size'],
-                                             order_info['price_fiat'], order_info['exchange_id'], order_info['status'], order_info['order_time'], order_info['timed_order'], order_info['crypto_type'])
+                insert_str = "INSERT INTO sent_orders VALUES('{}', '{}', {}, {}, {}, '{}', '{}', {}, '{}', {}, {})".format(order_info['exchange'], order_info['action_type'], order_info['crypto_size'],
+                                             order_info['price_fiat'], order_info['exchange_id'], order_info['status'], order_info['order_time'], order_info['timed_order'], order_info['crypto_type'],
+                                             order_info['balance']['usd_available'], order_info['balance']['crypto_available'])
                 print(insert_str)
                 conn.execute(insert_str)
                 conn.commit()
@@ -403,7 +416,9 @@ class BitstampClientWrapper:
                           'status': curr_order[5],
                           'order_time' : curr_order[6],
                           'timed_order' : curr_order[7],
-                          'crypto_type': curr_order[8]}
+                          'crypto_type': curr_order[8],
+                          'usd_balance': curr_order[9],
+                          'crypto_available': curr_order[10]}
             all_orders.append(order_dict)
         conn.close()
         return all_orders
