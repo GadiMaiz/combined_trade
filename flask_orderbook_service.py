@@ -8,7 +8,8 @@ from bitstamp_orderbook import BitstampOrderbook
 import logging
 import json
 import time
-import datetime
+import sys
+import getopt
 
 app = Flask(__name__)
 
@@ -153,6 +154,35 @@ def get_bitstamp_signed_in_credentials():
 
 
 if __name__ == '__main__':
+    argv = sys.argv[1:]
+    bind_ip = None
+    bitstamp_user = ''
+    bitstamp_api_key = ''
+    bitstamp_secret = ''
+    listener_port = 5000
+    try:
+        opts, args = getopt.getopt(argv, "ru:k:s:p:")
+        for opt, arg in opts:
+            if opt == '-r':
+                bind_ip = "0.0.0.0"
+            elif opt == "-u":
+                bitstamp_user = arg
+            elif opt == "-k":
+                bitstamp_api_key = arg
+            elif opt == "-s":
+                bitstamp_secret = arg
+            elif opt == "-p":
+                try:
+                    listener_port = int(arg)
+                except:
+                    listener_port = 5000
+    except getopt.GetoptError as e:
+        print("Parameters error:", e)
+
+    bitstamp_credentials = None
+    if bitstamp_user != '' and bitstamp_api_key != '' and bitstamp_secret != '':
+        bitstamp_credentials = {'username': bitstamp_user, 'key': bitstamp_api_key, 'secret': bitstamp_secret}
+
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
 
@@ -177,8 +207,8 @@ if __name__ == '__main__':
                   'Bitfinex' : { 'orderbook' : bitfinex_orderbook, 'currencies_dict' : bitfinex_currencies},
                   'Unified' : { 'orderbook' : unified_orderbook, 'currencies_dict' : bitstamp_currencies}}
 
-    bitstamp_credentials = None
     bitstamp_client = BitstampClientWrapper(bitstamp_credentials, bitstamp_orderbook, "./Transactions.data")
     #app.run(host= '0.0.0.0', ssl_context='adhoc')
-    app.run()
+    app.run(host=bind_ip, port=listener_port)
+
 
