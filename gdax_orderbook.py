@@ -2,6 +2,7 @@ import gdax
 from threading import Thread
 import asyncio
 from orderbook_base import OrderbookBase
+import logging
 
 class GdaxOrderbook(OrderbookBase):
     def __init__(self, asset_pairs):
@@ -10,6 +11,7 @@ class GdaxOrderbook(OrderbookBase):
         self._orderbook_thread = None
         self._orderbook = None
         self._init_complete = False
+        self._log = logging.getLogger(__name__)
     def _start(self):
         if self._orderbook_thread is None or not self._orderbook_thread.is_alive():
             self._orderbook_thread = Thread(target=self._manage_orderbook,
@@ -25,15 +27,20 @@ class GdaxOrderbook(OrderbookBase):
         :return:
         """
         self.running = False
+        self._orderbook_thread.join()
 
     def _manage_orderbook(self):
         self._event_loop.run_until_complete(self._manage_orderbook_async())
 
     async def _manage_orderbook_async(self):
+        self._init_complete = False
         async with gdax.orderbook.OrderBook(['BTC-USD', 'BCH-USD']) as self._orderbook:
             self._init_complete = True
             while self.running:
-                message = await self._orderbook.handle_message()
+                try:
+                    message = await self._orderbook.handle_message()
+                except Exception as e:
+                    self._log.error("Error handling message: <%s>, error is: <%s>", str(message), str(e))
 
     def get_current_partial_book(self, product_id, book_size):
         result = {

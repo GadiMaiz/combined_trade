@@ -86,7 +86,6 @@ class OrderbookBase:
                                 compare_index += 1
                         if not identical_orderbooks:
                             different_orderbooks_timestamp = time.time()
-                            print("Different orderbooks", type(self), different_orderbooks_timestamp)
                         elif identical_orderbooks and different_orderbooks_timestamp - time.time() > OrderbookBase.ORDERBOOK_HEALTH_TIMEOUT_SEC:
                             print("Orderbook hasn't change for more than",OrderbookBase.ORDERBOOK_HEALTH_TIMEOUT_SEC, "seconds, restarting it")
                             self._calculate_orderbook_thread = None

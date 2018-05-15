@@ -1,6 +1,9 @@
 from bitex.api.WSS import BitfinexWSS
 from threading import Thread
 from orderbook_base import OrderbookBase
+import logging
+
+log = logging.getLogger(__name__)
 
 class BitfinexOrderbook(OrderbookBase):
     symbols_dict = {'BTCUSD': 'BTC', 'BCHUSD': 'BCH', 'BTC-USD' : 'BTC', 'BCH-USD' : 'BCH'}
@@ -29,22 +32,22 @@ class BitfinexOrderbook(OrderbookBase):
         self._running = False
 
     def _manage_orderbook(self):
-        print ("running manage orderbook thread")
+        log.info("running manage orderbook thread")
         orderbook_init = { 'BTCUSD': False, 'BCHUSD': False}
         while self._running:
-            #try:
-            curr_info = self._bitfinex_client.data_q.get()
-            if curr_info[0] == 'order_book' and curr_info[1] in orderbook_init.keys():
-                if not orderbook_init[curr_info[1]]:
-                    #print ("init orderbook", orderbook_init)
-                    self._init_orderbook(curr_info)
-                    orderbook_init[curr_info[1]] = True
-                else:
-                    #print("modify orderbook")
-                    self._modify_orderbook(curr_info)
+            try:
+                curr_info = self._bitfinex_client.data_q.get()
+                if curr_info[0] == 'order_book' and curr_info[1] in orderbook_init.keys():
+                    if not orderbook_init[curr_info[1]]:
+                        #print ("init orderbook", orderbook_init)
+                        self._init_orderbook(curr_info)
+                        orderbook_init[curr_info[1]] = True
+                    else:
+                        #print("modify orderbook")
+                        self._modify_orderbook(curr_info)
 
-            #except Exception:
-            #    continue
+            except Exception as e:
+                logger.Error(str(e))
 
     def _init_orderbook(self, first_orderbook):
         #print ("_init_orderbook")

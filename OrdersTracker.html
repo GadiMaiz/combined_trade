@@ -9,12 +9,21 @@
             .column:nth-child(3) div {text-align:right;}
 			div.scrollable {width: 100%;height: 100%;margin: 0;padding: 0;overflow: scroll;}
 			input[type=number]{width: 50px;} 
+			link_button {
+				 background:none!important;
+				 color:inherit;
+				 border:none; 
+				 padding:0!important;
+				 font: inherit; 
+				 cursor: pointer;
+				}
         </style>
     <body style="">
-        <h1>Order book&nbsp
+		<font color = "Blue"><link_button onclick='set_text_language("en_us")'>English</link_button> <link_button onclick='set_text_language("zh_cn")'>中文</link_button></font>
+        <h1><span id="orderbook_header" data-dict-value="orderbook_header">Order Book</span>&nbsp
 			<select id="crypto_type" name="crypto_type" onchange="set_currency_type()">
-				<option value="BTC">BTC/USD</option>
-				<option value="BCH">BCH/USD</option>
+				<option value="BTC" data-dict-value="btc_usd_option">BTC/USD</option>
+				<option value="BCH" data-dict-value="bch_usd_option">BCH/USD</option>
 			</select>
 		</h1>
 		
@@ -22,123 +31,122 @@
 		<tr>
 		<td>
 			<font size="2">
-			<B>Bitstamp Account Details</B>
+			<B><span data-dict-value="bitstamp">Bitstamp</span> <span data-dict-value="account_details">Account Details</span></B>
 			<BR>
-			USD Balance:
-			<div style="display: inline" id="bitstamp_usd_balance_placeholder"></div>
+			<span data-dict-value="usd_balance">USD Balance:</span>
+			<div style="display: inline" id="bitstamp_usd_balance_placeholder"><span data-dict-value="not_available">N/A</span></div></div>
 			<BR>
 			<div style="display: inline" id="currency_type_1"></div>
-			<div style="display: inline" id="bitstamp_btc_available_balance_placeholder"></div>
-			<!--<BR><button type=button onclick="refresh_bitstamp_balance()">Refresh</button>-->
+			<div style="display: inline" id="bitstamp_btc_available_balance_placeholder"><span data-dict-value="not_available">N/A</span></div>
 			<BR>
 			</font>
 		</td>
 		<td>
 			<font size="2">
-			<B>Bitfinex Account Details</B>
+			<B><span data-dict-value="bitfinex">Bitfinex</span> <span data-dict-value="account_details">Account Details</span></B>
 			<BR>
-			USD Balance:
-			<div style="display: inline" id="bitfinex_usd_balance_placeholder">N/A</div>
+			<span data-dict-value="usd_balance">USD Balance:</span>
+			<div style="display: inline" id="bitfinex_usd_balance_placeholder"><span data-dict-value="not_available">N/A</span></div>
 			<BR>
 			<div style="display: inline" id="currency_type_2"></div>
-			<div style="display: inline" id="bitfinex_btc_available_balance_placeholder">N/A</div>
+			<div style="display: inline" id="bitfinex_btc_available_balance_placeholder"><span data-dict-value="not_available">N/A</span></div>
 			<BR>
 			</font>
 		</td>
 		<td>
 			<font size="2">
-			<B>GDAX Account Details</B>
+			<B><span data-dict-value="gdax">GDAX</span> <span data-dict-value="account_details">Account Details</span></B>
 			<BR>
-			USD Balance:
-			<div style="display: inline" id="gdax_usd_balance_placeholder">N/A</div>
+			<span data-dict-value="usd_balance">USD Balance:</span>
+			<div style="display: inline" id="gdax_usd_balance_placeholder"><span data-dict-value="not_available">N/A</span></div>
 			<BR>
 			<div style="display: inline" id="currency_type_3"></div>
-			<div style="display: inline" id="gdax_btc_available_balance_placeholder">N/A</div>			
+			<div style="display: inline" id="gdax_btc_available_balance_placeholder"><span data-dict-value="not_available">N/A</span></div>			
 			<BR>
 			</font>
 		</td>
 		<td>
 			<font size="2">
-			<B>Unified Account Details</B>
+			<B><span data-dict-value="unified">Unified</span> <span data-dict-value="account_details">Account Details</span></B>
 			<BR>
-			USD Balance:
-			<div style="display: inline" id="unified_usd_balance_placeholder">N/A</div>
+			<span data-dict-value="usd_balance">USD Balance:</span>
+			<div style="display: inline" data-dict-value="unified_usd_balance_placeholder"><span data-dict-value="not_available">N/A</span></div>
 			<BR>
 			<div style="display: inline" id="currency_type_4"></div>
-			<div style="display: inline" id="unified_btc_available_balance_placeholder">N/A</div>
+			<div style="display: inline" id="unified_btc_available_balance_placeholder"><span data-dict-value="not_available">N/A</span></div>
 			<BR>
 			</font>
 		</td>
 		<td>
 			<font size="2">
-			<B>Bitstamp Credentials, Current Signed-in User: </B>
-			<div style="display: inline" id="bitstamp_user_placeholder" name="bitstamp_user_placeholder">N/A</div>
+			<B><span data-dict-value="bitstamp_credentials">Bitstamp Credentials, Current Signed-in User:</span> </B>
+			<div style="display: inline" id="bitstamp_user_placeholder" name="bitstamp_user_placeholder"><span data-dict-value="not_available">N/A</span></div>
 			<BR>
-			Account number:
+			<span data-dict-value="account_number">Account number:</span>
 			<input type="number" id="bitstamp_account_number" name="bitstamp_account_number">
 			<BR>
-			API Key:
+			<span data-dict-value="api_key">API Key:</span>
 			<input id="bitstamp_api_key" name="bitstamp_api_key">
 			<BR>
-			Secret:
+			<span data-dict-value="secret">Secret:</span>
 			<input type="password" id="bitstamp_secret" name="bitstamp_secret">
-			<button type=button onclick="set_bitstamp_credentials()" name="btnSetBitstampCredentials" id="btnSetBitstampCredentials">Set Bitstamp Credentials</button>
-			<button type=button onclick="bitstamp_logout()" name="btnBitstampLogout" id="btnBitstampLogout">Logout</button>
+			<button type=button onclick="set_bitstamp_credentials()" name="btnSetBitstampCredentials" id="btnSetBitstampCredentials" data-dict-value="set_bitstamp_credentials">Set Bitstamp Credentials</button>
+			<button type=button onclick="bitstamp_logout()" name="btnBitstampLogout" id="btnBitstampLogout"ת data-dict-value="logout">Logout</button>
 			</font>
 		</td>		
 		</tr>
 		<tr>
 		<td style="width:7%">
 			<div style="display: inline" class="column">
-				<font size="2"><B>Bitstamp Asks</B><BR>
+				<font size="2"><B><span data-dict-value="bitstamp">Bitstamp</span> <span data-dict-value="asks">Asks</span></B><BR>
 				<div style="display: inline" id="bitstamp_asks_placeholder">Bitstamp Asks<br></div>
 			</div>
-			<B>Spread (USD)<BR>Current: </B><div style="display: inline" id="bitstamp_spread_placeholder"><br></div>
+			<B><span data-dict-value="spread">Spread (USD)</span><BR><span data-dict-value="current">Current:</span> </B><div style="display: inline" id="bitstamp_spread_placeholder"><br></div>
 			<BR>
-			<B>Average: </B><div style="display: inline" id="bitstamp_average_spread_placeholder"><br></div>
+			<B><span data-dict-value="average">Average:</span> </B><div style="display: inline" id="bitstamp_average_spread_placeholder"><br></div>
 			<div class="column">
-				<B>Bitstamp Bids</B><BR>
+				<B><span data-dict-value="bitstamp">Bitstamp</span> <span data-dict-value="bids">Bids</span></B><BR>
 				<div style="display: inline" id="bitstamp_bids_placeholder">Bitstamp Bids<br></div>
 				</font>
 			</div>
 		</td>		
 		<td style="width:7%">
 			<div style="display: inline" class="column">
-				<font size="2"><B>Bitfinex Asks</B><BR>
+				<font size="2"><B><span data-dict-value="bitfinex">Bitfinex</span> <span data-dict-value="asks">Asks</span></B><BR>
 				<div style="display: inline" id="bitfinex_asks_placeholder">Bitfinex Asks<br></div>
 			</div>
-			<B>Spread (USD)<BR>Current: </B><div style="display: inline" id="bitfinex_spread_placeholder"><br></div>
+			<B><span data-dict-value="spread">Spread (USD)</span><BR><span data-dict-value="current">Current:</span> </B><div style="display: inline" id="bitfinex_spread_placeholder"><br></div>
 			<BR>
-			<B>Average: </B><div style="display: inline" id="bitfinex_average_spread_placeholder"><br></div>
+			<B><span data-dict-value="average">Average:</span> </B><div style="display: inline" id="bitfinex_average_spread_placeholder"><br></div>
 			<div class="column">
-				<B>Bitfinex Bids</B><BR>
+				<B><span data-dict-value="bitfinex">Bitfinex</span> <span data-dict-value="bids">Bids</span></B><BR>
 				<div style="display: inline" id="bitfinex_bids_placeholder">Bitfinex Bids<br></div>
 				</font>
 			</div>
 		</td>
 		<td style="width:7%">
 			<div style="display: inline" class="column">
-				<font size="2"><B>GDAX Asks</B><BR>
+				<font size="2"><B><span data-dict-value="gdax">GDAX</span> <span data-dict-value="asks">Asks</span></B><BR>
 				<div style="display: inline" id="gdax_asks_placeholder">GDAX Asks<br></div>
 			</div>
-			<B>Spread (USD)<BR>Current: </B><div style="display: inline" id="gdax_spread_placeholder">Bitstamp Spread<br></div>
+			<B><span data-dict-value="spread">Spread (USD)</span><BR><span data-dict-value="current">Current:</span> </B><div style="display: inline" id="gdax_spread_placeholder">GDAX Spread<br></div>
 			<BR>
-			<B>Average: </B><div style="display: inline" id="gdax_average_spread_placeholder">Bitstamp Spread<br></div>
+			<B><span data-dict-value="average">Average:</span> </B><div style="display: inline" id="gdax_average_spread_placeholder">GDAX Spread<br></div>
 			<div class="column">
-				<B>GDAX Bids</B><BR>
+				<B><span data-dict-value="gdax">GDAX</span> <span data-dict-value="bids">Bids</span></B><BR>
 				<div style="display: inline" id="gdax_bids_placeholder">GDAX Bids<br></div>
 				</font>
 			</div>
 		</td>
 		<td style="width:8%">
 			<div style="display: inline" class="column">
-				<font size="2"><B>Unified Asks</B><BR>
-				<div style="display: inline" id="unified_asks_placeholder">Unified Asks<br></div>
+				<font size="2"><B><span data-dict-value="unified">Unified</span> <span data-dict-value="asks">Asks</span></B><BR>
+				<div style="display: inline" id="unified_asks_placeholder"><span data-dict-value="unified">Unified</span> <span data-dict-value="asks">Asks</span><br></div>
 			</div>
-			<B>Spread (USD)<BR>Current: </B><div style="display: inline" id="unified_spread_placeholder">Unified Spread<br></div>			
+			<B><span data-dict-value="spread">Spread (USD)</span><BR><span data-dict-value="current">Current:</span> </B><div style="display: inline" id="unified_spread_placeholder">Unified Spread<br></div>			
 			<div class="column">
-				<B>Unified Bids</B><BR>
-				<div style="display: inline" id="unified_bids_placeholder">Unified Bids<br></div>
+				<B><span data-dict-value="unified">Unified</span> <span data-dict-value="bids">Bids</span></B><BR>
+				<div style="display: inline" id="unified_bids_placeholder"><span data-dict-value="unified">Unified</span> <span data-dict-value="bids">Bids</span><br></div>
 				</font>
 			</div>
 		</td>
@@ -147,22 +155,22 @@
 			<table>
 				<tr>
 					<td style="height:200px">
-						<BR><B>Sent transactions</B>
+						<BR><B><span data-dict-value="sent_transactions">Sent transactions</span></B>
 						<select id="orders_limit" name="orders_limit">
 							<option value="100">100</option>
 							<option value="250">250</option>
 							<option value="500">500</option>
 						</select>
-						<button type=button onclick="export_all_orders()">Export all orders</button>
-						<button type=button onclick="export_shown_orders()">Export shown orders</button>
+						<button type=button onclick="export_all_orders()" data-dict-value="export_all_orders">Export all orders</button>
+						<button type=button onclick="export_shown_orders()" data-dict-value="export_shown_orders">Export shown orders</button>
 						<div id="sent_transactions_placeholder" class=scrollable></div>
 					</td>
 				</tr>				
 				<tr>
 					<td style="height:200px">
 						<div class=scrollable>
-							<BR><B>Bitstamp Transactions</B>
-							<div id="bitstamp_transactions_placeholder">Unavailable</div>
+							<BR><B><span data-dict-value="bitstamp">Bitstamp</span> <span data-dict-value="transactions">Transactions</span></B>
+							<div id="bitstamp_transactions_placeholder", data-dict-value="unavailable">Unavailable</div>
 						</div>
 					</td>
 				</tr>
@@ -173,47 +181,46 @@
 		</tr>
 		</table>
         <form>
-			Size:
+			<span data-dict-value="size">Size:</span>
 			<input type="number" id="size_coin" name="size_coin">
-			Price:
+			<span data-dict-value="price">Price:</span>
 			<input type="number" id="price_fiat" name="price_fiat">
 			<select id="fiat_type" name="fiat_type">
-				<option value="USD">USD</option>
+				<option value="USD" data-dict-value="usd">USD</option>
 			</select>
 			<select id="action_type" name="action_type" onchange="should_enable_timed_orders()">
-				<option value="sell">Sell</option>
-				<option value="buy">Buy</option>
-				<option value="timed_sell">Timed Sell</option>
-				<option value="timed_buy">Timed Buy</option>
+				<option value="sell" data-dict-value="sell">Sell</option>
+				<option value="buy" data-dict-value="buy">Buy</option>
+				<option value="timed_sell" data-dict-value="timed_sell">Timed Sell</option>
+				<option value="timed_buy" data-dict-value="timed_buy">Timed Buy</option>
 			</select>
 			<select id="exchange" name="exchange">
-				<option value="Best">Best Exchange</option>
-				<option value="Bitstamp">Bitstamp</option>
-				<option value="Bitfinex">Bitfinex</option>
+				<option value="Best" data-dict-value="best_exchange">Best Exchange</option>
+				<option value="Bitstamp" data-dict-value="bitstamp">Bitstamp</option>
 			</select>
-			Duration (minutes):
+			<span data-dict-value="duration">Duration (minutes):</span>
 			<input type="number" step="1" id="order_duration" name="order_duration">
-			Max Order Size:
+			<span data-dict-value="max_order_size">Max Order Size:</span>
 			<input type="number" id="max_order_size" name="max_order_size">
-			<button type=button onclick="execute_order()" name="btnExecute" id="btnExecute">Execute</button>
-			<button type=button onclick="cancel_time_action()" name="btnCancelTimeOrder" id="btnCancelTimeOrder">Cancel Timed Order</button>
+			<button type=button onclick="execute_order()" name="btnExecute" id="btnExecute" data-dict-value="execute">Execute</button>
+			<button type=button onclick="cancel_time_action()" name="btnCancelTimeOrder" id="btnCancelTimeOrder" data-dict-value="cancel_timed_order">Cancel Timed Order</button>
 		</form>
-		<h4>Timed order status:</h4>
+		<h4 data-dict-value="timed_order_status">Timed order status:</h4>
 		<B><div style="display: inline" id="timed_order_status_placeholder">Inactive</div></B>
-		Order details:
+		<span data-dict-value="order_details">Order details:</span>
 		<B><div style="display: inline" id="timed_order_details_placeholder"></div></B>
-		Sent time:
+		<span data-dict-value="sent_time">Sent time:</span>
 		<B><div style="display: inline" id="timed_order_sent_time_placeholder"></div></B>
-		Order size:
+		<span data-dict-value="order_size">Order size:</span>
 		<B><div style="display: inline" id="timed_order_total_size_placeholder"></div></B>
-		Order duration (min):
+		<span data-dict-value="order_duration">Order duration (min):</span>
 		<B><div style="display: inline" id="timed_order_duration"></div></B>
 		<BR>
-		Execution start time:
+		<span data-dict-value="execution_start_time">Execution start time:</span>
 		<B><div style="display: inline" id="timed_order_execution_start_time_placeholder"></div></B>
-		Execution duration (min):
+		<span data-dict-value="execution_duration">Execution duration (min):</span>
 		<B><div style="display: inline" id="timed_order_execution_duration"></div></B>
-		Executed size:
+		<span data-dict-value="execution_size">Executed size:</span>
 		<B><div style="display: inline" id="timed_order_current_size_placeholder"></div></B>
         <script type="text/javascript">
 		should_enable_timed_orders();
@@ -234,13 +241,15 @@
 			available_crypto = 0,
 			available_fiat = 0,
 			bitstamp_account_signed_in = false,
-			i = 0;
+			i = 0,
+			language_dict = {};
 			const EXCHANGES_NUM = 4;
 			btnBitstampLogout.disabled = true;
 			set_currency_type();
 			refresh_bitstamp_balance();
 			refresh_bitstamp_transactions();
 			show_sent_orders();
+			set_text_language("en_us");
 			window.setInterval(function(){
 			var orders_request_suffix = currency_type + "-USD";
 			var bitstamp_request = new XMLHttpRequest();
@@ -251,7 +260,6 @@
 			gdax_request.open("GET", "/Orderbook/GDAX/" + orders_request_suffix, true);
 			var unified_request = new XMLHttpRequest();
 			unified_request.open("GET", "/UnifiedOrderbook/" + orders_request_suffix, true);
-			
 			function get_orders(orders_request, asksPlaceholder, bidsPlaceholder, spreadPlaceholder, averageSpreadPlaceholder, show_source) {
 				
 				if (orders_request.readyState == 4 && orders_request.status == 200) {
@@ -285,11 +293,11 @@
 				var order_colors = {"Bitstamp" : "Blue", "Bitfinex" : "Green", "GDAX" : "Olive"};
 				ordersPlaceholder.innerHTML = '';
 				for(i = 0; i < orders.length; i += 1) {
-					var new_order_html = orders[i].size.toFixed(4) + ' @ ' + orders[i].price.toFixed(2);
+					var new_order_html = orders[i].size.toFixed(4) + ' ' + get_language_element('buy_at','@') + ' ' + orders[i].price.toFixed(2);
 					if (show_source)
 					{
 						new_order_html = new_order_html + '<font color = "' + order_colors[orders[i].source] + '">(' + 
-										 orders[i].source + ')</font>';
+										 get_language_element(orders[i].source.toLowerCase(), orders[i].source) + ')</font>';
 					}
 					new_order_html = new_order_html + '<br />';
 					if (reverse_order)
@@ -337,9 +345,10 @@
 					time_order_running = (time_order_response.timed_order_running == 'True');
 					btnCancelTimeOrder.disabled = !time_order_running;
 					should_enable_timed_orders();
-					var timed_order_status_dict = {"True" : "Active", "False" : "Inactive"};
+					var timed_order_status_dict = {"True" : get_language_element("active","Active"), "False" : get_language_element("inactive","Inactive")};
 					timed_order_status_placeholder.innerHTML = timed_order_status_dict[time_order_response.timed_order_running];
-					timed_order_details_placeholder.innerHTML = time_order_response.action_type + " for " + time_order_response.timed_order_price_fiat + " USD";
+					timed_order_details_placeholder.innerHTML = time_order_response.action_type + " " + get_language_element("for","for") + 
+						" " + time_order_response.timed_order_price_fiat + " " + get_language_element("usd","USD");
 					timed_order_sent_time_placeholder.innerHTML = time_order_response.timed_order_sent_time;
 					timed_order_execution_start_time_placeholder.innerHTML = time_order_response.timed_order_execution_start_time;
 					timed_order_total_size_placeholder.innerHTML = time_order_response.timed_order_required_size;
@@ -495,19 +504,17 @@
 			account_request.onreadystatechange = function() {
 				if (account_request.readyState == 4 && account_request.status == 200) {
 					var account_response = JSON.parse(account_request.responseText.replace(/'/g, '"'));
-					available_fiat = "N/A";
+					available_fiat = get_language_element('not_available', 'N/A');
+					var exchange_available_crypto = get_language_element('not_available', 'N/A');
 					if (account_response.hasOwnProperty("usd_available"))
 					{
 						available_fiat = account_response.usd_available - account_response.server_usd_reserved;
 						exchangeFiatPlaceholder.innerHTML = account_response.usd_available + "(" + available_fiat.toFixed(2) + ")";
 					}
-					else
-					{
-						exchangeFiatPlaceholder.innerHTML = "N/A";
-					}
 					
+					exchangeFiatPlaceholder.innerHTML = available_fiat;
 					var available_balance_dict = {"BTC" : "btc_available", "BCH" : "bch_available"};
-					var exchange_available_crypto = "N/A";
+					
 					if (account_response.hasOwnProperty(available_balance_dict[currency_type]))
 					{
 						exchange_available_crypto = parseFloat(account_response[available_balance_dict[currency_type]]);
@@ -516,7 +523,7 @@
 					}
 					else
 					{
-						exchangeCryptoPlaceholder.innerHTML = "N/A";
+						exchangeCryptoPlaceholder.innerHTML = exchange_available_crypto;
 					}
 					
 					transaction_fee = 0;
@@ -534,7 +541,7 @@
 			var bitstampTransactionsPlaceholder = document.getElementById("bitstamp_transactions_placeholder");
 			if (!bitstamp_account_signed_in)
 			{
-				bitstampTransactionsPlaceholder.innerHTML = "Unavailable";
+				bitstampTransactionsPlaceholder.innerHTML = get_language_element("unavailable","Unavailable");
 			}
 			else
 			{
@@ -562,8 +569,8 @@
 							if (found_type != "")
 							{
 								bitstampTransactionsPlaceholder.innerHTML = bitstampTransactionsPlaceholder.innerHTML + bitstamp_transactions_response[i].datetime +
-									": " + parseFloat(bitstamp_transactions_response[i][found_type]).toFixed(4) + " " + found_type.toUpperCase() + " @" + 
-									parseFloat(bitstamp_transactions_response[i][transaction_dict[found_type]]).toFixed(2) + "<BR>";
+									": " + parseFloat(bitstamp_transactions_response[i][found_type]).toFixed(4) + " " + get_language_element(found_type.toUpperCase()) + " " + 
+									get_language_element('buy_at','@') + parseFloat(bitstamp_transactions_response[i][transaction_dict[found_type]]).toFixed(2) + "<BR>";
 							}
 						}
 					}
@@ -627,8 +634,8 @@
 		
 		function show_sent_orders()
 		{
-			var timed_order_dict = {0 : "M", 1 : "T"};
-			var exchange_display_dict = {"Bitstamp" : "BIT"}
+			var timed_order_dict = {0 : get_language_element("manual_short","M"), 1 : get_language_element("timed_short","T")};
+			var exchange_display_dict = {"Bitstamp" : get_language_element("bitstamp_short","BIT")}
 			var action_type_dict = {"buy" : "+", "sell" : "-"};
 			get_sent_orders(orders_limit.value, function(sent_orders_response) {
 			sent_transactions_placeholder.innerHTML = '';
@@ -637,20 +644,24 @@
 			{
 				sent_transactions_placeholder.innerHTML = sent_transactions_placeholder.innerHTML + '<font color = ' + order_type_colors_dict[sent_orders_response[i].action_type] + ' >' + exchange_display_dict[sent_orders_response[i].exchange] +
 				" " + sent_orders_response[i].order_time + "(" + timed_order_dict[sent_orders_response[i].timed_order] + "): " +
-					action_type_dict[sent_orders_response[i].action_type] + parseFloat(sent_orders_response[i].crypto_size).toFixed(4) + sent_orders_response[i].crypto_type +
-					" @" + sent_orders_response[i].price_fiat + "," + sent_orders_response[i].status + "</font><BR>";
+					action_type_dict[sent_orders_response[i].action_type] + parseFloat(sent_orders_response[i].crypto_size).toFixed(4) + 
+					get_language_element(sent_orders_response[i].crypto_type,sent_orders_response[i].crypto_type) +
+					" " + get_language_element('buy_at','@') + sent_orders_response[i].price_fiat + "," + 
+					get_language_element(sent_orders_response[i].status.toLowerCase(),sent_orders_response[i].status) + "</font><BR>";
 			}})
 		}
 		
 		function set_currency_type()
 		{
 			currency_type = crypto_type.value;
+			var currency_type_text = get_language_element(crypto_type.value, crypto_type.value);
 			for (var exchange_index = 1; exchange_index <= EXCHANGES_NUM; ++exchange_index)
 			{
 				balance_type_placeholder = document.getElementById("currency_type_" + exchange_index);
+				balance_text = get_language_element('balance', "Balance:");
 				if (balance_type_placeholder != null)
 				{
-					balance_type_placeholder.innerHTML = currency_type + " Balance: ";
+					balance_type_placeholder.innerHTML = currency_type_text + " " + balance_text + " ";
 				}
 			}
 			var placeholder_names = ["bitstamp_bids_placeholder", "bitstamp_asks_placeholder", "bitfinex_bids_placeholder",
@@ -709,7 +720,7 @@
 					}
 					else
 					{
-						bitstamp_user_placeholder.innerHTML = "None";
+						bitstamp_user_placeholder.innerHTML = get_language_element('no_user',"None");
 						bitstamp_account_signed_in = false;
 					}
 					btnBitstampLogout.disabled = !bitstamp_account_signed_in;
@@ -781,6 +792,47 @@
 				}
 			};
 			logout_request.send();		
+		}
+		
+		function set_text_language(language)
+		{
+			var text_request = new XMLHttpRequest();
+			text_request.open("GET", "/GetLanguageText/" + language, true);
+			text_request.onreadystatechange = function() {
+				if (text_request.readyState == 4 && text_request.status == 200) {
+					var text_response = JSON.parse(text_request.responseText.replace(/'/g, '"'));
+					language_dict = text_response;
+					var elems = document.body.getElementsByTagName("*");
+					for (var element_index = 0; element_index < elems.length; ++element_index)
+					{
+						curr_element = elems[element_index];
+						if (curr_element.dataset != null && curr_element.dataset.dictValue != null)
+						{
+							set_element_by_dict(curr_element, text_response, curr_element.dataset.dictValue);
+						}
+					}
+					set_currency_type();
+				}
+			};
+			text_request.send();
+		}
+		
+		function set_element_by_dict(element, dict, key)
+		{
+			if (dict[key] != null)
+			{
+				element.innerHTML = dict[key];
+			}
+		}
+		
+		function get_language_element(key, default_value)
+		{
+			var result = default_value;
+			if (language_dict[key] != null)
+			{
+				result = language_dict[key];
+			}
+			return result;
 		}
         </script>
 

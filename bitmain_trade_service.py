@@ -1,6 +1,5 @@
 from flask import Flask, send_from_directory, request
 from bitfinex_orderbook import BitfinexOrderbook
-from bitex.api.WSS.bitstamp import BitstampWSS
 from gdax_orderbook import GdaxOrderbook
 from unified_orderbook import UnifiedOrderbook
 from bitstamp_client_wrapper import BitstampClientWrapper
@@ -16,6 +15,15 @@ app = Flask(__name__)
 @app.route('/OrdersTracker')
 def send_orderbook_page():
     return send_from_directory('','OrdersTracker.html')
+
+@app.route('/GetLanguageText/<locale>')
+def get_language_text(locale):
+    result = {}
+    with open('languages.json', encoding='utf-8') as f:
+        languages = json.load(f)
+        if locale in languages.keys():
+            result = languages[locale]
+    return str(result)
 
 @app.route('/favicon.ico')
 def send_favicon():
@@ -89,12 +97,12 @@ def get_timed_order_status():
 @app.route('/CancelTimedOrder')
 def cancel_timed_order():
     result = {'cancel_time_order_result': str(bitstamp_client.CancelTimedOrder())}
-    print(result)
+    log.info(result)
     return str(result)
 
 @app.route('/SendOrder', methods=['POST'])
 def send_order():
-    print("Send Order")
+    log.debug("Send Order")
     start_time = time.time()
     request_params = json.loads(request.data)
     order_status = bitstamp_client.SendOrder(request_params['action_type'], float(request_params['size_coin']),
@@ -105,7 +113,7 @@ def send_order():
     result = order_status
     result['order_status'] = str(result['order_status'])
 
-    print ("send command time", end_time - start_time)
+    log.info("send command time", end_time - start_time)
     return str(result)
 
 @app.route('/GetSentOrders', methods=['GET'])
@@ -154,14 +162,22 @@ def get_bitstamp_signed_in_credentials():
 
 
 if __name__ == '__main__':
+
+    logging.basicConfig(filename='bitmain_trade_service.log', level=logging.ERROR,
+                        format='%(asctime)s %(processName)s %(process)d %(threadName)s %(thread)d %(levelname)s %(filename)s %(funcName)s %(message)s')
+    log = logging.getLogger(__name__)
+    log.error("=== Starting ===")
     argv = sys.argv[1:]
+    log.info("args: %s", str(argv))
     bind_ip = None
     bitstamp_user = ''
     bitstamp_api_key = ''
     bitstamp_secret = ''
     listener_port = 5000
+    verbose = False
+    debug = False
     try:
-        opts, args = getopt.getopt(argv, "ru:k:s:p:")
+        opts, args = getopt.getopt(argv, "rvu:k:s:p:")
         for opt, arg in opts:
             if opt == '-r':
                 bind_ip = "0.0.0.0"
@@ -171,13 +187,23 @@ if __name__ == '__main__':
                 bitstamp_api_key = arg
             elif opt == "-s":
                 bitstamp_secret = arg
+            elif opt == "-v":
+                verbose = True
+            elif opt == "-d":
+                debug = True
             elif opt == "-p":
                 try:
                     listener_port = int(arg)
                 except:
                     listener_port = 5000
     except getopt.GetoptError as e:
-        print("Parameters error:", e)
+        log.error("Parameters error:", e)
+
+    if verbose:
+        logging.basicConfig(level=logging.INFO)
+
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
 
     bitstamp_credentials = None
     if bitstamp_user != '' and bitstamp_api_key != '' and bitstamp_secret != '':
@@ -186,10 +212,10 @@ if __name__ == '__main__':
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
 
-    #conn = create_db_connection("./Transactions.data")
-
     bitstamp_currencies = {'BTC-USD' : 'BTC-USD', 'BCH-USD': 'BCH-USD'}
-    bitstamp_orderbook = BitstampOrderbook([bitstamp_currencies['BTC-USD'], bitstamp_currencies['BCH-USD']])
+    bitstamp_orderbook = BitstampOrderbook(asset_pairs=[bitstamp_currencies['BTC-USD'], bitstamp_currencies['BCH-USD']],
+                                           log_level=logging.ERROR)
+    #bitstamp_orderbook = BitstampOrderbook(asset_pairs=[bitstamp_currencies['BTC-USD'], bitstamp_currencies['BCH-USD']])
     bitstamp_orderbook.start_orderbook()
 
     bitfinex_currencies = {'BTC-USD': 'BTCUSD', 'BCH-USD': 'BCHUSD'}

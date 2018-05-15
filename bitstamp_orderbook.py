@@ -2,9 +2,9 @@ from bitex.api.WSS.bitstamp import BitstampWSS
 from orderbook_base import OrderbookBase
 
 class BitstampOrderbook(OrderbookBase):
-    def __init__(self, asset_pairs):
+    def __init__(self, asset_pairs, **kwargs):
         super().__init__(asset_pairs)
-        self._bitstamp_wss_listener = BitstampWSS()
+        self._bitstamp_wss_listener = BitstampWSS(**kwargs)
 
     def _start(self):
         self._bitstamp_wss_listener.start()
