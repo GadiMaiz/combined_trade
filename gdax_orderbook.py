@@ -11,6 +11,7 @@ class GdaxOrderbook(OrderbookBase):
         self._orderbook_thread = None
         self._orderbook = None
         self._init_complete = False
+        self._is_alive = False
         self._log = logging.getLogger(__name__)
     def _start(self):
         if self._orderbook_thread is None or not self._orderbook_thread.is_alive():
@@ -30,7 +31,11 @@ class GdaxOrderbook(OrderbookBase):
         self._orderbook_thread.join()
 
     def _manage_orderbook(self):
-        self._event_loop.run_until_complete(self._manage_orderbook_async())
+        try:
+            self._is_alive = True
+            self._event_loop.run_until_complete(self._manage_orderbook_async())
+        except Exception as e:
+            self._is_alive = False
 
     async def _manage_orderbook_async(self):
         self._init_complete = False
@@ -39,8 +44,10 @@ class GdaxOrderbook(OrderbookBase):
             while self.running:
                 try:
                     message = await self._orderbook.handle_message()
+                    if message['type'] == 'ticker':
+                        self._last_trade[message["product_id"]] = {'type': message["side"], "price": float(message["price"])}
                 except Exception as e:
-                    self._log.error("Error handling message: <%s>, error is: <%s>", str(message), str(e))
+                    self._log.error("Error handling message, error is: <%s>", str(e))
 
     def get_current_partial_book(self, product_id, book_size):
         result = {
@@ -88,3 +95,6 @@ class GdaxOrderbook(OrderbookBase):
                     curr_bid_price, bid = bids.prev_item(curr_bid_price)
 
         return result
+
+    def is_orderbook_thread_alive(self):
+        return self._is_alive

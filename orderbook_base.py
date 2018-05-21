@@ -13,6 +13,7 @@ class OrderbookBase:
         self._orderbook_running = False
         self._average_spreads = {}
         self._spread_samples = {}
+        self._last_trade = {}
         self._asset_pairs = asset_pairs
         for curr_asset_pair in self._asset_pairs:
             self._average_spreads[curr_asset_pair] = 0
@@ -120,3 +121,12 @@ class OrderbookBase:
             curr_price['bid'] = curr_orders['bids'][0]['price']
 
         return curr_price
+
+    def is_orderbook_thread_alive(self):
+        return False
+
+    def get_last(self, pair):
+        if pair in self._last_trade.keys():
+            return self._last_trade[pair]
+        else:
+            return None

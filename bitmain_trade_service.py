@@ -5,6 +5,7 @@ from unified_orderbook import UnifiedOrderbook
 from bitstamp_client_wrapper import BitstampClientWrapper
 from bitstamp_orderbook import BitstampOrderbook
 import logging
+from logging.handlers import RotatingFileHandler
 import json
 import time
 import sys
@@ -37,6 +38,9 @@ def get_orderbook(exchange, currency):
         result = request_orders['orderbook'].get_current_partial_book(request_orders['currencies_dict'][currency], 8)
         if result != None:
             result['average_spread'] = request_orders['orderbook'].get_average_spread(request_orders['currencies_dict'][currency])
+            last_price = request_orders['orderbook'].get_last(currency)
+            if last_price is not None:
+                result['last_price'] = last_price
 
     return str(result)
 
@@ -161,11 +165,26 @@ def get_bitstamp_signed_in_credentials():
     return str(bitstamp_client.get_signed_in_credentials())
 
 
+def create_rotating_log(path):
+    """
+    Creates a rotating log
+    """
+    logger = logging.getLogger("Rotating Log")
+
+    # add a rotating handler
+    handler = RotatingFileHandler(path, maxBytes=20000000,
+                                  backupCount=5)
+    logger.addHandler(handler)
+
 if __name__ == '__main__':
 
     logging.basicConfig(filename='bitmain_trade_service.log', level=logging.ERROR,
+    #logging.basicConfig(level=logging.ERROR,
                         format='%(asctime)s %(processName)s %(process)d %(threadName)s %(thread)d %(levelname)s %(filename)s %(funcName)s %(message)s')
+    #handler = RotatingFileHandler('bitmain_trade_service.log', maxBytes=20000000,
+    #                              backupCount=5)
     log = logging.getLogger(__name__)
+    #log.addHandler(handler)
     log.error("=== Starting ===")
     argv = sys.argv[1:]
     log.info("args: %s", str(argv))

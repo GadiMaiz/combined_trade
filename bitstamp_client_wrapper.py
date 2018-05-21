@@ -59,8 +59,11 @@ class BitstampClientWrapper:
             self._last_balance[crypto_type]['reserved_crypto'] = 0
             self._last_balance[crypto_type]['server_usd_reserved'] = 0
         elif crypto_type not in self._balance_changed.keys() or self._balance_changed[crypto_type]:
-            self._last_balance[crypto_type] = self._bitstamp_client.account_balance(crypto_type)
-            self._balance_changed[crypto_type] = False
+            try:
+                self._last_balance[crypto_type] = self._bitstamp_client.account_balance(crypto_type)
+                self._balance_changed[crypto_type] = False
+            except Exception as e:
+                print(e)
         self._last_balance[crypto_type]['reserved_crypto'] = self._reserved_balances[crypto_type]
         self._last_balance[crypto_type]['server_usd_reserved'] = self._reserved_balances['USD']
         return self._last_balance[crypto_type]

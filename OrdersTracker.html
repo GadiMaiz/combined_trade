@@ -12,14 +12,14 @@
 			link_button {
 				 background:none!important;
 				 color:inherit;
-				 border:none; 
+				 border:solid; 
 				 padding:0!important;
 				 font: inherit; 
 				 cursor: pointer;
 				}
         </style>
     <body style="">
-		<font color = "Blue"><link_button onclick='set_text_language("en_us")'>English</link_button> <link_button onclick='set_text_language("zh_cn")'>中文</link_button></font>
+		<font color="Blue" size="5"><link_button onclick='set_text_language("en_us")'>English</link_button></font><font color="Red" size="5">  <link_button onclick='set_text_language("zh_cn")'>&nbsp&nbsp&nbsp中文&nbsp&nbsp&nbsp</link_button></font>
         <h1><span id="orderbook_header" data-dict-value="orderbook_header">Order Book</span>&nbsp
 			<select id="crypto_type" name="crypto_type" onchange="set_currency_type()">
 				<option value="BTC" data-dict-value="btc_usd_option">BTC/USD</option>
@@ -218,7 +218,7 @@
 		<BR>
 		<span data-dict-value="execution_start_time">Execution start time:</span>
 		<B><div style="display: inline" id="timed_order_execution_start_time_placeholder"></div></B>
-		<span data-dict-value="execution_duration">Execution duration (min):</span>
+		<span data-dict-value="order_duration">Order duration (min):</span>
 		<B><div style="display: inline" id="timed_order_execution_duration"></div></B>
 		<span data-dict-value="execution_size">Executed size:</span>
 		<B><div style="display: inline" id="timed_order_current_size_placeholder"></div></B>
@@ -249,7 +249,12 @@
 			refresh_bitstamp_balance();
 			refresh_bitstamp_transactions();
 			show_sent_orders();
-			set_text_language("en_us");
+			var url_lang = getParameterByName("language");
+			if (url_lang == '')
+			{
+				url_lang = "en_us";
+			}
+			set_text_language(url_lang);
 			window.setInterval(function(){
 			var orders_request_suffix = currency_type + "-USD";
 			var bitstamp_request = new XMLHttpRequest();
@@ -833,6 +838,16 @@
 				result = language_dict[key];
 			}
 			return result;
+		}
+		
+		function getParameterByName(name, url) {
+			if (!url) url = window.location.href;
+			name = name.replace(/[\[\]]/g, "\\$&");
+			var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+				results = regex.exec(url);
+			if (!results) return null;
+			if (!results[2]) return '';
+			return decodeURIComponent(results[2].replace(/\+/g, " "));
 		}
         </script>
 

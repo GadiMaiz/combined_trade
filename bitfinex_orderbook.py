@@ -6,7 +6,9 @@ import logging
 log = logging.getLogger(__name__)
 
 class BitfinexOrderbook(OrderbookBase):
-    symbols_dict = {'BTCUSD': 'BTC', 'BCHUSD': 'BCH', 'BTC-USD' : 'BTC', 'BCH-USD' : 'BCH'}
+    symbols_dict = {'BTCUSD': 'BTC', 'BCHUSD': 'BCH', 'BTC-USD': 'BTC', 'BCH-USD': 'BCH'}
+    pairs_dict = {'BTCUSD': 'BTC-USD', 'BCHUSD': 'BCH-USD'}
+
     def __init__(self, asset_pairs):
         super().__init__(asset_pairs)
         self._running = False
@@ -45,9 +47,11 @@ class BitfinexOrderbook(OrderbookBase):
                     else:
                         #print("modify orderbook")
                         self._modify_orderbook(curr_info)
+                elif curr_info[0] == 'trades' and curr_info[1] in orderbook_init.keys():
+                    self._set_price(curr_info)
 
             except Exception as e:
-                logger.Error(str(e))
+                log.error(str(e))
 
     def _init_orderbook(self, first_orderbook):
         #print ("_init_orderbook")
@@ -128,3 +132,19 @@ class BitfinexOrderbook(OrderbookBase):
                        'bids' : self._orderbook[crypto_type]['bids'][0:size]}
 
         return result
+
+    def is_orderbook_thread_alive(self):
+        is_alive = False
+        if self._running and self._orderbook_thread is not None and self._orderbook_thread.is_alive() and \
+            self._bitfinex_client.receiver_thread is not None and self._bitfinex_client.receiver_thread.is_alive() and \
+            self._bitfinex_client.processing_thread is not None and self._bitfinex_client.processing_thread.is_alive():
+                is_alive = True
+
+        return is_alive
+
+    def _set_price(self, message):
+        if not isinstance(message[2][0][0], list):
+            trade_type = 'buy'
+            if float(message[2][0][1][3]) < 0:
+                trade_type = 'sell'
+            self._last_trade[self.pairs_dict[message[1]]] = {'type': trade_type, "price": abs(float(message[2][0][1][3]))}
