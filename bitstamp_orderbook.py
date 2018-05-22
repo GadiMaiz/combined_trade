@@ -41,5 +41,7 @@ class BitstampOrderbook(OrderbookBase):
             if data[0] == 'live_trades':
                 pair = data[1]
                 trade_dict = json.loads(data[2])
-                self._last_trade[asset_pair_dict[pair]] = {"price": trade_dict["price"], "type": trade_types[trade_dict["type"]]}
+                self._last_trade[asset_pair_dict[pair]] = {"price": trade_dict["price"],
+                                                           "type": trade_types[trade_dict["type"]],
+                                                           "time": trade_dict["timestamp"]}
             self._bitstamp_wss_listener.data_q.task_done()

@@ -20,7 +20,7 @@
         </style>
     <body style="">
 		<font color="Blue" size="5"><link_button onclick='set_text_language("en_us")'>English</link_button></font><font color="Red" size="5">  <link_button onclick='set_text_language("zh_cn")'>&nbsp&nbsp&nbsp中文&nbsp&nbsp&nbsp</link_button></font>
-        <h1><span id="orderbook_header" data-dict-value="orderbook_header">Order Book</span>&nbsp
+        <h1><span id="orderbook_header" data-dict-value="orderbook_header">Order Book</span> (v0.1)
 			<select id="crypto_type" name="crypto_type" onchange="set_currency_type()">
 				<option value="BTC" data-dict-value="btc_usd_option">BTC/USD</option>
 				<option value="BCH" data-dict-value="bch_usd_option">BCH/USD</option>
@@ -103,13 +103,14 @@
 			</div>
 			<B><span data-dict-value="spread">Spread (USD)</span><BR><span data-dict-value="current">Current:</span> </B><div style="display: inline" id="bitstamp_spread_placeholder"><br></div>
 			<BR>
-			<B><span data-dict-value="average">Average:</span> </B><div style="display: inline" id="bitstamp_average_spread_placeholder"><br></div>
+			<B><span data-dict-value="average">Average:</span> </B><div style="display: inline" id="bitstamp_average_spread_placeholder"><br></div><br>
+			<B><span data-dict-value="last">Last:</span> </B><div style="display: inline" id="bitstamp_last_placeholder"><br></div>
 			<div class="column">
 				<B><span data-dict-value="bitstamp">Bitstamp</span> <span data-dict-value="bids">Bids</span></B><BR>
 				<div style="display: inline" id="bitstamp_bids_placeholder">Bitstamp Bids<br></div>
 				</font>
 			</div>
-		</td>		
+		</td>
 		<td style="width:7%">
 			<div style="display: inline" class="column">
 				<font size="2"><B><span data-dict-value="bitfinex">Bitfinex</span> <span data-dict-value="asks">Asks</span></B><BR>
@@ -117,7 +118,8 @@
 			</div>
 			<B><span data-dict-value="spread">Spread (USD)</span><BR><span data-dict-value="current">Current:</span> </B><div style="display: inline" id="bitfinex_spread_placeholder"><br></div>
 			<BR>
-			<B><span data-dict-value="average">Average:</span> </B><div style="display: inline" id="bitfinex_average_spread_placeholder"><br></div>
+			<B><span data-dict-value="average">Average:</span> </B><div style="display: inline" id="bitfinex_average_spread_placeholder"><br></div><br>
+			<B><span data-dict-value="last">Last:</span> </B><div style="display: inline" id="bitfinex_last_placeholder"><br></div>
 			<div class="column">
 				<B><span data-dict-value="bitfinex">Bitfinex</span> <span data-dict-value="bids">Bids</span></B><BR>
 				<div style="display: inline" id="bitfinex_bids_placeholder">Bitfinex Bids<br></div>
@@ -131,7 +133,8 @@
 			</div>
 			<B><span data-dict-value="spread">Spread (USD)</span><BR><span data-dict-value="current">Current:</span> </B><div style="display: inline" id="gdax_spread_placeholder">GDAX Spread<br></div>
 			<BR>
-			<B><span data-dict-value="average">Average:</span> </B><div style="display: inline" id="gdax_average_spread_placeholder">GDAX Spread<br></div>
+			<B><span data-dict-value="average">Average:</span> </B><div style="display: inline" id="gdax_average_spread_placeholder">GDAX Spread<br></div><br>
+			<B><span data-dict-value="last">Last:</span> </B><div style="display: inline" id="gdax_last_placeholder"><br></div><br>
 			<div class="column">
 				<B><span data-dict-value="gdax">GDAX</span> <span data-dict-value="bids">Bids</span></B><BR>
 				<div style="display: inline" id="gdax_bids_placeholder">GDAX Bids<br></div>
@@ -216,6 +219,8 @@
 		<span data-dict-value="order_duration">Order duration (min):</span>
 		<B><div style="display: inline" id="timed_order_duration"></div></B>
 		<BR>
+		<span data-dict-value="execution_status">Status:</span>
+		<B><div style="display: inline" id="timed_order_execution_status_placeholder"></div></B>		
 		<span data-dict-value="execution_start_time">Execution start time:</span>
 		<B><div style="display: inline" id="timed_order_execution_start_time_placeholder"></div></B>
 		<span data-dict-value="order_duration">Order duration (min):</span>
@@ -265,7 +270,7 @@
 			gdax_request.open("GET", "/Orderbook/GDAX/" + orders_request_suffix, true);
 			var unified_request = new XMLHttpRequest();
 			unified_request.open("GET", "/UnifiedOrderbook/" + orders_request_suffix, true);
-			function get_orders(orders_request, asksPlaceholder, bidsPlaceholder, spreadPlaceholder, averageSpreadPlaceholder, show_source) {
+			function get_orders(orders_request, asksPlaceholder, bidsPlaceholder, spreadPlaceholder, averageSpreadPlaceholder, show_source, last_placeholder) {
 				
 				if (orders_request.readyState == 4 && orders_request.status == 200) {
 					var orders_response = JSON.parse(orders_request.responseText.replace(/'/g, '"'));
@@ -290,6 +295,18 @@
 						spread_html = '<font color = "red">' + spread_html + '</html>';
 					}
 					spreadPlaceholder.innerHTML = spread_html;
+					
+					if (last_placeholder != null && orders_response["last_price"] != null)
+					{
+						last_colors = {'buy': "Green", 'sell': "Red"};
+						var last_time = new Date(orders_response.last_price.time * 1000);
+						var hours = last_time.getUTCHours();
+						var minutes = String(last_time.getUTCMinutes()).padStart(2, "0");
+						var seconds =  String(last_time.getSeconds()).padStart(2, "0");
+						last_placeholder.innerHTML = '<font color = "' + last_colors[orders_response.last_price.type] + '">' + 
+													 parseFloat(orders_response.last_price.price).toFixed(2) + 
+													 " " + hours + ":" + minutes + ":" + seconds + "</font>";
+					}
 				}
 			}
 			
@@ -318,20 +335,23 @@
 			
 			bitstamp_request.onreadystatechange = function() {
 
-				get_orders(bitstamp_request, bitstampAsksPlaceholder, bitstampBidsPlaceholder, bitstampSpreadPlaceholder, bitstamp_average_spread_placeholder, false);
+				get_orders(bitstamp_request, bitstampAsksPlaceholder, bitstampBidsPlaceholder, bitstampSpreadPlaceholder, 
+						   bitstamp_average_spread_placeholder, false, bitstamp_last_placeholder);
 			};
 
 			bitfinex_request.onreadystatechange = function() {
-				get_orders(bitfinex_request, bitfinexAsksPlaceholder, bitfinexBidsPlaceholder, bitfinexSpreadPlaceholder, bitfinex_average_spread_placeholder, false);
+				get_orders(bitfinex_request, bitfinexAsksPlaceholder, bitfinexBidsPlaceholder, bitfinexSpreadPlaceholder, 
+						   bitfinex_average_spread_placeholder, false, bitfinex_last_placeholder);
 			};
 			
 			gdax_request.onreadystatechange = function() {
-				get_orders(gdax_request, gdaxAsksPlaceholder, gdaxBidsPlaceholder, gdaxSpreadPlaceholder, gdax_average_spread_placeholder, false);
+				get_orders(gdax_request, gdaxAsksPlaceholder, gdaxBidsPlaceholder, gdaxSpreadPlaceholder, 
+						   gdax_average_spread_placeholder, false, gdax_last_placeholder);
 			};
 			
 			unified_request.onreadystatechange = function() {
 
-				get_orders(unified_request, unifiedAsksPlaceholder, unifiedBidsPlaceholder, unifiedSpreadPlaceholder, null, true);
+				get_orders(unified_request, unifiedAsksPlaceholder, unifiedBidsPlaceholder, unifiedSpreadPlaceholder, null, true, null);
 			};
 			
 			bitstamp_request.send();
@@ -355,6 +375,33 @@
 					timed_order_details_placeholder.innerHTML = time_order_response.action_type + " " + get_language_element("for","for") + 
 						" " + time_order_response.timed_order_price_fiat + " " + get_language_element("usd","USD");
 					timed_order_sent_time_placeholder.innerHTML = time_order_response.timed_order_sent_time;
+					var timed_order_status = get_language_element('not_started', "Not started");
+					if (time_order_response.timed_order_required_size > 0)
+					{
+						if (time_order_response.timed_order_running == "True")
+						{
+							if (time_order_response.timed_order_execution_start_time != "")
+							{
+								timed_order_status = get_language_element('running', "Running");
+							}
+							else
+							{
+								timed_order_status = get_language_element('pending', "Pending");
+							}
+						}
+						else
+						{
+							if (time_order_response.timed_order_required_size > time_order_response.timed_order_done_size)
+							{
+								timed_order_status = get_language_element('cancelled', "Cancelled");
+							}
+							else
+							{
+								timed_order_status = get_language_element('done', "Done");
+							}
+						}
+					}
+					timed_order_execution_status_placeholder.innerHTML = timed_order_status;
 					timed_order_execution_start_time_placeholder.innerHTML = time_order_response.timed_order_execution_start_time;
 					timed_order_total_size_placeholder.innerHTML = time_order_response.timed_order_required_size;
 					timed_order_current_size_placeholder.innerHTML = time_order_response.timed_order_done_size.toFixed(4);
@@ -514,10 +561,9 @@
 					if (account_response.hasOwnProperty("usd_available"))
 					{
 						available_fiat = account_response.usd_available - account_response.server_usd_reserved;
-						exchangeFiatPlaceholder.innerHTML = account_response.usd_available + "(" + available_fiat.toFixed(2) + ")";
+						exchangeFiatPlaceholder.innerHTML = parseFloat(account_response.usd_available).toFixed(2) + "(" + available_fiat.toFixed(2) + ")";
 					}
 					
-					exchangeFiatPlaceholder.innerHTML = available_fiat;
 					var available_balance_dict = {"BTC" : "btc_available", "BCH" : "bch_available"};
 					
 					if (account_response.hasOwnProperty(available_balance_dict[currency_type]))
@@ -574,7 +620,7 @@
 							if (found_type != "")
 							{
 								bitstampTransactionsPlaceholder.innerHTML = bitstampTransactionsPlaceholder.innerHTML + bitstamp_transactions_response[i].datetime +
-									": " + parseFloat(bitstamp_transactions_response[i][found_type]).toFixed(4) + " " + get_language_element(found_type.toUpperCase()) + " " + 
+									": " + parseFloat(bitstamp_transactions_response[i][found_type]).toFixed(4) + " " + get_language_element(found_type.toUpperCase(), found_type.toUpperCase()) + " " + 
 									get_language_element('buy_at','@') + parseFloat(bitstamp_transactions_response[i][transaction_dict[found_type]]).toFixed(2) + "<BR>";
 							}
 						}

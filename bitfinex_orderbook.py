@@ -147,4 +147,6 @@ class BitfinexOrderbook(OrderbookBase):
             trade_type = 'buy'
             if float(message[2][0][1][3]) < 0:
                 trade_type = 'sell'
-            self._last_trade[self.pairs_dict[message[1]]] = {'type': trade_type, "price": abs(float(message[2][0][1][3]))}
+            self._last_trade[self.pairs_dict[message[1]]] = {'type': trade_type,
+                                                             "price": abs(float(message[2][0][1][3])),
+                                                             "time": message[2][0][1][1] / 1000}

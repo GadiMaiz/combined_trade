@@ -3,6 +3,9 @@ from threading import Thread
 import asyncio
 from orderbook_base import OrderbookBase
 import logging
+import calendar
+import time
+import dateutil.parser
 
 class GdaxOrderbook(OrderbookBase):
     def __init__(self, asset_pairs):
@@ -45,7 +48,9 @@ class GdaxOrderbook(OrderbookBase):
                 try:
                     message = await self._orderbook.handle_message()
                     if message['type'] == 'ticker':
-                        self._last_trade[message["product_id"]] = {'type': message["side"], "price": float(message["price"])}
+                        ticker_time = calendar.timegm(dateutil.parser.parse(message['time']).timetuple())
+                        self._last_trade[message["product_id"]] = {'type': message["side"], "price": float(message["price"]),
+                                                                   'time': ticker_time}
                 except Exception as e:
                     self._log.error("Error handling message, error is: <%s>", str(e))
 
