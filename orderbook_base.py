@@ -1,5 +1,6 @@
 import time
 from threading import Thread
+import logging
 
 class OrderbookBase:
     SPREAD_MOVING_AVERAGE_INTERVAL_SEC = 0.1
@@ -15,6 +16,7 @@ class OrderbookBase:
         self._spread_samples = {}
         self._last_trade = {}
         self._asset_pairs = asset_pairs
+        self._log = logging.getLogger(__name__)
         for curr_asset_pair in self._asset_pairs:
             self._average_spreads[curr_asset_pair] = 0
             self._spread_samples[curr_asset_pair] = 0
@@ -26,7 +28,15 @@ class OrderbookBase:
                                                       name='Calculate Orderbook Thread')
             self._orderbook_running = True
             self._calculate_orderbook_thread.start()
-        self._start()
+        started = False
+        while not started:
+            try:
+                self._start()
+                started = True
+            except Exception as e:
+                self._log.error("Error starting orderbook: <%s>, retrying", e)
+                time.sleep(1)
+
 
     def stop_orderbook(self):
         self._orderbook_running = False
@@ -54,17 +64,16 @@ class OrderbookBase:
             compare_orderbook[curr_asset_pair] = self.get_current_partial_book(curr_asset_pair,
                                                                                OrderbookBase.ORDERBOOK_HEALTH_COMPARE_LENGTH)
 
+
         while self._orderbook_running:
             for curr_asset_pair in self._asset_pairs:
                 if curr_time - prev_average_time >= OrderbookBase.SPREAD_MOVING_AVERAGE_INTERVAL_SEC:
                     curr_spread = self.get_current_spread(curr_asset_pair)
-
                     if curr_spread > 0:
                         self._spread_samples[curr_asset_pair] += 1
                         spread_ratio = (1/min(self._spread_samples[curr_asset_pair], OrderbookBase.SPREAD_MINIMUM_SAMPLES_FOR_MOVING))
                         self._average_spreads[curr_asset_pair] = (1 - spread_ratio) * self._average_spreads[curr_asset_pair] + \
                                                                  spread_ratio * curr_spread
-                prev_average_time = curr_time
 
                 if curr_time - prev_orderbooks_compare_time >= OrderbookBase.ORDERBOOK_HEALTH_INTERVAL_SEC:
                     current_compare_orderbook = self.get_current_partial_book(curr_asset_pair,
@@ -94,6 +103,7 @@ class OrderbookBase:
                             self._start()
                     prev_orderbooks_compare_time = curr_time
 
+            prev_average_time = curr_time
             curr_time = time.time()
             time.sleep(min(OrderbookBase.SPREAD_MOVING_AVERAGE_INTERVAL_SEC,
                            OrderbookBase.ORDERBOOK_HEALTH_INTERVAL_SEC))
@@ -126,7 +136,7 @@ class OrderbookBase:
         return False
 
     def get_last(self, pair):
-        if pair in self._last_trade.keys():
+        if pair in self._last_trade:
             return self._last_trade[pair]
         else:
             return None

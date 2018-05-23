@@ -71,8 +71,26 @@ def get_unified_orderbook(currency):
 def get_account_balance(exchange, currency):
     valid_currencies = ['BTC', 'BCH']
     account_balance = {}
-    if currency in valid_currencies:
+    first_currency = True
+    if currency == "ALL":
+        for curr_currency in valid_currencies:
+            if first_currency:
+                first_currency = False
+                account_balance = bitstamp_client.account_balance(curr_currency)
+            else:
+                curr_balance = bitstamp_client.account_balance(curr_currency)
+                for curr_account_balance_key in curr_balance:
+                    if curr_account_balance_key.endswith("_available") and not curr_account_balance_key.startswith("usd"):
+                        account_balance[curr_account_balance_key] = curr_balance[curr_account_balance_key]
+                        break
+            currency_price = bitstamp_orderbook.get_current_price(curr_currency + "-USD")
+            if currency_price is not None and currency_price['ask'] is not None and currency_price['bid'] is not None:
+                account_balance[curr_currency.lower() + "_price"] = (currency_price['ask'] + currency_price['bid']) / 2
+    elif currency in valid_currencies:
         account_balance = bitstamp_client.account_balance(currency)
+        currency_price = bitstamp_orderbook.get_current_price(currency + "-USD")
+        if currency_price is not None and currency_price['ask'] is not None and currency_price['bid'] is not None:
+            account_balance[currency.lower() + "_price"] = (currency_price['ask'] + currency_price['bid']) / 2
     return str(account_balance)
 
 @app.route('/BitstampTransactions')
@@ -164,6 +182,18 @@ def set_bitstamp_client_credentials():
 def get_bitstamp_signed_in_credentials():
     return str(bitstamp_client.get_signed_in_credentials())
 
+@app.route('/RestartOrderbook/<exchange>')
+def restart_orderbook(exchange):
+    result = {"restart_result": "False",
+              "exchange": exchange}
+    if exchange in orderbooks:
+        orderbooks[exchange]['orderbook'].stop_orderbook()
+        orderbooks[exchange]['orderbook'] = orderbooks[exchange]['creator'](orderbooks[exchange]['currencies_dict'].values())
+        orderbooks[exchange]['orderbook'].start_orderbook()
+        unified_orderbook.set_orderbook(exchange, orderbooks[exchange]['orderbook'])
+        result["restart_result"] = "True"
+
+    return str(result)
 
 def create_rotating_log(path):
     """
@@ -234,7 +264,6 @@ if __name__ == '__main__':
     bitstamp_currencies = {'BTC-USD' : 'BTC-USD', 'BCH-USD': 'BCH-USD'}
     bitstamp_orderbook = BitstampOrderbook(asset_pairs=[bitstamp_currencies['BTC-USD'], bitstamp_currencies['BCH-USD']],
                                            log_level=logging.ERROR)
-    #bitstamp_orderbook = BitstampOrderbook(asset_pairs=[bitstamp_currencies['BTC-USD'], bitstamp_currencies['BCH-USD']])
     bitstamp_orderbook.start_orderbook()
 
     bitfinex_currencies = {'BTC-USD': 'BTCUSD', 'BCH-USD': 'BCHUSD'}
@@ -245,12 +274,14 @@ if __name__ == '__main__':
     gdax_orderbook = GdaxOrderbook([gdax_currencies['BTC-USD'], gdax_currencies['BCH-USD']])
     gdax_orderbook.start_orderbook()
 
-    unified_orderbook = UnifiedOrderbook([bitstamp_orderbook, bitfinex_orderbook, gdax_orderbook])
+    unified_orderbook = UnifiedOrderbook({"Bitstamp": bitstamp_orderbook,
+                                          "Bitfinex": bitfinex_orderbook,
+                                          "GDAX": gdax_orderbook})
 
-    orderbooks = {'Bitstamp' : { 'orderbook' : bitstamp_orderbook, 'currencies_dict' : bitstamp_currencies},
-                  'GDAX' : { 'orderbook' : gdax_orderbook, 'currencies_dict' : gdax_currencies },
-                  'Bitfinex' : { 'orderbook' : bitfinex_orderbook, 'currencies_dict' : bitfinex_currencies},
-                  'Unified' : { 'orderbook' : unified_orderbook, 'currencies_dict' : bitstamp_currencies}}
+    orderbooks = {'Bitstamp' : { 'orderbook' : bitstamp_orderbook, 'currencies_dict' : bitstamp_currencies, 'creator': BitstampOrderbook},
+                  'GDAX' : { 'orderbook' : gdax_orderbook, 'currencies_dict' : gdax_currencies, 'creator': GdaxOrderbook },
+                  'Bitfinex' : { 'orderbook' : bitfinex_orderbook, 'currencies_dict' : bitfinex_currencies, 'creator': BitfinexOrderbook},
+                  'Unified' : { 'orderbook' : unified_orderbook, 'currencies_dict' : bitstamp_currencies, 'creator': UnifiedOrderbook}}
 
     bitstamp_client = BitstampClientWrapper(bitstamp_credentials, bitstamp_orderbook, "./Transactions.data")
     #app.run(host= '0.0.0.0', ssl_context='adhoc')

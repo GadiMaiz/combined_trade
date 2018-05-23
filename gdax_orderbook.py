@@ -45,14 +45,15 @@ class GdaxOrderbook(OrderbookBase):
         async with gdax.orderbook.OrderBook(['BTC-USD', 'BCH-USD']) as self._orderbook:
             self._init_complete = True
             while self.running:
+                message = None
                 try:
                     message = await self._orderbook.handle_message()
-                    if message['type'] == 'ticker':
+                    if message is not None and 'type' in message and 'time' in message and message['type'] == 'ticker':
                         ticker_time = calendar.timegm(dateutil.parser.parse(message['time']).timetuple())
                         self._last_trade[message["product_id"]] = {'type': message["side"], "price": float(message["price"]),
                                                                    'time': ticker_time}
                 except Exception as e:
-                    self._log.error("Error handling message, error is: <%s>", str(e))
+                    self._log.error("Error handling message, message is: <%s>, error is: <%s>", message, str(e))
 
     def get_current_partial_book(self, product_id, book_size):
         result = {

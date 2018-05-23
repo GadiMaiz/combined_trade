@@ -5,13 +5,16 @@ import heapq
 import operator
 
 class UnifiedOrderbook:
-    def __init__(self, clients):
-        self._clients = clients
+    def __init__(self, orderbooks):
+        self._orderbooks = orderbooks
+
+    def set_orderbook(self, exchange, orderbook):
+        self._orderbooks[exchange] = orderbook
 
     def get_unified_orderbook(self, symbol, size):
         client_orderbooks = []
-        for curr_client in self._clients:
-            client_orderbooks.append(curr_client.get_current_partial_book(symbol, size))
+        for curr_orderbook in self._orderbooks:
+            client_orderbooks.append(self._orderbooks[curr_orderbook].get_current_partial_book(symbol, size))
         best_orders = {'asks' : [], 'bids' : []}
         order_keys = [[heapq.nsmallest, 'asks'], [heapq.nlargest, 'bids']]
         for curr_orderbook in client_orderbooks:

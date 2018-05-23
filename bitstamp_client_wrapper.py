@@ -22,6 +22,7 @@ class BitstampClientWrapper:
     CRYPTO_CURRENCIES_DICT = {'BTC': 'btc', 'BCH': 'bch'}
 
     def __init__(self, bitstamp_credentials, bitstamp_orderbook, db_file):
+        self.log = logging.getLogger(__name__)
         self._timed_order_thread = None
         self._last_balance = {}
         self._transactions = []
@@ -47,7 +48,7 @@ class BitstampClientWrapper:
         try:
             conn = sqlite3.connect(db_file)
         except sqlite3.Error as e:
-            print("db connection error",e)
+            self.log.error("db connection error",e)
             conn = None
 
         return conn
@@ -58,12 +59,12 @@ class BitstampClientWrapper:
             self._last_balance[crypto_type] = {}
             self._last_balance[crypto_type]['reserved_crypto'] = 0
             self._last_balance[crypto_type]['server_usd_reserved'] = 0
-        elif crypto_type not in self._balance_changed.keys() or self._balance_changed[crypto_type]:
+        elif crypto_type not in self._balance_changed or self._balance_changed[crypto_type]:
             try:
                 self._last_balance[crypto_type] = self._bitstamp_client.account_balance(crypto_type)
                 self._balance_changed[crypto_type] = False
             except Exception as e:
-                print(e)
+                self.log.error(e)
         self._last_balance[crypto_type]['reserved_crypto'] = self._reserved_balances[crypto_type]
         self._last_balance[crypto_type]['server_usd_reserved'] = self._reserved_balances['USD']
         return self._last_balance[crypto_type]
@@ -154,7 +155,15 @@ class BitstampClientWrapper:
             return {'order_status' : True, 'execution_size' : 0, 'execution_message' : "Pending execution"}
 
     def _execute_timed_order(self, action_type,size_coin, crypto_type, price_fiat, fiat_type, duration_sec, max_order_size):
-        print ("executing timed order")
+        print("executing timed order")
+        order_timestamp = datetime.datetime.utcnow()
+        (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
+        order_time = "%s.%02d" % (dt, int(micro) / 1000)
+        order_info = {'exchange' : 'Bitstamp', 'action_type' : action_type, 'crypto_size': size_coin, 'price_fiat' : price_fiat,
+                      'exchange_id': 0, 'order_time' : order_time, 'timed_order' : self.TIMED_ORDERS_DICT[True],
+                      'status' : "Timed Order", 'crypto_type' : crypto_type,
+                      'balance': self._get_available_account_balance(crypto_type)}
+        self.write_order_to_db(order_info)
         reserved_type = ''
         if action_type == 'sell':
             self._reserved_balances[crypto_type] = size_coin
@@ -324,7 +333,6 @@ class BitstampClientWrapper:
                         print("curr transaction", order_id, "transactions:",all_transactions)
                         for curr_transaction in all_transactions:
                             print(curr_transaction)
-                            #if 'order_id' in curr_transaction.keys() and curr_transaction['order_id'] == order_id:
                             if curr_transaction['order_id'] == order_id or curr_transaction['order_id'] == int(order_id):
                                 print("found price in transaction:", curr_transaction)
                                 order_info['price_fiat'] = curr_transaction['btc_usd']
@@ -338,34 +346,36 @@ class BitstampClientWrapper:
 
 
         print (datetime.datetime.now(), "Order done, size is", execute_size_coin)
-        account_balance = {'usd_available': -1, 'crypto_available': -1}
         if order_info is not None and execute_size_coin > 0:
-            for curr_balance_key in self._balance_changed.keys():
+            for curr_balance_key in self._balance_changed:
                 self._balance_changed[curr_balance_key] = True
 
-            account_balance = self.account_balance(crypto_type)
-            crypto_key = ''
-            for curr_account_balance_key in account_balance.keys():
-                if curr_account_balance_key.endswith("_available") and not curr_account_balance_key.startswith("usd"):
-                    crypto_key = curr_account_balance_key
-                    break
-
-            if crypto_key != '':
-                account_balance['crypto_available'] = account_balance[crypto_key]
-            order_info['balance'] = account_balance
+            order_info['balance'] = self._get_available_account_balance(crypto_type)
             self.write_order_to_db(order_info)
         return {'order_status' : order_done, 'execution_size' : execute_size_coin, 'execution_message' : execution_message}
+
+    def _get_available_account_balance(self, crypto_type):
+        account_balance = self.account_balance(crypto_type)
+        crypto_key = ''
+        for curr_account_balance_key in account_balance:
+            if curr_account_balance_key.endswith("_available") and not curr_account_balance_key.startswith("usd"):
+                crypto_key = curr_account_balance_key
+                break
+
+        if crypto_key != '':
+            account_balance['crypto_available'] = account_balance[crypto_key]
+        return account_balance
 
     def write_order_to_db(self, order_info):
         conn = self.create_db_connection(self._db_file)
         if conn is None:
-            print("Can't connect to DB")
+            self.log.error("Can't connect to DB")
         else:
             try:
                 insert_str = "INSERT INTO sent_orders VALUES('{}', '{}', {}, {}, {}, '{}', '{}', {}, '{}', {}, {})".format(order_info['exchange'], order_info['action_type'], order_info['crypto_size'],
                                              order_info['price_fiat'], order_info['exchange_id'], order_info['status'], order_info['order_time'], order_info['timed_order'], order_info['crypto_type'],
                                              order_info['balance']['usd_available'], order_info['balance']['crypto_available'])
-                print(insert_str)
+                self.log.info(insert_str)
                 conn.execute(insert_str)
                 conn.commit()
             except Exception as e:
@@ -411,11 +421,14 @@ class BitstampClientWrapper:
         sent_orders = conn.execute("SELECT * FROM (SELECT * FROM sent_orders ORDER BY datetime(order_time) DESC)" + limit_clause)
         all_orders = []
         for curr_order in sent_orders:
+            exchange_id = curr_order[4]
+            if exchange_id is None:
+                exchange_id = ""
             order_dict = {'exchange' : curr_order[0],
                           'action_type' : curr_order[1],
                           'crypto_size': curr_order[2],
                           'price_fiat': curr_order[3],
-                          'exchange_id': curr_order[4],
+                          'exchange_id': exchange_id,
                           'status': curr_order[5],
                           'order_time' : curr_order[6],
                           'timed_order' : curr_order[7],
@@ -432,8 +445,8 @@ class BitstampClientWrapper:
         secret = ''
         self.CancelTimedOrder()
         try:
-            if client_credentials is not None and 'username' in client_credentials.keys() and \
-                    'key' in client_credentials.keys() and 'secret' in client_credentials.keys():
+            if client_credentials is not None and 'username' in client_credentials and \
+                    'key' in client_credentials and 'secret' in client_credentials:
                 username = client_credentials['username']
                 key = client_credentials['key']
                 secret = client_credentials['secret']

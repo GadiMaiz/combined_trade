@@ -20,9 +20,13 @@ class BitstampOrderbook(OrderbookBase):
             self._listener_thread.start()
 
     def _stop(self):
-        self._bitstamp_wss_listener.stop()
-        self._bitstamp_wss_listener.data_q.join()
         self.running = False
+        self._bitstamp_wss_listener.stop()
+        while not self._bitstamp_wss_listener.data_q.empty():
+            self._bitstamp_wss_listener.data_q.get()
+        for curr_task_index in range(self._bitstamp_wss_listener.data_q.unfinished_tasks):
+            self._bitstamp_wss_listener.data_q.task_done()
+        self._bitstamp_wss_listener.data_q.join()
         if self._listener_thread is not None and self._listener_thread.is_alive:
             self._listener_thread.join()
 
@@ -36,7 +40,7 @@ class BitstampOrderbook(OrderbookBase):
     def handle_q(self):
         trade_types = {1: "sell", 0: "buy"}
         asset_pair_dict = {'BTCUSD': 'BTC-USD', 'BCHUSD': 'BCH-USD'}
-        while True:
+        while self.running:
             data = self._bitstamp_wss_listener.data_q.get()
             if data[0] == 'live_trades':
                 pair = data[1]
