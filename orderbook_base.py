@@ -140,3 +140,6 @@ class OrderbookBase:
             return self._last_trade[pair]
         else:
             return None
+
+    def is_thread_orderbook(self):
+        return True

@@ -7,6 +7,7 @@ import operator
 class UnifiedOrderbook:
     def __init__(self, orderbooks):
         self._orderbooks = orderbooks
+        self._is_thread_orderbook = False
 
     def set_orderbook(self, exchange, orderbook):
         self._orderbooks[exchange] = orderbook
@@ -22,3 +23,6 @@ class UnifiedOrderbook:
                 best_orders[curr_keyset[1]] = curr_keyset[0](size, best_orders[curr_keyset[1]] + curr_orderbook[curr_keyset[1]], key=operator.itemgetter('price'))
 
         return best_orders
+
+    def is_thread_orderbook(self):
+        return False

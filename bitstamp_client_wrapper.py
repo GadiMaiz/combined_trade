@@ -186,7 +186,7 @@ class BitstampClientWrapper:
         self._timed_order_duration_sec = duration_sec
         while self.IsTimedOrderRunning():
             sleep_time = self.TIMED_EXECUTION_SLEEP_SEC
-            current_price_and_spread = self._orderbook.get_current_spread_and_price(asset_pair)
+            current_price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(asset_pair)
             if not action_started:
                 # Checking that the action is within range to start execution
                 if action_type == 'buy':
@@ -211,9 +211,12 @@ class BitstampClientWrapper:
                 actual_execution_rate = required_execution_rate
                 if self._timed_order_done_size != 0 and self._timed_order_elapsed_time != 0:
                     actual_execution_rate = self._timed_order_done_size / self._timed_order_elapsed_time
-                spread_ratio = current_price_and_spread['spread'] / self._orderbook.get_average_spread(asset_pair)
+                average_spread = self._orderbook['orderbook'].get_average_spread(asset_pair)
+                spread_ratio = 0
+                if average_spread != 0:
+                    spread_ratio = current_price_and_spread['spread'] / self._orderbook['orderbook'].get_average_spread(asset_pair)
                 if spread_ratio <= 0:
-                    print("Invalid spread ratio:", spread_ratio)
+                    print("Invalid spread ratio:", spread_ratio, "average spread:", average_spread)
                 else:
                     execution_factor = math.exp((-1) * spread_ratio * actual_execution_rate / required_execution_rate)
                     random_value = random.random()
@@ -253,7 +256,7 @@ class BitstampClientWrapper:
             execute_size_coin = size_coin
             price_and_spread = None
             if relative_size:
-                price_and_spread = self._orderbook.get_current_spread_and_price(crypto_type)
+                price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(crypto_type)
 
             if action_type == 'buy':
                 if relative_size:

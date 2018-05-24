@@ -30,7 +30,8 @@ class BitfinexOrderbook(OrderbookBase):
         Stops Threads. Overwrite this in your child class as necessary.
         :return:
         """
-        self._bitfinex_client.stop()
+        if self._bitfinex_client is not None:
+            self._bitfinex_client.stop()
         self._running = False
 
     def _manage_orderbook(self):

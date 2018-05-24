@@ -4,10 +4,11 @@ import asyncio
 from orderbook_base import OrderbookBase
 import logging
 import calendar
-import time
+import asyncio
 import dateutil.parser
 
 class GdaxOrderbook(OrderbookBase):
+    _event_loop = None
     def __init__(self, asset_pairs):
         super().__init__(asset_pairs)
         self.running = False
@@ -16,7 +17,11 @@ class GdaxOrderbook(OrderbookBase):
         self._init_complete = False
         self._is_alive = False
         self._log = logging.getLogger(__name__)
+        if GdaxOrderbook._event_loop is None:
+            GdaxOrderbook._event_loop = asyncio.get_event_loop()
+
     def _start(self):
+        asyncio.set_event_loop(self._event_loop)
         if self._orderbook_thread is None or not self._orderbook_thread.is_alive():
             self._orderbook_thread = Thread(target=self._manage_orderbook,
                                              daemon=True,
@@ -30,8 +35,10 @@ class GdaxOrderbook(OrderbookBase):
         Stops Threads. Overwrite this in your child class as necessary.
         :return:
         """
-        self.running = False
-        self._orderbook_thread.join()
+        if self.running:
+            self.running = False
+            if not self._orderbook_thread.is_alive:
+                self._orderbook_thread.join()
 
     def _manage_orderbook(self):
         try:

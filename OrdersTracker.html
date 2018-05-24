@@ -264,7 +264,7 @@
 			var gdax_request = new XMLHttpRequest();
 			gdax_request.open("GET", "/Orderbook/GDAX/" + orders_request_suffix, true);
 			var unified_request = new XMLHttpRequest();
-			unified_request.open("GET", "/UnifiedOrderbook/" + orders_request_suffix, true);
+			unified_request.open("GET", "/Orderbook/Unified/" + orders_request_suffix, true);
 			function get_orders(orders_request, asksPlaceholder, bidsPlaceholder, spreadPlaceholder, averageSpreadPlaceholder, show_source, last_placeholder) {
 				
 				if (orders_request.readyState == 4 && orders_request.status == 200) {
@@ -619,7 +619,7 @@
 						var bitstamp_transactions_response = JSON.parse(bitstamp_transactions_request.responseText.replace(/'/g, '"'));
 						var transaction_dict = {'btc' : 'btc_usd', 
 												'bch' : 'bch_usd'};
-						var transaction_typesx = Object.keys(bitstamp_transactions_response[0]);
+						var transaction_types = Object.keys(bitstamp_transactions_response[0]);
 						for (i = 0; i < bitstamp_transactions_response.length; i += 1)
 						{
 							var found_type = "";
