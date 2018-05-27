@@ -5,7 +5,7 @@ import time
 log = logging.getLogger(__name__)
 
 class OrderbookWatchdog():
-    def __init__(self, orderbooks_dict, sleep_timeout_sec=10):
+    def __init__(self, orderbooks_dict, sleep_timeout_sec=20):
         self._orderbooks_dict = orderbooks_dict
         self._watchdog_running = False
         self._watchdog_thread = None
@@ -53,6 +53,7 @@ class OrderbookWatchdog():
                                     log.error("Restarting frozen or invalid orderbook: %s, %s", curr_orderbook_dict,
                                               compare_result)
                                     empty_orderbook[curr_orderbook_dict] = 0
+                                    restarted_orderbook = True
                                     self.restart_orderbook(curr_orderbook_dict)
                                 elif compare_result[1]:
                                     log.error("Empty orderbook: %s", current_orderbooks[curr_orderbook_dict])
@@ -60,13 +61,17 @@ class OrderbookWatchdog():
                                     if empty_orderbook[curr_orderbook_dict] >= 3:
                                         log.error("Restarting empty orderbook: %s\n%s", curr_orderbook_dict, empty_orderbook)
                                         empty_orderbook[curr_orderbook_dict] = 0
+                                        restarted_orderbook = True
                                         self.restart_orderbook(curr_orderbook_dict)
 
                                 else:
                                     empty_orderbook[curr_orderbook_dict] = 0
-                    else:
+                    if not restarted_orderbook:
                         compare_orderbooks[curr_orderbook_dict] = current_orderbooks[curr_orderbook_dict]
-                        log.debug("Not restarting", curr_orderbook_dict)
+                        log.debug("Not restarting %s", curr_orderbook_dict)
+                    else:
+                        compare_orderbooks[curr_orderbook_dict] = None
+                        log.debug("Restarting %s", curr_orderbook_dict)
 
                     if restarted_orderbook:
                         compare_orderbooks[curr_orderbook_dict] = None
@@ -94,7 +99,7 @@ class OrderbookWatchdog():
                 break
             else:
                 identical_books = OrderbookWatchdog._compare_sub_orderbooks(prev_orderbook[currency]['asks'],
-                                                                            curr_orderbook[currency]['asks']) and \
+                                                                            curr_orderbook[currency]['asks']) or \
                                   OrderbookWatchdog._compare_sub_orderbooks(prev_orderbook[currency]['bids'],
                                                                             curr_orderbook[currency]['bids'])
             if identical_books:
@@ -103,6 +108,7 @@ class OrderbookWatchdog():
 
     @staticmethod
     def _compare_sub_orderbooks(prev_sub_orderbook, curr_sub_orderbook):
+
         result = True
         if len(prev_sub_orderbook) != len(curr_sub_orderbook) or len(curr_sub_orderbook) < 5:
             result = False
@@ -113,6 +119,7 @@ class OrderbookWatchdog():
                         curr_sub_orderbook[order_index]['price'] or \
                         prev_sub_orderbook[order_index]['size'] != \
                         curr_sub_orderbook[order_index]['size']:
+                    #print("different orderbook:", order_index, prev_sub_orderbook, curr_sub_orderbook)
                     result = False
                 order_index += 1
 

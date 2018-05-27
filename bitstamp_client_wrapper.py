@@ -185,60 +185,63 @@ class BitstampClientWrapper:
         self._timed_order_elapsed_time = 0
         self._timed_order_duration_sec = duration_sec
         while self.IsTimedOrderRunning():
-            sleep_time = self.TIMED_EXECUTION_SLEEP_SEC
-            current_price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(asset_pair)
-            if not action_started:
-                # Checking that the action is within range to start execution
-                if action_type == 'buy':
-                    price_ratio = price_fiat / current_price_and_spread['ask']
-                    if price_ratio > (1 - self.RELATIVE_RANGE_FOR_EXECUTION_START):
-                        action_started = True
+            try:
+                sleep_time = self.TIMED_EXECUTION_SLEEP_SEC
+                current_price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(asset_pair)
+                if not action_started:
+                    # Checking that the action is within range to start execution
+                    if action_type == 'buy':
+                        price_ratio = price_fiat / current_price_and_spread['ask']
+                        if price_ratio > (1 - self.RELATIVE_RANGE_FOR_EXECUTION_START):
+                            action_started = True
 
-                elif action_type == 'sell':
-                    price_ratio = price_fiat / current_price_and_spread['bid']
-                    if price_ratio < (1 + self.RELATIVE_RANGE_FOR_EXECUTION_START):
-                        action_started = True
+                    elif action_type == 'sell':
+                        price_ratio = price_fiat / current_price_and_spread['bid']
+                        if price_ratio < (1 + self.RELATIVE_RANGE_FOR_EXECUTION_START):
+                            action_started = True
+
+                    if action_started:
+                        print("Timed order execution started")
+                        start_time = time.time()
+                        start_timestamp = datetime.datetime.utcnow()
+                        self._timed_order_execution_start_time = start_timestamp.strftime('%Y-%m-%d %H:%M:%S')
 
                 if action_started:
-                    print("Timed order execution started")
-                    start_time = time.time()
-                    start_timestamp = datetime.datetime.utcnow()
-                    self._timed_order_execution_start_time = start_timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                    self._timed_order_elapsed_time = time.time() - start_time
+                    required_execution_rate = size_coin / duration_sec
+                    actual_execution_rate = required_execution_rate
+                    if self._timed_order_done_size != 0 and self._timed_order_elapsed_time != 0:
+                        actual_execution_rate = self._timed_order_done_size / self._timed_order_elapsed_time
+                    average_spread = self._orderbook['orderbook'].get_average_spread(asset_pair)
+                    spread_ratio = 0
+                    if average_spread != 0:
+                        spread_ratio = current_price_and_spread['spread'] / self._orderbook['orderbook'].get_average_spread(asset_pair)
+                    if spread_ratio <= 0:
+                        print("Invalid spread ratio:", spread_ratio, "average spread:", average_spread)
+                    else:
+                        execution_factor = math.exp((-1) * spread_ratio * actual_execution_rate / required_execution_rate)
+                        random_value = random.random()
+                        print ("executed so far:", self._timed_order_done_size,"elapsed time:", self._timed_order_elapsed_time, "required time:", duration_sec, "spread ratio", spread_ratio,
+                               "required size", size_coin, "execution factor: ", execution_factor, "random value: ", random_value, "actual rate", actual_execution_rate,
+                               "required rate", required_execution_rate)
 
-            if action_started:
-                self._timed_order_elapsed_time = time.time() - start_time
-                required_execution_rate = size_coin / duration_sec
-                actual_execution_rate = required_execution_rate
-                if self._timed_order_done_size != 0 and self._timed_order_elapsed_time != 0:
-                    actual_execution_rate = self._timed_order_done_size / self._timed_order_elapsed_time
-                average_spread = self._orderbook['orderbook'].get_average_spread(asset_pair)
-                spread_ratio = 0
-                if average_spread != 0:
-                    spread_ratio = current_price_and_spread['spread'] / self._orderbook['orderbook'].get_average_spread(asset_pair)
-                if spread_ratio <= 0:
-                    print("Invalid spread ratio:", spread_ratio, "average spread:", average_spread)
+                        if execution_factor > random_value:
+                            sent_order = self.send_immediate_order(action_type, size_coin - self._timed_order_done_size, crypto_type, price_fiat, fiat_type, True, max_order_size)
+                            if sent_order is not None and sent_order['execution_size'] > 0:
+                                self._timed_order_done_size += sent_order['execution_size']
+                                sleep_time += random.uniform(self.EXECUTED_ORDER_MIN_DELAY_SEC, self.EXECUTED_ORDER_MAX_DELAY_SEC)
+
+                    if action_type == 'sell':
+                        self._reserved_balances[crypto_type] = size_coin - self._timed_order_done_size
+                    elif action_type == 'buy':
+                        self._reserved_balances['USD'] = (size_coin - self._timed_order_done_size) * price_fiat * (1 + 0.01 * self._last_balance[crypto_type]['fee'])
+
+                if self._timed_order_done_size >= size_coin:
+                    self._is_timed_order_running = False
                 else:
-                    execution_factor = math.exp((-1) * spread_ratio * actual_execution_rate / required_execution_rate)
-                    random_value = random.random()
-                    print ("executed so far:", self._timed_order_done_size,"elapsed time:", self._timed_order_elapsed_time, "required time:", duration_sec, "spread ratio", spread_ratio,
-                           "required size", size_coin, "execution factor: ", execution_factor, "random value: ", random_value, "actual rate", actual_execution_rate,
-                           "required rate", required_execution_rate)
-
-                    if execution_factor > random_value:
-                        sent_order = self.send_immediate_order(action_type, size_coin - self._timed_order_done_size, crypto_type, price_fiat, fiat_type, True, max_order_size)
-                        if sent_order is not None and sent_order['execution_size'] > 0:
-                            self._timed_order_done_size += sent_order['execution_size']
-                            sleep_time += random.uniform(self.EXECUTED_ORDER_MIN_DELAY_SEC, self.EXECUTED_ORDER_MAX_DELAY_SEC)
-
-                if action_type == 'sell':
-                    self._reserved_balances[crypto_type] = size_coin - self._timed_order_done_size
-                elif action_type == 'buy':
-                    self._reserved_balances['USD'] = (size_coin - self._timed_order_done_size) * price_fiat * (1 + 0.01 * self._last_balance[crypto_type]['fee'])
-
-            if self._timed_order_done_size >= size_coin:
-                self._is_timed_order_running = False
-            else:
-                time.sleep(sleep_time)
+                    time.sleep(sleep_time)
+            except Exception as e:
+                self.log.error("Unexpected error during timed order: %s", str(e))
         self._reserved_balances[reserved_type] = 0
 
         print ("Timed sell finished")

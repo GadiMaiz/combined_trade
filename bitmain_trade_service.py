@@ -194,26 +194,17 @@ def create_rotating_log(path):
     logger.addHandler(handler)
 
 if __name__ == '__main__':
-
-    logging.basicConfig(filename='bitmain_trade_service.log', level=logging.ERROR,
-    #logging.basicConfig(level=logging.ERROR,
-                        format='%(asctime)s %(processName)s %(process)d %(threadName)s %(thread)d %(levelname)s %(filename)s(%(lineno)d) %(funcName)s %(message)s')
-    #handler = RotatingFileHandler('bitmain_trade_service.log', maxBytes=20000000,
-    #                              backupCount=5)
-    log = logging.getLogger(__name__)
-    #log.addHandler(handler)
-    log.error("=== Starting ===")
     argv = sys.argv[1:]
-    log.info("args: %s", str(argv))
     bind_ip = None
     bitstamp_user = ''
     bitstamp_api_key = ''
     bitstamp_secret = ''
     listener_port = 5000
-    verbose = False
-    debug = False
+    frozen_orderbook_timeout_sec = 20
+    log_level = logging.CRITICAL
+
     try:
-        opts, args = getopt.getopt(argv, "rvu:k:s:p:")
+        opts, args = getopt.getopt(argv, "ru:k:s:p:t:l:")
         for opt, arg in opts:
             if opt == '-r':
                 bind_ip = "0.0.0.0"
@@ -223,23 +214,33 @@ if __name__ == '__main__':
                 bitstamp_api_key = arg
             elif opt == "-s":
                 bitstamp_secret = arg
-            elif opt == "-v":
-                verbose = True
-            elif opt == "-d":
-                debug = True
+            elif opt == "-t":
+                frozen_orderbook_timeout_sec = arg
+            elif opt == "-l":
+                if arg == "error":
+                    log_level = logging.ERROR
+                elif arg == "warning":
+                    log_level = logging.WARNING
+                elif arg == "debug":
+                    log_level = logging.DEBUG
+                elif arg == "info":
+                    log_level = logging.INFO
             elif opt == "-p":
                 try:
                     listener_port = int(arg)
                 except:
                     listener_port = 5000
     except getopt.GetoptError as e:
-        log.error("Parameters error:", e)
+        print("Parameters error:", e, "parameters:", argv)
 
-    if verbose:
-        logging.basicConfig(level=logging.INFO)
-
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(filename='bitmain_trade_service.log', level=log_level,
+                        format='%(asctime)s %(processName)s %(process)d %(threadName)s %(thread)d %(levelname)s %(filename)s(%(lineno)d) %(funcName)s %(message)s')
+    #handler = RotatingFileHandler('bitmain_trade_service.log', maxBytes=20000000,
+    #                              backupCount=5)
+    log = logging.getLogger(__name__)
+    #log.addHandler(handler)
+    log.error("=== Starting ===")
+    log.info("args: %s", str(argv))
 
     bitstamp_credentials = None
     if bitstamp_user != '' and bitstamp_api_key != '' and bitstamp_secret != '':
@@ -274,7 +275,7 @@ if __name__ == '__main__':
                                  'creator': BitfinexOrderbook},
                   'Unified' : { 'orderbook' : unified_orderbook, 'currencies_dict': bitstamp_currencies,
                                 'creator': UnifiedOrderbook}}
-    watchdog = OrderbookWatchdog(orderbooks, 10)
+    watchdog = OrderbookWatchdog(orderbooks, frozen_orderbook_timeout_sec)
     watchdog.start()
     bitstamp_client = BitstampClientWrapper(bitstamp_credentials, orderbooks['Bitstamp'], "./Transactions.data")
     #app.run(host= '0.0.0.0', ssl_context='adhoc')

@@ -20,7 +20,7 @@
         </style>
     <body style="">
 		<font color="Blue" size="5"><link_button onclick='set_text_language("en_us")'>English</link_button></font><font color="Red" size="5">  <link_button onclick='set_text_language("zh_cn")'>&nbsp&nbsp&nbsp中文&nbsp&nbsp&nbsp</link_button></font>
-        <h1><span id="orderbook_header" data-dict-value="orderbook_header">Order Book</span> (v0.1)
+        <h1><span id="orderbook_header" data-dict-value="orderbook_header">Order Book</span> (v0.2)
 			<select id="crypto_type" name="crypto_type" onchange="set_currency_type()">
 				<option value="BTC" data-dict-value="btc_usd_option">BTC/USD</option>
 				<option value="BCH" data-dict-value="bch_usd_option">BCH/USD</option>
@@ -353,7 +353,7 @@
 			bitfinex_request.send();
 			unified_request.send();
 			gdax_request.send();
-		}, 500);
+		}, 1000);
 		
 		var time_order_running = false;
 		window.setInterval(function(){
