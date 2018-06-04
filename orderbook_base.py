@@ -17,7 +17,7 @@ class OrderbookBase:
         self._last_trade = {}
         self._asset_pairs = asset_pairs
         self._log = logging.getLogger(__name__)
-        for curr_asset_pair in self._asset_pairs:
+        for curr_asset_pair in self.get_assets_pair():
             self._average_spreads[curr_asset_pair] = 0
             self._spread_samples[curr_asset_pair] = 0
 
@@ -66,7 +66,7 @@ class OrderbookBase:
 
 
         while self._orderbook_running:
-            for curr_asset_pair in self._asset_pairs:
+            for curr_asset_pair in self.get_assets_pair():
                 if curr_time - prev_average_time >= OrderbookBase.SPREAD_MOVING_AVERAGE_INTERVAL_SEC:
                     curr_spread = self.get_current_spread(curr_asset_pair)
                     if curr_spread > 0:
@@ -75,7 +75,7 @@ class OrderbookBase:
                         self._average_spreads[curr_asset_pair] = (1 - spread_ratio) * self._average_spreads[curr_asset_pair] + \
                                                                  spread_ratio * curr_spread
 
-                if curr_time - prev_orderbooks_compare_time >= OrderbookBase.ORDERBOOK_HEALTH_INTERVAL_SEC:
+                """if curr_time - prev_orderbooks_compare_time >= OrderbookBase.ORDERBOOK_HEALTH_INTERVAL_SEC:
                     current_compare_orderbook = self.get_current_partial_book(curr_asset_pair,
                                                                               OrderbookBase.ORDERBOOK_HEALTH_COMPARE_LENGTH)
                     if len(current_compare_orderbook['asks']) != len(compare_orderbook[curr_asset_pair]['asks']) or \
@@ -101,7 +101,7 @@ class OrderbookBase:
                             self._calculate_orderbook_thread = None
                             self._stop()
                             self._start()
-                    prev_orderbooks_compare_time = curr_time
+                    prev_orderbooks_compare_time = curr_time"""
 
             prev_average_time = curr_time
             curr_time = time.time()
@@ -143,3 +143,6 @@ class OrderbookBase:
 
     def is_thread_orderbook(self):
         return True
+
+    def get_assets_pair(self):
+        return self._asset_pairs

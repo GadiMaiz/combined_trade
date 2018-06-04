@@ -1,10 +1,12 @@
 from flask import Flask, send_from_directory, request
 from bitfinex_orderbook import BitfinexOrderbook
+from bitfinex_client_wrapper import BitfinexClientWrapper
 from gdax_orderbook import GdaxOrderbook
 from unified_orderbook import UnifiedOrderbook
 from bitstamp_client_wrapper import BitstampClientWrapper
 from bitstamp_orderbook import BitstampOrderbook
 from orderbook_watchdog import OrderbookWatchdog
+from exchange_clients_manager import ExchangeClientManager
 import logging
 from logging.handlers import RotatingFileHandler
 import json
@@ -40,43 +42,39 @@ def get_orderbook(exchange, currency):
             curr_orders = request_orders['orderbook'].get_unified_orderbook(currency, 8)
             return str(curr_orders)
         else:
-            result = request_orders['orderbook'].get_current_partial_book(request_orders['currencies_dict'][currency], 8)
+            result = request_orders['orderbook'].get_current_partial_book(currency, 8)
             if result != None:
-                result['average_spread'] = request_orders['orderbook'].get_average_spread(request_orders['currencies_dict'][currency])
+                result['average_spread'] = request_orders['orderbook'].get_average_spread(currency)
                 last_price = request_orders['orderbook'].get_last(currency)
                 if last_price is not None:
                     result['last_price'] = last_price
 
     return str(result)
 
-@app.route('/AccountBalance/<exchange>/<currency>')
-def get_account_balance(exchange, currency):
-    valid_currencies = ['BTC', 'BCH']
+@app.route('/AccountBalance/<exchange>')
+def get_account_balance(exchange):
     account_balance = {}
-    first_currency = True
-    if currency == "ALL":
-        for curr_currency in valid_currencies:
-            if first_currency:
-                first_currency = False
-                account_balance = bitstamp_client.account_balance(curr_currency)
-            else:
-                curr_balance = bitstamp_client.account_balance(curr_currency)
-                for curr_account_balance_key in curr_balance:
-                    if curr_account_balance_key.endswith("_available") and not curr_account_balance_key.startswith("usd"):
-                        account_balance[curr_account_balance_key] = curr_balance[curr_account_balance_key]
-                        break
-            currency_price = bitstamp_orderbook.get_current_price(curr_currency + "-USD")
-            if currency_price is not None and currency_price['ask'] is not None and currency_price['bid'] is not None:
-                account_balance[curr_currency.lower() + "_price"] = (currency_price['ask'] + currency_price['bid']) / 2
-    elif currency in valid_currencies:
-        account_balance = bitstamp_client.account_balance(currency)
-        currency_price = bitstamp_orderbook.get_current_price(currency + "-USD")
+    #first_currency = True
+    if exchange in orderbooks:
+        account_balance = exchanges_manager.exchange_balance(exchange)
+    """for curr_currency in valid_currencies:
+        if first_currency:
+            first_currency = False
+            account_balance = bitstamp_client.account_balance(curr_currency)
+        else:
+            curr_balance = bitstamp_client.account_balance(curr_currency)
+            for curr_account_balance_key in curr_balance:
+                if curr_account_balance_key.endswith("_available") and not curr_account_balance_key.startswith("usd"):
+                    account_balance[curr_account_balance_key] = curr_balance[curr_account_balance_key]
+                    break
+        currency_price = bitstamp_orderbook.get_current_price(curr_currency + "-USD")
         if currency_price is not None and currency_price['ask'] is not None and currency_price['bid'] is not None:
-            account_balance[currency.lower() + "_price"] = (currency_price['ask'] + currency_price['bid']) / 2
+            account_balance[curr_currency.lower() + "_price"] = (currency_price['ask'] + currency_price['bid']) / 2"""
+
     return str(account_balance)
 
-@app.route('/BitstampTransactions')
-def get_bitstamp_transactions():
+@app.route('/Transactions/<exchange>')
+def get_bitstamp_transactions(exchange):
     transactions_limit = None
     try:
         transactions_limit = int(request.args.get('limit'))
@@ -84,40 +82,41 @@ def get_bitstamp_transactions():
         transactions_limit = None
     if transactions_limit is None:
         transactions_limit = 0
-    transactions = bitstamp_client.transactions(transactions_limit)
+    transactions = []
+    if exchange in orderbooks:
+        transactions = exchanges_manager.get_exchange_transactions(exchange, transactions_limit)
     return str(transactions)
 
 @app.route('/IsTimedOrderRunning')
 def is_time_order_running():
-    result = {'time_order_running' : str(bitstamp_client.IsTimedOrderRunning())}
+    result = {'time_order_running': str(exchanges_manager.is_timed_order_running())}
     return str(result)
 
 @app.route('/GetTimedOrderStatus')
 def get_timed_order_status():
-    result = bitstamp_client.GetTimedOrderStatus()
+    result = exchanges_manager.get_timed_order_status()
     result['timed_order_running'] = str(result['timed_order_running'])
     return str(result)
 
 @app.route('/CancelTimedOrder')
 def cancel_timed_order():
-    result = {'cancel_time_order_result': str(bitstamp_client.CancelTimedOrder())}
+    result = {'cancel_time_order_result': str(exchanges_manager.cancel_timed_order())}
     log.info(result)
     return str(result)
 
 @app.route('/SendOrder', methods=['POST'])
 def send_order():
     log.debug("Send Order")
-    start_time = time.time()
     request_params = json.loads(request.data)
-    order_status = bitstamp_client.SendOrder(request_params['action_type'], float(request_params['size_coin']),
-                                             request_params['crypto_type'], float(request_params['price_fiat']),
-                                             request_params['fiat_type'], int(request_params['duration_sec']),
-                                             float(request_params['max_order_size']))
-    end_time = time.time()
+
+    order_status = exchanges_manager.send_order(request_params['exchange'], request_params['action_type'],
+                                                float(request_params['size_coin']), request_params['crypto_type'],
+                                                float(request_params['price_fiat']), request_params['fiat_type'],
+                                                int(request_params['duration_sec']),
+                                                float(request_params['max_order_size']))
     result = order_status
     result['order_status'] = str(result['order_status'])
-
-    log.info("send command time", end_time - start_time)
+    log.info("command sent")
     return str(result)
 
 @app.route('/GetSentOrders', methods=['GET'])
@@ -129,7 +128,7 @@ def get_sent_orders():
 
     if orders_limit is None:
         orders_limit = 0
-    sent_orders = bitstamp_client.GetSentOrders(orders_limit)
+    sent_orders = exchanges_manager.get_sent_orders(orders_limit)
     return str(sent_orders)
 
 @app.route('/SetClientCredentials', methods=['POST'])
@@ -137,32 +136,30 @@ def set_client_credentials():
     result = {'set_credentails_status': 'True'}
     try:
         request_params = json.loads(request.data)
-        bitstamp_credentials = {'username': request_params['username'],
-                                'key': request_params['key'],
-                                'secret': request_params['secret']}
-        global bitstamp_client
-        result['set_credentails_status'] = str(bitstamp_client.set_client_credentails(bitstamp_credentials))
+        exchange = request_params['exchange']
+        if exchange in orderbooks:
+            credentials = {'username': request_params['username'],
+                           'key': request_params['key'],
+                           'secret': request_params['secret']}
+        result['set_credentials_status'] = str(exchanges_manager.set_exchange_credentials(exchange, credentials))
     except:
-        result['set_credentails_status'] = 'False'
+        result['set_credentials_status'] = 'False'
 
     return str(result)
 
-@app.route('/Logout')
-def logout():
+@app.route('/Logout/<exchange>')
+def logout(exchange):
     result = {'set_credentials_status': 'False'}
-    result['set_credentials_status'] = str(bitstamp_client.logout())
+    if exchange in orderbooks:
+        result['set_credentials_status'] = str(exchanges_manager.logout_from_exchange(exchange))
     return str(result)
 
-@app.route('/SetBitstampCredentials', methods=['POST'])
-def set_bitstamp_client_credentials():
-    request_params = json.loads(request.data)
-    set_credentials_result = bitstamp_client.set_client_credentails(request_params)
-    result = {'set_credentials_status': str(set_credentials_result)}
+@app.route('/GetSignedInCredentials/<exchange>')
+def get_bitstamp_signed_in_credentials(exchange):
+    result = {'signed_in_user': "", 'is_user_signed_in': "False"}
+    if exchange in orderbooks:
+        result = exchanges_manager.get_signed_in_credentials(exchange)
     return str(result)
-
-@app.route('/GetSignedInBitstampCredentials')
-def get_bitstamp_signed_in_credentials():
-    return str(bitstamp_client.get_signed_in_credentials())
 
 @app.route('/RestartOrderbook/<exchange>')
 def restart_orderbook(exchange):
@@ -171,14 +168,6 @@ def restart_orderbook(exchange):
     if exchange in orderbooks:
         watchdog.restart_orderbook(exchange)
         result["restart_result"] = "True"
-        """orderbooks[exchange]['orderbook'].stop_orderbook()
-        if 'args' in orderbooks[exchange]:
-            orderbooks[exchange]['orderbook'] = orderbooks[exchange]['creator'](orderbooks[exchange]['currencies_dict'].values())
-        else:
-            orderbooks[exchange]['orderbook'] = orderbooks[exchange]['creator'](
-                orderbooks[exchange]['currencies_dict'].values(), **orderbooks[exchange]['args'])
-        orderbooks[exchange]['orderbook'].start_orderbook()
-        orderbooks['Unified']['orderbook'].set_orderbook(exchange, orderbooks[exchange]['orderbook'])"""
 
     return str(result)
 
@@ -201,7 +190,7 @@ if __name__ == '__main__':
     bitstamp_secret = ''
     listener_port = 5000
     frozen_orderbook_timeout_sec = 20
-    log_level = logging.CRITICAL
+    log_level = logging.ERROR
 
     try:
         opts, args = getopt.getopt(argv, "ru:k:s:p:t:l:")
@@ -277,7 +266,13 @@ if __name__ == '__main__':
                                 'creator': UnifiedOrderbook}}
     watchdog = OrderbookWatchdog(orderbooks, frozen_orderbook_timeout_sec)
     watchdog.start()
-    bitstamp_client = BitstampClientWrapper(bitstamp_credentials, orderbooks['Bitstamp'], "./Transactions.data")
+    exchanges_manager = ExchangeClientManager({'Bitstamp': {'creator': BitstampClientWrapper,
+                                                            'args': {'bitstamp_credentials': bitstamp_credentials,
+                                                                     'bitstamp_orderbook': orderbooks['Bitstamp']}},
+                                               'Bitfinex': {'creator': BitfinexClientWrapper,
+                                                            'args': {'bitfinex_credentials': {},
+                                                                     'bitfinex_orderbook': orderbooks['Bitfinex']}}},
+                                              "./Transactions.data")
     #app.run(host= '0.0.0.0', ssl_context='adhoc')
     app.run(host=bind_ip, port=listener_port)
 

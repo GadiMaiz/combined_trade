@@ -20,7 +20,7 @@ class ClientWrapperBase:
     TIMED_ORDERS_DICT = { True : 1, False : 0}
     CRYPTO_CURRENCIES_DICT = {'BTC': 'btc', 'BCH': 'bch'}
 
-    def __init__(self, orderbook, db_file):
+    def __init__(self, orderbook, db_interface):
         self.log = logging.getLogger(__name__)
         self._timed_order_thread = None
         self._last_balance = {}
@@ -33,42 +33,40 @@ class ClientWrapperBase:
         self._timed_order_required_size = 0
         self._timed_order_done_size = 0
         self._orderbook = orderbook
-        self._db_file = db_file
-        self._balance_changed = {}
-        self._reserved_balances = {'BTC': 0, 'BCH': 0, 'USD': 0}
+        self._balance_changed = False
+        self._reserved_crypto = 0
+        self._reserved_crypto_type = ""
+        self._reserved_usd = 0
         self._timed_order_elapsed_time = 0
         self._timed_order_duration_sec = 0
         self._signed_in_user = ""
         self._is_client_init = False
+        self._db_interface = db_interface
 
-    def create_db_connection(self, db_file):
-        """ create a database connection to a SQLite database """
-        try:
-            conn = sqlite3.connect(db_file)
-        except sqlite3.Error as e:
-            self.log.error("db connection error",e)
-            conn = None
-
-        return conn
-
-    def account_balance(self, crypto_type):
-        if not self._is_client_init:
-            self._balance_changed[crypto_type] = False
-            self._last_balance[crypto_type] = {}
-            self._last_balance[crypto_type]['reserved_crypto'] = 0
-            self._last_balance[crypto_type]['server_usd_reserved'] = 0
-        elif crypto_type not in self._balance_changed or self._balance_changed[crypto_type]:
+    def account_balance(self):
+        if self._is_client_init and self._balance_changed:
             try:
-                self._last_balance[crypto_type] = self._get_balance_from_exchange(crypto_type)
-                self._balance_changed[crypto_type] = False
+                self._last_balance['balances'] = self._get_balance_from_exchange()
+                for balance in self._last_balance['balances']:
+                    if balance != "USD":
+                        self._last_balance['balances'][balance]['price'] = self._get_pair_price(balance)
+
+                for crypto_type_key in ClientWrapperBase.CRYPTO_CURRENCIES_DICT:
+                    if crypto_type_key not in self._last_balance['balances']:
+                        self._last_balance['balances'][crypto_type_key] = {'amount': 0.0, 'available': 0.0,
+                                                                           'price': 0.0}
+
+                self._balance_changed = False
             except Exception as e:
                 self.log.error(e)
-        self._last_balance[crypto_type]['reserved_crypto'] = self._reserved_balances[crypto_type]
-        self._last_balance[crypto_type]['server_usd_reserved'] = self._reserved_balances['USD']
-        return self._last_balance[crypto_type]
+        self._last_balance['reserved_crypto'] = self._reserved_crypto
+        self._last_balance['reserved_crypto_type'] = self._reserved_crypto_type
+        self._last_balance['server_usd_reserved'] = self._reserved_usd
+        self._last_balance['fee'] = self.exchange_fee("BTC")
+        return self._last_balance
 
     def send_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec, max_order_size):
-        order_sent = {'order_status' : False, 'execution_size' : 0, 'execution_message' : ''}
+        order_sent = {'order_status': False, 'execution_size': 0, 'execution_message': ''}
         if not self._is_client_init:
             order_sent['execution_message'] = 'Exchange client not initialized'
         else:
@@ -96,8 +94,7 @@ class ClientWrapperBase:
     def can_send_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec):
         result = True
         refuse_reason = ''
-        balance_before_order = self.account_balance(crypto_type)
-        crypto_type_dict = {'BTC': 'btc_available', 'BCH': 'bch_available'}
+        balance_before_order = self.account_balance()
         try:
             refuse_reason = "Invalid size"
             if float(size_coin) <= 0:
@@ -120,17 +117,17 @@ class ClientWrapperBase:
         except ValueError:
             result = False
 
-        if result and action_type == 'sell' and size_coin > float(balance_before_order[crypto_type_dict[crypto_type]]):
-            refuse_reason = "Available balance " + str(balance_before_order[crypto_type_dict[crypto_type]]) + \
+        if result and action_type == 'sell' and size_coin > balance_before_order['balances'][crypto_type]['available']:
+            refuse_reason = "Available balance " + str(balance_before_order['balances'][crypto_type]['available']) + \
                             crypto_type + " is less than required size " + str(size_coin) + crypto_type
             result = False
         elif result and action_type == 'buy' and (price_fiat * size_coin * (1 + 0.01 * balance_before_order['fee'])) > \
-                float(balance_before_order['usd_available']):
-            refuse_reason = "Available balance " + str(balance_before_order['usd_available']) + \
+                float(balance_before_order['balances'][fiat_type]['available']):
+            refuse_reason = "Available balance " + str(balance_before_order['balances'][fiat_type]['available']) + \
                             "USD is less than required balance " + str(price_fiat * size_coin * (1 + 0.01 * balance_before_order['fee']))
             result = False
 
-        return {'can_send_order' : result, 'reason' : refuse_reason}
+        return {'can_send_order': result, 'reason': refuse_reason}
 
     def execute_timed_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec, max_order_size):
         if self._timed_order_thread is not None and self._timed_order_thread.is_alive():
@@ -153,16 +150,15 @@ class ClientWrapperBase:
         order_info = {'exchange' : self.get_exchange_name(), 'action_type' : action_type, 'crypto_size': size_coin, 'price_fiat' : price_fiat,
                       'exchange_id': 0, 'order_time' : order_time, 'timed_order' : self.TIMED_ORDERS_DICT[True],
                       'status' : "Timed Order", 'crypto_type' : crypto_type,
-                      'balance': self._get_available_account_balance(crypto_type)}
-        self.write_order_to_db(order_info)
-        reserved_type = ''
+                      'balance': self.account_balance()}
+        self.log.debug("order info before execution: <%s>", order_info)
+        self._db_interface.write_order_to_db(order_info)
+        self._reserved_crypto_type = crypto_type
         if action_type == 'sell':
-            self._reserved_balances[crypto_type] = size_coin
-            reserved_type = crypto_type
+            self._reserved_crypto = size_coin
         elif action_type == 'buy':
-            balance_before_order = self.account_balance(crypto_type)
-            self._reserved_balances['USD'] = price_fiat * size_coin * (1 + 0.01 * balance_before_order['fee'])
-            reserved_type = 'USD'
+            balance_before_order = self.account_balance()
+            self._reserved_usd = price_fiat * size_coin * (1 + 0.01 * balance_before_order['fee'])
         self._timed_order_action = action_type
         self._timed_order_price_fiat = price_fiat
         action_started = False
@@ -178,9 +174,13 @@ class ClientWrapperBase:
         while self.is_timed_order_running():
             try:
                 sleep_time = self.TIMED_EXECUTION_SLEEP_SEC
+                self.log.debug("Timed execution status: done_size=<%f>, elapsed_time=<%f>", self._timed_order_done_size,
+                               self._timed_order_elapsed_time)
                 current_price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(asset_pair)
+                self.log.debug("Price and spread for <%s>: <%s>", asset_pair, current_price_and_spread)
                 if not action_started:
                     # Checking that the action is within range to start execution
+                    self.log.debug("Action not started yet. price_fiat=<%f>, action_type=<%s>", price_fiat, action_type)
                     if action_type == 'buy':
                         price_ratio = price_fiat / current_price_and_spread['ask']
                         if price_ratio > (1 - self.RELATIVE_RANGE_FOR_EXECUTION_START):
@@ -192,7 +192,7 @@ class ClientWrapperBase:
                             action_started = True
 
                     if action_started:
-                        self.log.Info("Timed order execution started")
+                        self.log.info("Timed order execution started")
                         start_time = time.time()
                         start_timestamp = datetime.datetime.utcnow()
                         self._timed_order_execution_start_time = start_timestamp.strftime('%Y-%m-%d %H:%M:%S')
@@ -201,8 +201,11 @@ class ClientWrapperBase:
                     self._timed_order_elapsed_time = time.time() - start_time
                     required_execution_rate = size_coin / duration_sec
                     actual_execution_rate = required_execution_rate
+                    self.log.debug("_timed_order_elapsed_time=<%d>, required_execution_rate=<%f>",
+                                   self._timed_order_elapsed_time, required_execution_rate)
                     if self._timed_order_done_size != 0 and self._timed_order_elapsed_time != 0:
                         actual_execution_rate = self._timed_order_done_size / self._timed_order_elapsed_time
+                        self.log.debug("actual_execution_rate=<%f>", actual_execution_rate)
                     average_spread = self._orderbook['orderbook'].get_average_spread(asset_pair)
                     spread_ratio = 0
                     if average_spread != 0:
@@ -217,14 +220,21 @@ class ClientWrapperBase:
                         random_value = random.random()
                         self.log.debug("executed so far: <%f> elapsed time: <%f>, required time: <%f>, spread_ratio: "
                                        "<%f>, required size: <%f>, execution factor: <%f> random value: "
-                                       "<%f> actual rate <%f>, required rate <%f>, done size: <%f>, elapsed time: <%f>",
-                                       duration_sec, spread_ratio, size_coin, execution_factor, random_value,
-                                       actual_execution_rate, required_execution_rate, self._timed_order_done_size,
-                                       self._timed_order_elapsed_time)
+                                       "<%f> actual rate <%f>, required rate <%f>",
+                                       self._timed_order_done_size, self._timed_order_elapsed_time, duration_sec,
+                                       spread_ratio, size_coin, execution_factor, random_value, actual_execution_rate,
+                                       required_execution_rate)
 
                         if execution_factor > random_value:
-                            sent_order = self.send_immediate_order(action_type, size_coin - self._timed_order_done_size,
-                                                                   crypto_type, price_fiat, fiat_type, True,
+                            relative_order = True
+                            curr_order_size = size_coin - self._timed_order_done_size
+
+                            # Making sure that after executing the order the remaining size will be allowed by the exchange
+                            if curr_order_size - max_order_size < self.minimum_order_size(crypto_type):
+                                relative_order = False
+
+                            sent_order = self.send_immediate_order(action_type, curr_order_size,
+                                                                   crypto_type, price_fiat, fiat_type, relative_order,
                                                                    max_order_size)
                             if sent_order is not None and sent_order['execution_size'] > 0:
                                 self._timed_order_done_size += sent_order['execution_size']
@@ -232,10 +242,10 @@ class ClientWrapperBase:
                                                              self.EXECUTED_ORDER_MAX_DELAY_SEC)
 
                     if action_type == 'sell':
-                        self._reserved_balances[crypto_type] = size_coin - self._timed_order_done_size
+                        self._reserved_crypto = size_coin - self._timed_order_done_size
                     elif action_type == 'buy':
-                        self._reserved_balances['USD'] = (size_coin - self._timed_order_done_size) * price_fiat * \
-                                                         (1 + 0.01 * self._last_balance[crypto_type]['fee'])
+                        self._reserved_usd = (size_coin - self._timed_order_done_size) * price_fiat * \
+                                                         (1 + 0.01 * self.exchange_fee(crypto_type))
 
                 if self._timed_order_done_size >= size_coin:
                     self._is_timed_order_running = False
@@ -243,7 +253,8 @@ class ClientWrapperBase:
                     time.sleep(sleep_time)
             except Exception as e:
                 self.log.error("Unexpected error during timed order: %s", str(e))
-        self._reserved_balances[reserved_type] = 0
+        self._reserved_crypto = 0
+        self._reserved_usd = 0
 
         self.log.info("Timed sell finished")
 
@@ -256,135 +267,76 @@ class ClientWrapperBase:
         order_info = {'exchange': self.get_exchange_name(), 'action_type': action_type, 'price_fiat': price_fiat,
                       'order_time': order_time, 'timed_order': self.TIMED_ORDERS_DICT[relative_size],
                       'status': "Init", 'crypto_type': crypto_type}
-        try:
-            execute_size_coin = size_coin
-            price_and_spread = None
+        #try:
+        execute_size_coin = size_coin
+        price_and_spread = None
+        if relative_size:
+            price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(crypto_type + "-USD")
+
+        if action_type == 'buy':
             if relative_size:
-                price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(crypto_type)
+                if price_and_spread['ask'] > price_fiat:
+                    self.log.info("price is too high: <%f> maximum price: <%f>",price_and_spread['ask'], price_fiat)
+                    execute_size_coin = 0
+                else:
+                    execute_size_coin = min(size_coin, self._get_relative_size(price_and_spread['ask'],
+                                                                               self.ORDER_EXECUTION_MIN_FACTOR,
+                                                                               self.ORDER_EXECUTION_MAX_FACTOR))
 
-            if action_type == 'buy':
-                if relative_size:
-                    if price_and_spread['ask'] > price_fiat:
-                        self.log.info("price is too high: <%f> maximum price: <%f>",price_and_spread['ask'], price_fiat)
-                        execute_size_coin = 0
-                    else:
-                        execute_size_coin = min(size_coin, self._get_relative_size(price_and_spread['ask'],
-                                                                                   self.ORDER_EXECUTION_MIN_FACTOR,
-                                                                                   self.ORDER_EXECUTION_MAX_FACTOR))
+                execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
+                execute_size_coin = max(execute_size_coin, self.minimum_order_size(crypto_type))
+                self.log.debug("size: <%f> execute_size: <%f> max_order_size: <%f>", size_coin, execute_size_coin,
+                               max_order_size)
 
-                    execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
-                    self.log.debug("size: <%f> execute_size: <%f> max_order_size: <%f>", size_coin, execute_size_coin,
-                                   max_order_size)
-
-                if execute_size_coin > 0:
-                    order_info['crypto_size'] = execute_size_coin
-                    self.log.info("Buying <%f> <%s> for <%f>", execute_size_coin, crypto_type, price_fiat)
-                    sent_order = self.buy_limit_order(execute_size_coin, price_fiat,
-                                                                       self.CRYPTO_CURRENCIES_DICT[crypto_type])
-                    self.log.debug("sent order: <%s>", str(sent_order))
-            elif action_type == 'sell':
-                if relative_size:
-                    if price_and_spread['bid'] < price_fiat:
-                        execute_size_coin = 0
-                    else:
-                        execute_size_coin = min(size_coin, self._get_relative_size(price_and_spread['bid'],
-                                                                                   self.ORDER_EXECUTION_MIN_FACTOR,
-                                                                                   self.ORDER_EXECUTION_MAX_FACTOR))
-
-                    execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
-                    self.log.debug("size: <%f> execute_size: <%f>, max_order_size: <%f>", size_coin, execute_size_coin,
-                                   max_order_size)
-
-                if execute_size_coin > 0:
-                    order_info['crypto_size'] = execute_size_coin
-                    self.log.info("Selling <%f> <%s> with limit of <%f>", execute_size_coin, crypto_type, price_fiat)
-                    sent_order = self.sell_limit_order(execute_size_coin, price_fiat,
-                                                                        self.CRYPTO_CURRENCIES_DICT[crypto_type])
-                    self.log.debug("sent order: <%s>", str(sent_order))
             if execute_size_coin > 0:
-                self.log.debug("Order sent in size <%f> for action <%s>", execute_size_coin, action_type)
-        except Exception as e:
+                order_info['crypto_size'] = execute_size_coin
+                self.log.info("Buying <%f> <%s> for <%f>", execute_size_coin, crypto_type, price_fiat)
+                sent_order = self.buy_immediate_or_cancel(execute_size_coin, price_fiat,
+                                                          self.CRYPTO_CURRENCIES_DICT[crypto_type])
+                self.log.debug("sent order: <%s>", str(sent_order))
+        elif action_type == 'sell':
+            if relative_size:
+                if price_and_spread['bid'] < price_fiat:
+                    execute_size_coin = 0
+                else:
+                    execute_size_coin = min(size_coin, self._get_relative_size(price_and_spread['bid'],
+                                                                               self.ORDER_EXECUTION_MIN_FACTOR,
+                                                                               self.ORDER_EXECUTION_MAX_FACTOR))
+
+                execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
+                execute_size_coin = max(execute_size_coin, self.minimum_order_size(crypto_type))
+                self.log.debug("size: <%f> execute_size: <%f>, max_order_size: <%f>", size_coin, execute_size_coin,
+                               max_order_size)
+
+            if execute_size_coin > 0:
+                order_info['crypto_size'] = execute_size_coin
+                self.log.info("Selling <%f> <%s> with limit of <%f>", execute_size_coin, crypto_type, price_fiat)
+                sent_order = self.sell_immediate_or_cancel(execute_size_coin, price_fiat,
+                                                           self.CRYPTO_CURRENCIES_DICT[crypto_type])
+                self.log.debug("sent order: <%s>", str(sent_order))
+        if execute_size_coin > 0:
+            self.log.debug("Order sent in size <%f> for action <%s>", execute_size_coin, action_type)
+        """except Exception as e:
             order_info = None
             self.log.error("Order not sent: <%s>", str(e))
-            sent_order = None
+            sent_order = None"""
 
-        order_done = False
+        order_status = False
         if sent_order is not None:
             order_id = sent_order.get("id")
-
             order_info['exchange_id'] = order_id
-            self.log.info("order before cancel: <%s>", sent_order)
-            order_status = None
-            try:
-                order_status = self.order_status(order_id)
-                self.log.debug("order status <%s>", order_status)
-            except Exception as e:
-                self.log.info("Can't get order status: <%s>", str(e))
-
-            if order_status is not None and order_status['status'] == 'Finished' and len(order_status['transactions']) > 0:
-                order_info['status'] = order_status['status']
-                order_info['price_fiat'] = order_status['transactions'][0]['price']
-                order_done = True
-            else:
-                self.log.debug("Cancelling order")
-                try:
-                    self.cancel_order(order_id)
-                    order_info['status'] = 'Cancelled'
-                    self.log.info("Order cancelled")
-                except Exception as e:
-                    order_info['status'] = 'Finished'
-                    self.log.debug("Exception while cancelling order: <%s>", str(e))
-                    order_done = True
-                    try:
-                        found_transaction = False
-                        all_transactions = self.user_transactions()
-                        self.log.debug("curr transaction <%d> transactions: <%s>", order_id, all_transactions)
-                        for curr_transaction in all_transactions:
-                            if curr_transaction['order_id'] == order_id or curr_transaction['order_id'] == int(order_id):
-                                order_info['price_fiat'] = curr_transaction['btc_usd']
-                                found_transaction = True
-                                break
-                        if not found_transaction:
-                            self.log.warning("Transaction for <%d> not found", order_id)
-
-                    except Exception as e:
-                        self.log.error("Exception while getting transactions data: <%s>", str(e))
+            order_info['status'] = sent_order['status']
+            order_info['price_fiat'] = sent_order['executed_price_usd']
+            order_status = sent_order['order_status']
 
         self.log.info("Order done, size is <%f>", execute_size_coin)
         if order_info is not None and execute_size_coin > 0:
-            for curr_balance_key in self._balance_changed:
-                self._balance_changed[curr_balance_key] = True
+            self._balance_changed = True
 
-            order_info['balance'] = self._get_available_account_balance(crypto_type)
-            self.write_order_to_db(order_info)
-        return {'order_status': order_done, 'execution_size': execute_size_coin, 'execution_message': execution_message}
-
-    def _get_available_account_balance(self, crypto_type):
-        account_balance = self.account_balance(crypto_type)
-        crypto_key = ''
-        for curr_account_balance_key in account_balance:
-            if curr_account_balance_key.endswith("_available") and not curr_account_balance_key.startswith("usd"):
-                crypto_key = curr_account_balance_key
-                break
-
-        if crypto_key != '':
-            account_balance['crypto_available'] = account_balance[crypto_key]
-        return account_balance
-
-    def write_order_to_db(self, order_info):
-        conn = self.create_db_connection(self._db_file)
-        if conn is None:
-            self.log.error("Can't connect to DB")
-        else:
-            try:
-                insert_str = "INSERT INTO sent_orders VALUES('{}', '{}', {}, {}, {}, '{}', '{}', {}, '{}', {}, {})".format(order_info['exchange'], order_info['action_type'], order_info['crypto_size'],
-                                             order_info['price_fiat'], order_info['exchange_id'], order_info['status'], order_info['order_time'], order_info['timed_order'], order_info['crypto_type'],
-                                             order_info['balance']['usd_available'], order_info['balance']['crypto_available'])
-                self.log.info(insert_str)
-                conn.execute(insert_str)
-                conn.commit()
-            except Exception as e:
-                self.log.error("DB error: <%s>", str(e))
+            order_info['balance'] = self.account_balance()
+            self._db_interface.write_order_to_db(order_info)
+        return {'execution_size': execute_size_coin, 'execution_message': execution_message,
+                'order_status': order_status}
 
     def _get_relative_size(self,order_size, min_factor, max_factor):
         return random.uniform(min_factor, max_factor) * order_size
@@ -418,55 +370,46 @@ class ClientWrapperBase:
 
         return result
 
-    def get_sent_orders(self, orders_limit):
-        conn = self.create_db_connection(self._db_file)
-        limit_clause = ''
-        if orders_limit > 0:
-            limit_clause = " LIMIT " + str(orders_limit)
-        sent_orders = conn.execute("SELECT * FROM (SELECT * FROM sent_orders ORDER BY datetime(order_time) DESC)" + limit_clause)
-        all_orders = []
-        for curr_order in sent_orders:
-            exchange_id = curr_order[4]
-            if exchange_id is None:
-                exchange_id = ""
-            order_dict = {'exchange' : curr_order[0],
-                          'action_type' : curr_order[1],
-                          'crypto_size': curr_order[2],
-                          'price_fiat': curr_order[3],
-                          'exchange_id': exchange_id,
-                          'status': curr_order[5],
-                          'order_time' : curr_order[6],
-                          'timed_order' : curr_order[7],
-                          'crypto_type': curr_order[8],
-                          'usd_balance': curr_order[9],
-                          'crypto_available': curr_order[10]}
-            all_orders.append(order_dict)
-        conn.close()
-        return all_orders
-
     def get_signed_in_credentials(self):
         return {'signed_in_user': self._signed_in_user}
 
     def logout(self):
+        self.set_credentials({})
+        self._is_client_init = False
+        self._last_balance = {}
         return True
 
-    def _get_balance_from_exchange(self, crypto_type):
+    def _get_pair_price(self, crypto_type):
+        asset_pair = crypto_type + "-USD"
+        result = 0
+        if asset_pair in self._orderbook['orderbook'].get_assets_pair():
+            orderbook_price = self._orderbook['orderbook'].get_current_price(asset_pair)
+            if orderbook_price['ask'] is not None and orderbook_price['bid'] is not None:
+                result = (float(orderbook_price['ask']) + float(orderbook_price['bid'])) / 2
+
+        return result
+
+    def _get_balance_from_exchange(self):
         return {}
 
     def get_exchange_name(self):
         return ""
 
-    def buy_limit_order(self, execute_size_coin, price_fiat, crypto_type):
+    def buy_immediate_or_cancel(self, execute_size_coin, price_fiat, crypto_type):
         return {}
 
-    def sell_limit_order(self, execute_size_coin, price_fiat, crypto_type):
+    def sell_immediate_or_cancel(self, execute_size_coin, price_fiat, crypto_type):
         return {}
 
     def order_status(self, order_id):
         return {}
 
-    def cancel_order(self, order_id):
-        return {}
-
     def transactions(self, transactions_limit):
         return []
+
+    def exchange_fee(self, crypto_type):
+        return 0
+
+    def minimum_order_size(self, crypto_type):
+        minimum_sizes = {'BTC': 0.0006, 'BCH': 0.001}
+        return minimum_sizes[crypto_type]

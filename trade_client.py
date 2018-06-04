@@ -52,8 +52,8 @@ class TradeClient:
                 order_client = self.exchange_clients[found_order["exchange"]]
                 open_orders = order_client.open_orders()
                 found_open_order = []
-                for curr_order in open_orders
-                    if curr_order["id"] == order_id:
+                for curr_order in open_orders:
+                    if curr_order["id"] == global_order_id:
                         found_open_order = curr_order
                         break
 
@@ -63,7 +63,7 @@ class TradeClient:
         return found_order
 
     def cancel_order(self, global_order_id):
-        curr_order = update_order_status(global_order_id)
+        curr_order = self.update_order_status(global_order_id)
         if len(curr_order) > 0:
             if curr_order["status"] == "SENT":
                 order_client = self.exchange_clients[curr_order["exchange"]]
