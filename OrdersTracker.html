@@ -75,19 +75,23 @@
 		</td>
 		<td>
 			<font size="2">
-			<B><span data-dict-value="bitstamp_credentials">Bitstamp Credentials, Current Signed-in User:</span> </B>
-			<div style="display: inline" id="bitstamp_user_placeholder" name="bitstamp_user_placeholder"><span data-dict-value="not_available">N/A</span></div>
+			<select id="sign_in_exchange" onchange="set_sign_in_exchange()">
+				<option value="Bitstamp" data-dict-value="bitstamp">Bitstamp</option>
+				<option value="Bitfinex" data-dict-value="bitfinex">Bitfinex</option>
+			</select>
+			<B><span data-dict-value="credentials">Credentials, Current Signed-in User:</span> </B>
+			<div style="display: inline" id="user_placeholder" name="user_placeholder"><span data-dict-value="not_available">N/A</span></div>
 			<BR>
 			<span data-dict-value="account_number">Account number:</span>
-			<input type="number" id="bitstamp_account_number" name="bitstamp_account_number">
+			<input type="number" id="account_number" name="account_number">
 			<BR>
 			<span data-dict-value="api_key">API Key:</span>
-			<input id="bitstamp_api_key" name="bitstamp_api_key">
+			<input id="api_key" name="api_key">
 			<BR>
 			<span data-dict-value="secret">Secret:</span>
-			<input type="password" id="bitstamp_secret" name="bitstamp_secret">
-			<button type=button onclick="set_bitstamp_credentials()" name="btnSetBitstampCredentials" id="btnSetBitstampCredentials" data-dict-value="set_bitstamp_credentials">Set Bitstamp Credentials</button>
-			<button type=button onclick="bitstamp_logout()" name="btnBitstampLogout" id="btnBitstampLogout"ת data-dict-value="logout">Logout</button>
+			<input type="password" id="secret" name="secret">
+			<button type=button onclick="set_credentials()" name="btnSetCredentials" id="btnSetCredentials" data-dict-value="set_credentials">Set Credentials</button>
+			<button type=button onclick="exchange_logout()" name="btnLogout" id="btnLogout"ת data-dict-value="logout">Logout</button>
 			</font>
 		</td>		
 		</tr>
@@ -196,6 +200,7 @@
 			<select id="exchange" name="exchange">
 				<option value="Best" data-dict-value="best_exchange">Best Exchange</option>
 				<option value="Bitstamp" data-dict-value="bitstamp">Bitstamp</option>
+				<option value="Bitfinex" data-dict-value="bitfinex">Bitfinex</option>
 			</select>
 			<span data-dict-value="duration">Duration (minutes):</span>
 			<input type="number" step="1" id="order_duration" name="order_duration">
@@ -239,18 +244,18 @@
 			unifiedSpreadPlaceholder = document.getElementById("unified_spread_placeholder"),
 			currency_type = "",
 			transaction_fee = 0,
-			available_crypto = 0,
-			available_fiat = 0,
-			bitstamp_account_signed_in = false,
+			available_crypto = {},
+			available_fiat = {},
 			i = 0,
-			language_dict = {};
+			language_dict = null,
+			signed_in_users = {'Bitstamp': false, 'Bitfinex': false};
 			const EXCHANGES_NUM = 4;
-			btnBitstampLogout.disabled = true;
+			btnLogout.disabled = true;
 			set_currency_type();			
 			refresh_bitstamp_transactions();
 			show_sent_orders();
 			var url_lang = getParameterByName("language");
-			if (url_lang == '')
+			if (url_lang == null)
 			{
 				url_lang = "en_us";
 			}
@@ -417,16 +422,18 @@
 		window.setInterval(function(){
 			show_sent_orders();
 			refresh_bitstamp_balance();
+			refresh_bitfinex_balance();
 			refresh_bitstamp_transactions();
-			get_bitstamp_credentials();
+			get_exchange_credentials();
 		}, 5000);
 
 		function can_execute_order(action_type, size_crypto, price_fiat, timed_order, duration, max_order_size)
 		{
 			var can_execute = false;
-			if (!bitstamp_account_signed_in)
+			var execute_exchange = exchange.value;
+			if (execute_exchange != "Best" && !signed_in_users[execute_exchange])
 			{
-				alert("User not signed in, can't execute orders");
+				alert("User not signed in to " + execute_exchange + ", can't execute orders");
 			}
 			else if (size_crypto == "" || size_crypto <= 0)
 			{
@@ -444,12 +451,12 @@
 			{
 				alert("Invalid max order size");
 			}
-			else if (action_type == 'buy' && available_fiat < size_crypto * price_fiat * (1 + 0.01 * transaction_fee))
+			else if (action_type == 'buy' && available_fiat[execute_exchange] < size_crypto * price_fiat * (1 + 0.01 * transaction_fee))
 			{
 				var required_fiat = size_crypto * price_fiat * (1 + 0.01 * transaction_fee);
 				alert("Insufficient funds: the order requires " + required_fiat.toFixed(2) + " USD");
 			}
-			else if (action_type == 'sell' && available_crypto < size_crypto)
+			else if (action_type == 'sell' && available_crypto[execute_exchange] < size_crypto)
 			{
 				alert("Insufficient funds: the order requires " + size_crypto + " " + crypto_type.value);
 			}
@@ -497,13 +504,14 @@
 					max_order_size_num = parseFloat(max_order_size.value);
 				}
 				btnExecute.disabled = true;
-				var order_params = JSON.stringify({"action_type" : action_type.value,
-												   "size_coin" : size_coin.value,
-												   "crypto_type" : crypto_type.value,
-												   "price_fiat" : price_fiat.value,
-												   "fiat_type" : fiat_type.value,
-												   "duration_sec" : action_order_duration * 60,
-												   "max_order_size" : max_order_size_num});
+				var order_params = JSON.stringify({"action_type": action_type.value,
+												   "size_coin": size_coin.value,
+												   "crypto_type": crypto_type.value,
+												   "price_fiat": price_fiat.value,
+												   "fiat_type": fiat_type.value,
+												   "duration_sec": action_order_duration * 60,
+												   "max_order_size": max_order_size_num,
+												   "exchange": exchange.value});
 				var order_request = new XMLHttpRequest();
 				order_request.open("POST", "/SendOrder", true);
 				order_request.setRequestHeader("Content-Type", "application/json");
@@ -528,6 +536,7 @@
 						btnExecute.disabled = false;
 						should_enable_timed_orders();
 						refresh_bitstamp_balance();
+						refresh_bitfinex_balance();
 						show_sent_orders();
 					}
 				};
@@ -538,64 +547,87 @@
 		
 		function refresh_bitstamp_balance()
 		{
-			refresh_account_balance("usd_balance_placeholder_1", "crypto_available_balance_placeholder_1", "Bitstamp", currency_type);
+			refresh_account_balance("usd_balance_placeholder_1", "crypto_available_balance_placeholder_1", "Bitstamp", currency_type, 1);
 		}
 		
-		function refresh_account_balance(fiat_balance_id, crypto_balance_id, exchange, currency)
+		function refresh_bitfinex_balance()
+		{
+			refresh_account_balance("usd_balance_placeholder_2", "crypto_available_balance_placeholder_2", "Bitfinex", currency_type, 2);
+		}
+		
+		function refresh_account_balance(fiat_balance_id, crypto_balance_id, exchange, currency, exchange_index)
 		{
 			var exchangeFiatPlaceholder = document.getElementById(fiat_balance_id),
 				exchangeCryptoPlaceholder = document.getElementById(crypto_balance_id);
 			var account_request = new XMLHttpRequest();
-			account_request.open("GET", "/AccountBalance/" + exchange + "/ALL", true);
+			account_request.open("GET", "/AccountBalance/" + exchange, true);
 			
 			account_request.onreadystatechange = function() {
 				if (account_request.readyState == 4 && account_request.status == 200) {
 					var account_response = JSON.parse(account_request.responseText.replace(/'/g, '"'));
 					var not_available_text = get_language_element('not_available', 'N/A');
-					available_fiat = not_available_text;
+					available_fiat[exchange] = not_available_text;
 					var exchange_available_crypto = not_available_text;
-					if (account_response.hasOwnProperty("usd_available"))
+					var balances = account_response.balances;
+					if (balances != null)
 					{
-						available_fiat = account_response.usd_available - account_response.server_usd_reserved;
-						exchangeFiatPlaceholder.innerHTML = parseFloat(account_response.usd_available).toFixed(2) + "(" + available_fiat.toFixed(2) + ")";
-					}
-					var available_balance_dict = {"BTC" : {"balance": "btc_available", "usd_price": "btc_price"},
-												  "BCH" : {"balance": "bch_available", "usd_price": "bch_price"}};
-					
-					if (account_response.hasOwnProperty(available_balance_dict[currency_type].balance))
-					{
-						var total_usd_value = parseFloat(account_response.usd_available);
-						exchange_available_crypto = parseFloat(account_response[available_balance_dict[currency_type].balance]);
-						available_crypto = exchange_available_crypto - account_response.reserved_crypto;
-						exchangeCryptoPlaceholder.innerHTML = get_language_element(currency, currency) + " " + get_language_element("balance", "Balance:") + 
-							" " + exchange_available_crypto.toFixed(4) + "(" + available_crypto.toFixed(4) + ")";
-						for (var curr_key in available_balance_dict)
+						exchangeCryptoPlaceholder.innerHTML = "";
+						var total_usd_value = 0;
+						if (balances.USD != null && balances.USD.available != null && balances.USD.amount != null)
 						{
-							var curr_exchange_available_crypto = parseFloat(account_response[available_balance_dict[curr_key].balance]);
-							if (curr_key != currency_type)
+							//alert(balances.USD.available + " " + account_response.server_usd_reserved + 
+							//" " + (balances.USD.available - account_response.server_usd_reserved));
+							available_fiat[exchange] = balances.USD.available - account_response.server_usd_reserved;
+							/*var x = balances.USD.available - account_response.server_usd_reserved;
+							alert(x);
+							available_fiat[exchange] = x;
+							alert(exchange + " " + typeof(available_fiat) + " " + typeof(available_fiat[exchange]) + " " + available_fiat[exchange]);*/
+							exchangeFiatPlaceholder.innerHTML = balances.USD.available.toFixed(2) + "(" + available_fiat[exchange].toFixed(2) + ")";
+							total_usd_value = balances.USD.amount;
+						}
+						currencies = ['BTC', 'BCH'];
+						if (currency_type == "BCH")
+						{
+							currencies = ['BCH', 'BTC'];
+						}
+						
+						for (var currency_index in currencies)
+						{
+							var currency = currencies[currency_index];
+							if (balances[currency] != null)
 							{
-								exchangeCryptoPlaceholder.innerHTML = exchangeCryptoPlaceholder.innerHTML + "<br>" + get_language_element(curr_key, curr_key) + " " + get_language_element("balance", "Balance:") + 
-									" " + curr_exchange_available_crypto.toFixed(4);
-							}
-							var curr_price = account_response[available_balance_dict[curr_key].usd_price];
-							if (curr_price != null && curr_exchange_available_crypto != 0)
-							{
-								total_usd_value += curr_price * curr_exchange_available_crypto;
+								exchange_available_crypto = balances[currency].available;
+								var curr_available_crypto = exchange_available_crypto;
+								if (account_response.reserved_crypto_type == currency && account_response.reserved_crypto != null)
+								{
+									curr_available_crypto = exchange_available_crypto - account_response.reserved_crypto;
+								}
+								
+								if (currency_index == 0)
+								{
+									available_crypto[exchange] = curr_available_crypto;
+								}
+								
+								exchangeCryptoPlaceholder.innerHTML = exchangeCryptoPlaceholder.innerHTML + get_language_element(currency, currency) + " " + get_language_element("balance", "Balance:") + 
+									" " + exchange_available_crypto.toFixed(4) + "(" + curr_available_crypto.toFixed(4) + ")<br>";
+								if (balances[currency].price != null)
+								{
+									total_usd_value += balances[currency].price * exchange_available_crypto;
+								}
 							}
 						}
-
-						exchangeCryptoPlaceholder.innerHTML = exchangeCryptoPlaceholder.innerHTML + "<br>" + get_language_element("total", "Total") + " " + get_language_element("usd_balance", "USD Balance:") + 
+						exchangeCryptoPlaceholder.innerHTML = exchangeCryptoPlaceholder.innerHTML + get_language_element("total", "Total") + " " + get_language_element("usd_balance", "USD Balance:") + 
 							" " + total_usd_value.toFixed(2);
 					}
 					else
 					{
-						reset_balances();
+						reset_balances(exchange_index);
 					}
 					
 					transaction_fee = 0;
-					if (account_response.hasOwnProperty("fee"))
+					if (account_response.fee != null)
 					{
-						transaction_fee = parseFloat(account_response.fee);
+						transaction_fee = account_response.fee;
 					}
 				}
 			};
@@ -605,14 +637,14 @@
 		function refresh_bitstamp_transactions()
 		{
 			var bitstampTransactionsPlaceholder = document.getElementById("bitstamp_transactions_placeholder");
-			if (!bitstamp_account_signed_in)
+			if (!signed_in_users["Bitstamp"])
 			{
 				bitstampTransactionsPlaceholder.innerHTML = get_language_element("unavailable","Unavailable");
 			}
 			else
 			{
 				var bitstamp_transactions_request = new XMLHttpRequest();
-				bitstamp_transactions_request.open("GET", "/BitstampTransactions", true);
+				bitstamp_transactions_request.open("GET", "/Transactions/Bitstamp", true);
 				bitstamp_transactions_request.onreadystatechange = function() {
 					if (bitstamp_transactions_request.readyState == 4 && bitstamp_transactions_request.status == 200) {
 						bitstampTransactionsPlaceholder.innerHTML = '';
@@ -673,6 +705,7 @@
 					{
 						cancel_msg = cancel_msg + "Success";
 						refresh_bitstamp_balance();
+						refresh_bitfinex_balance();
 					}
 					else
 					{
@@ -701,7 +734,9 @@
 		function show_sent_orders()
 		{
 			var timed_order_dict = {0 : get_language_element("manual_short","M"), 1 : get_language_element("timed_short","T")};
-			var exchange_display_dict = {"Bitstamp" : get_language_element("bitstamp_short","BIT")}
+			var exchange_display_dict = {"Bitstamp" : get_language_element("bitstamp_short","BSMP"),
+										 "Bitfinex" : get_language_element("bitfinex_short","BFNX")};
+
 			var action_type_dict = {"buy" : "+", "sell" : "-"};
 			get_sent_orders(orders_limit.value, function(sent_orders_response) {
 			sent_transactions_placeholder.innerHTML = '';
@@ -734,9 +769,10 @@
 			}
 
 			refresh_bitstamp_balance();
+			refresh_bitfinex_balance();
 		}
 		
-		function reset_balances()
+		function reset_balances(exchange_index)
 		{
 			var main_currency_type_text = get_language_element(crypto_type.value, crypto_type.value);
 			var other_currencies_texts = [];
@@ -748,7 +784,14 @@
 					other_currencies_texts.push(get_language_element(crypto_type[coin_index].value, crypto_type[coin_index].value));
 				}
 			}
-			for (var exchange_index = 1; exchange_index <= EXCHANGES_NUM; ++exchange_index)
+			var start_index = 1;
+			var end_index = EXCHANGES_NUM;
+			if (exchange_index != null)
+			{
+				start_index = exchange_index;
+				end_index = exchange_index;
+			}
+			for (var exchange_index = start_index; exchange_index <= end_index; ++exchange_index)
 			{
 				var usd_balance_placeholder = document.getElementById("usd_balance_placeholder_" + exchange_index);
 				var balance_type_placeholder = document.getElementById("crypto_available_balance_placeholder_" + exchange_index);
@@ -769,14 +812,15 @@
 			}
 		}
 		
-		function set_bitstamp_credentials()
+		function set_credentials()
 		{
-			btnSetBitstampCredentials.disabled = true;
-			var credentials_params = JSON.stringify({"username" : bitstamp_account_number.value,
-												     "key" : bitstamp_api_key.value,
-												     "secret" : bitstamp_secret.value});
+			btnSetCredentials.disabled = true;
+			var credentials_params = JSON.stringify({"username" : account_number.value,
+												     "key" : api_key.value,
+												     "secret" : secret.value,
+													 "exchange": sign_in_exchange.value});
 			var set_credentials_request = new XMLHttpRequest();
-			set_credentials_request.open("POST", "/SetBitstampCredentials", true);
+			set_credentials_request.open("POST", "/SetClientCredentials", true);
 			set_credentials_request.setRequestHeader("Content-Type", "application/json");
 			set_credentials_request.onreadystatechange = function () {
 			if (set_credentials_request.readyState === 4 && set_credentials_request.status === 200) 
@@ -790,32 +834,33 @@
 					{
 						alert("Setting credentials status: failure");
 					}
-					btnSetBitstampCredentials.disabled = false;
+					btnSetCredentials.disabled = false;
 					refresh_bitstamp_transactions();
 					refresh_bitstamp_balance();
+					refresh_bitfinex_balance();
 				}
 			};
 			set_credentials_request.send(credentials_params);
 		}
 		
-		function get_bitstamp_credentials()
+		function get_exchange_credentials()
 		{
 			var credentials_request = new XMLHttpRequest();
-			credentials_request.open("GET", "/GetSignedInBitstampCredentials", true);
+			credentials_request.open("GET", "/GetSignedInCredentials/"  + sign_in_exchange.value, true);
 			credentials_request.onreadystatechange = function() {
 				if (credentials_request.readyState == 4 && credentials_request.status == 200) {
 					var credentials_response = JSON.parse(credentials_request.responseText.replace(/'/g, '"'));
 					if (credentials_response.signed_in_user != '')
 					{
-						bitstamp_user_placeholder.innerHTML = credentials_response.signed_in_user;
-						bitstamp_account_signed_in = true;
+						user_placeholder.innerHTML = credentials_response.signed_in_user;
+						signed_in_users[sign_in_exchange.value] = true;
 					}
 					else
 					{
-						bitstamp_user_placeholder.innerHTML = get_language_element('no_user',"None");
-						bitstamp_account_signed_in = false;
+						user_placeholder.innerHTML = get_language_element('no_user',"None");
+						signed_in_users[sign_in_exchange.value] = false;
 					}
-					btnBitstampLogout.disabled = !bitstamp_account_signed_in;
+					btnLogout.disabled = !signed_in_users[sign_in_exchange.value];
 				}
 			};
 			credentials_request.send();
@@ -861,10 +906,10 @@
 			document.body.removeChild(link);
 		}
 		
-		function bitstamp_logout()
+		function exchange_logout()
 		{
 			var logout_request = new XMLHttpRequest();
-			logout_request.open("GET", "/Logout", true);
+			logout_request.open("GET", "/Logout/" + sign_in_exchange.value, true);
 			logout_request.onreadystatechange = function() {
 				if (logout_request.readyState == 4 && logout_request.status == 200) {
 					var logout_response = JSON.parse(logout_request.responseText.replace(/'/g, '"'));
@@ -875,6 +920,7 @@
 						btnBitstampLogout.disabled = true;
 						refresh_bitstamp_transactions();
 						refresh_bitstamp_balance();
+						refresh_bitfinex_balance();
 					}
 					else
 					{
@@ -920,10 +966,11 @@
 		function get_language_element(key, default_value)
 		{
 			var result = default_value;
-			if (language_dict[key] != null)
+			if (language_dict != null && language_dict[key] != null)
 			{
 				result = language_dict[key];
 			}
+			
 			return result;
 		}
 		
@@ -935,6 +982,11 @@
 			if (!results) return null;
 			if (!results[2]) return '';
 			return decodeURIComponent(results[2].replace(/\+/g, " "));
+		}
+		
+		function set_sign_in_exchange()
+		{
+			get_exchange_credentials();
 		}
         </script>
 

@@ -41,8 +41,10 @@ class OrderbookWatchdog():
                     current_orderbooks[curr_orderbook_dict] = self._get_partial_books(self._orderbooks_dict[curr_orderbook_dict])
                     #print("Current {}:\n{}".format(curr_orderbook_dict, current_orderbooks[curr_orderbook_dict]))
                     restarted_orderbook = False
-                    log.debug(curr_orderbook_dict, "Current:",current_orderbooks[curr_orderbook_dict])
-                    log.debug(curr_orderbook_dict, "Compare:",compare_orderbooks[curr_orderbook_dict])
+                    log.debug("Comparing <%s>, current book is: <%s>",
+                              curr_orderbook_dict, current_orderbooks[curr_orderbook_dict])
+                    log.debug("Comparing <%s>, compare book is: <%s>",
+                              curr_orderbook_dict, compare_orderbooks[curr_orderbook_dict])
                     if curr_orderbook_dict in compare_orderbooks and \
                             compare_orderbooks[curr_orderbook_dict] is not None and \
                             current_orderbooks[curr_orderbook_dict] is not None:

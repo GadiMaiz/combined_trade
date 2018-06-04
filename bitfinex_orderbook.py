@@ -10,6 +10,10 @@ class BitfinexOrderbook(OrderbookBase):
     pairs_dict = {'BTCUSD': 'BTC-USD', 'BCHUSD': 'BCH-USD'}
 
     def __init__(self, asset_pairs):
+        self._external_asset_pairs = []
+        for curr_pair in BitfinexOrderbook.pairs_dict:
+            if curr_pair in asset_pairs:
+                self._external_asset_pairs.append(BitfinexOrderbook.pairs_dict[curr_pair])
         super().__init__(asset_pairs)
         self._running = False
         self._orderbook_thread = None
@@ -151,3 +155,6 @@ class BitfinexOrderbook(OrderbookBase):
             self._last_trade[self.pairs_dict[message[1]]] = {'type': trade_type,
                                                              "price": abs(float(message[2][0][1][3])),
                                                              "time": message[2][0][1][1] / 1000}
+
+    def get_assets_pair(self):
+        return self._external_asset_pairs
