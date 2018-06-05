@@ -237,20 +237,22 @@ if __name__ == '__main__':
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
 
+    print("Connecting to orderbooks")
     bitstamp_currencies = {'BTC-USD' : 'BTC-USD', 'BCH-USD': 'BCH-USD'}
     bitstamp_args = {'log_level': logging.ERROR}
     bitstamp_orderbook = BitstampOrderbook(asset_pairs=[bitstamp_currencies['BTC-USD'], bitstamp_currencies['BCH-USD']],
                                            **bitstamp_args)
     bitstamp_orderbook.start_orderbook()
-
+    print("Bitstamp started")
     bitfinex_currencies = {'BTC-USD': 'BTCUSD', 'BCH-USD': 'BCHUSD'}
     bitfinex_orderbook = BitfinexOrderbook([bitfinex_currencies['BTC-USD'], bitfinex_currencies['BCH-USD']])
     bitfinex_orderbook.start_orderbook()
-
+    print("Bitfinex started")
     gdax_currencies = {'BTC-USD' : 'BTC-USD', 'BCH-USD': 'BCH-USD'}
     gdax_orderbook = GdaxOrderbook([gdax_currencies['BTC-USD'], gdax_currencies['BCH-USD']])
     gdax_orderbook.start_orderbook()
 
+    print("Orderbooks started")
     unified_orderbook = UnifiedOrderbook({"Bitstamp": bitstamp_orderbook,
                                           "Bitfinex": bitfinex_orderbook,
                                           "GDAX": gdax_orderbook})
@@ -275,5 +277,3 @@ if __name__ == '__main__':
                                               watchdog)
     #app.run(host= '0.0.0.0', ssl_context='adhoc')
     app.run(host=bind_ip, port=listener_port)
-
-

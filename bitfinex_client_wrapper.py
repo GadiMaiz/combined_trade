@@ -120,6 +120,6 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
     def exchange_fee(self, crypto_type):
         return 0.2
 
-    def minimum_order_size(self, crypto_type):
-        minimum_sizes = {'BTC': 0.002, 'BCH': 0.02}
-        return minimum_sizes[crypto_type]
+    def minimum_order_size(self, asset_pair):
+        minimum_sizes = {'BTC-USD': 0.002, 'BCH-USD': 0.02}
+        return minimum_sizes[asset_pair]

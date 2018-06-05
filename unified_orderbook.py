@@ -27,3 +27,15 @@ class UnifiedOrderbook:
 
     def is_thread_orderbook(self):
         return False
+
+    def get_current_spread_and_price(self, asset_pair):
+        best_orders = self.get_unified_orderbook(asset_pair, 1)
+        spread_and_price = {'ask': 0, 'bid': 0}
+        if len(best_orders['asks'] > 0):
+            spread_and_price['ask'] = best_orders['asks'][0]['price']
+        if len(best_orders['bids'] > 0):
+            spread_and_price['bid'] = best_orders['bids'][0]['price']
+        return spread_and_price
+
+    def get_average_spread(self):
+        return 0

@@ -8,6 +8,7 @@ class OrderbookBase:
     ORDERBOOK_HEALTH_TIMEOUT_SEC = 20
     ORDERBOOK_HEALTH_COMPARE_LENGTH = 4
     SPREAD_MINIMUM_SAMPLES_FOR_MOVING = 100
+    LIVE_TRADES_MAXIMUM_AGE_SEC = 600
 
     def __init__(self, asset_pairs):
         self._calculate_orderbook_thread = None
@@ -16,7 +17,11 @@ class OrderbookBase:
         self._spread_samples = {}
         self._last_trade = {}
         self._asset_pairs = asset_pairs
+        self._live_trades = {}
+        for curr_asset_pair in self._asset_pairs:
+            self._live_trades[curr_asset_pair] = []
         self._log = logging.getLogger(__name__)
+
         for curr_asset_pair in self.get_assets_pair():
             self._average_spreads[curr_asset_pair] = 0
             self._spread_samples[curr_asset_pair] = 0
@@ -114,7 +119,7 @@ class OrderbookBase:
     def get_current_spread_and_price(self, asset_pair):
         curr_spread = 0
         curr_price = self.get_current_price(asset_pair)
-        if curr_price['ask'] is not None and curr_price['bid'] is not None:
+        if 'ask' in curr_price is not None and curr_price['bid'] is not None:
             curr_spread = curr_price['ask'] - curr_price['bid']
 
         curr_price['spread'] = curr_spread
@@ -146,3 +151,7 @@ class OrderbookBase:
 
     def get_assets_pair(self):
         return self._asset_pairs
+
+    def get_exchange_rate(self, crypto_type, price):
+        asset_pair = crypto_type + "-USD"
+        live_trades_size = len(self._live_trades[asset_pair])

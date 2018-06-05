@@ -3,7 +3,7 @@ import time
 from threading import Thread
 import random
 import math
-import sqlite3
+from timed_order_executer import TimedOrderExecuter
 from decimal import Decimal
 import logging
 
@@ -153,7 +153,8 @@ class ClientWrapperBase:
             self._timed_order_thread.start()
             return {'order_status' : True, 'execution_size' : 0, 'execution_message' : "Pending execution"}
 
-    def _execute_timed_order_in_thread(self, action_type,size_coin, crypto_type, price_fiat, fiat_type, duration_sec, max_order_size):
+    def _execute_timed_order_in_thread(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec,
+                                       max_order_size):
         self.log.debug("executing timed order")
         order_timestamp = datetime.datetime.utcnow()
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
@@ -187,7 +188,8 @@ class ClientWrapperBase:
                 sleep_time = self.TIMED_EXECUTION_SLEEP_SEC
                 self.log.debug("Timed execution status: done_size=<%f>, elapsed_time=<%f>", self._timed_order_done_size,
                                self._timed_order_elapsed_time)
-                current_price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(asset_pair)
+                timed_order_executer = self._create_timed_order_executer(asset_pair, action_type)
+                current_price_and_spread = timed_order_executer.get_current_spread_and_price()
                 self.log.debug("Price and spread for <%s>: <%s>", asset_pair, current_price_and_spread)
                 if not action_started:
                     # Checking that the action is within range to start execution
@@ -217,11 +219,11 @@ class ClientWrapperBase:
                     if self._timed_order_done_size != 0 and self._timed_order_elapsed_time != 0:
                         actual_execution_rate = self._timed_order_done_size / self._timed_order_elapsed_time
                         self.log.debug("actual_execution_rate=<%f>", actual_execution_rate)
-                    average_spread = self._orderbook['orderbook'].get_average_spread(asset_pair)
-                    spread_ratio = 0
+                    average_spread = timed_order_executer.get_average_spread()
+                    spread_ratio = 1
                     if average_spread != 0:
-                        spread_ratio = current_price_and_spread['spread'] / \
-                                       self._orderbook['orderbook'].get_average_spread(asset_pair)
+                        spread_ratio = current_price_and_spread['spread'] / average_spread
+
                     if spread_ratio <= 0:
                         self.log.warning("Invalid spread ratio: <%f>, average_spread: <%f>", spread_ratio,
                                          average_spread)
@@ -240,13 +242,14 @@ class ClientWrapperBase:
                             relative_order = True
                             curr_order_size = size_coin - self._timed_order_done_size
 
-                            # Making sure that after executing the order the remaining size will be allowed by the exchange
-                            if curr_order_size - max_order_size < self.minimum_order_size(crypto_type):
+                            # Making sure that after executing the order the remaining size will be
+                            # allowed by the exchange
+                            if curr_order_size - max_order_size < timed_order_executer.minimum_order_size():
                                 relative_order = False
 
-                            sent_order = self.send_immediate_order(action_type, curr_order_size,
-                                                                   crypto_type, price_fiat, fiat_type, relative_order,
-                                                                   max_order_size)
+                            sent_order = timed_order_executer.get_client_for_order().send_immediate_order(
+                                action_type, curr_order_size, crypto_type, price_fiat, fiat_type, relative_order,
+                                max_order_size)
                             if sent_order is not None and sent_order['execution_size'] > 0:
                                 self._timed_order_done_size += sent_order['execution_size']
                                 sleep_time += random.uniform(self.EXECUTED_ORDER_MIN_DELAY_SEC,
@@ -423,12 +426,15 @@ class ClientWrapperBase:
     def exchange_fee(self, crypto_type):
         return 0
 
-    def minimum_order_size(self, crypto_type):
-        minimum_sizes = {'BTC': 0.0006, 'BCH': 0.001}
-        return minimum_sizes[crypto_type]
+    def minimum_order_size(self, asset_pair):
+        minimum_sizes = {'BTC-USD': 0.0006, 'BCH-USD': 0.001}
+        return minimum_sizes[asset_pair]
 
     def is_client_initialized(self):
         return self._is_client_init
 
     def _order_complete(self):
         pass
+
+    def _create_timed_order_executer(self, asset_pair, action_type):
+        return TimedOrderExecuter(self, self._orderbook, asset_pair)
