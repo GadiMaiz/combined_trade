@@ -3,12 +3,12 @@ import client_wrapper_base
 import logging
 
 class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
-    def __init__(self, bitstamp_credentials, bitstamp_orderbook, db_interface):
-        super().__init__(bitstamp_orderbook, db_interface)
+    def __init__(self, credentials, orderbook, db_interface):
+        super().__init__(orderbook, db_interface)
         self.log = logging.getLogger(__name__)
         self._bitstamp_client = None
         self._signed_in_user = ""
-        self.set_credentials(bitstamp_credentials)
+        self.set_credentials(credentials)
         self._fee = 0
 
     def set_credentials(self, client_credentials):
@@ -125,6 +125,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
 
         except Exception as e:
             self.log.error("%s %s", str(type(exchange_method)), str(e))
+            execute_result['status'] = 'Error'
         return execute_result
 
     def buy_immediate_or_cancel(self, execute_size_coin, price_fiat, crypto_type):

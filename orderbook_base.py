@@ -124,7 +124,7 @@ class OrderbookBase:
         return self.get_current_spread_and_price(asset_pair)['spread']
 
     def get_current_price(self, asset_pair):
-        curr_price = {'ask' : None, 'bid' : None}
+        curr_price = {'ask': None, 'bid': None}
         curr_orders = self.get_current_partial_book(asset_pair, 1)
         if curr_orders is not None and len(curr_orders['asks']) > 0 and len(curr_orders['bids']) > 0:
             curr_price['ask'] = curr_orders['asks'][0]['price']

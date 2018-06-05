@@ -10,6 +10,7 @@ class OrderbookWatchdog():
         self._watchdog_running = False
         self._watchdog_thread = None
         self._sleep_timeout_sec = sleep_timeout_sec
+        self._running_orderbooks = dict()
 
     def start(self):
         if self._watchdog_thread is None or not self._watchdog_thread.is_alive():
@@ -136,3 +137,11 @@ class OrderbookWatchdog():
                 self._orderbooks_dict[exchange]['currencies_dict'].values(), **self._orderbooks_dict[exchange]['args'])
         self._orderbooks_dict[exchange]['orderbook'].start_orderbook()
         self._orderbooks_dict['Unified']['orderbook'].set_orderbook(exchange, self._orderbooks_dict[exchange]['orderbook'])
+        for identifier in self._running_orderbooks:
+            self._running_orderbooks[identifier].set_orderbook(exchange, self._orderbooks_dict[exchange]['orderbook'])
+
+    def register_orderbook(self, identifier, orderbook):
+        self._running_orderbooks[identifier] = orderbook
+
+    def unregister_orderbook(self, identifier):
+        self._running_orderbooks.pop(identifier, None)

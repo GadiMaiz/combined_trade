@@ -108,8 +108,7 @@ def cancel_timed_order():
 def send_order():
     log.debug("Send Order")
     request_params = json.loads(request.data)
-
-    order_status = exchanges_manager.send_order(request_params['exchange'], request_params['action_type'],
+    order_status = exchanges_manager.send_order(request_params['exchanges'], request_params['action_type'],
                                                 float(request_params['size_coin']), request_params['crypto_type'],
                                                 float(request_params['price_fiat']), request_params['fiat_type'],
                                                 int(request_params['duration_sec']),
@@ -267,12 +266,13 @@ if __name__ == '__main__':
     watchdog = OrderbookWatchdog(orderbooks, frozen_orderbook_timeout_sec)
     watchdog.start()
     exchanges_manager = ExchangeClientManager({'Bitstamp': {'creator': BitstampClientWrapper,
-                                                            'args': {'bitstamp_credentials': bitstamp_credentials,
-                                                                     'bitstamp_orderbook': orderbooks['Bitstamp']}},
+                                                            'args': {'credentials': bitstamp_credentials,
+                                                                     'orderbook': orderbooks['Bitstamp']}},
                                                'Bitfinex': {'creator': BitfinexClientWrapper,
-                                                            'args': {'bitfinex_credentials': {},
-                                                                     'bitfinex_orderbook': orderbooks['Bitfinex']}}},
-                                              "./Transactions.data")
+                                                            'args': {'credentials': {},
+                                                                     'orderbook': orderbooks['Bitfinex']}}},
+                                              "./Transactions.data",
+                                              watchdog)
     #app.run(host= '0.0.0.0', ssl_context='adhoc')
     app.run(host=bind_ip, port=listener_port)
 

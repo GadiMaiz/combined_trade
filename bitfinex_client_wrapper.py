@@ -3,12 +3,12 @@ import client_wrapper_base
 import logging
 
 class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
-    def __init__(self, bitfinex_credentials, bitfinex_orderbook, db_interface):
-        super().__init__(bitfinex_orderbook, db_interface)
+    def __init__(self, credentials, orderbook, db_interface):
+        super().__init__(orderbook, db_interface)
         self.log = logging.getLogger(__name__)
         self._bitfinex_client = None
         self._signed_in_user = ""
-        self.set_credentials(bitfinex_credentials)
+        self.set_credentials(credentials)
 
     def set_credentials(self, client_credentials):
         username = ''
@@ -71,22 +71,24 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
         self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type=<%s>", action_type, size, price, crypto_type)
         print("Executing <{}>, size=<{}>, price=<{}>, type=<{}>".format(action_type, size, price, crypto_type))
         execute_result = {'order_status': False}
-        #try:
-        if self._bitfinex_client is not None and self._signed_in_user != "":
-            exchange_result = self._bitfinex_client.place_order(str(size), str(price), action_type,
-                                                       "exchange fill-or-kill", crypto_type.lower() + "usd")
-            print(exchange_result)
-            exchange_status = self._bitfinex_client.status_order(exchange_result['id'])
-            execute_result = {'exchange': self.get_exchange_name(),
-                              'id': exchange_result['id'],
-                              'executed_price_usd': exchange_status['avg_execution_price']}
-            if exchange_status['is_cancelled']:
-                execute_result['status'] = "Cancelled"
-            else:
-                execute_result['status'] = 'Finished'
-                execute_result['order_status'] = True
-        #except Exception as e:
-        #    self.log.error("%s %s", action_type, e)
+        try:
+            if self._bitfinex_client is not None and self._signed_in_user != "":
+                exchange_result = self._bitfinex_client.place_order(str(size), str(price), action_type,
+                                                           "exchange fill-or-kill", crypto_type.lower() + "usd")
+                print(exchange_result)
+                exchange_status = self._bitfinex_client.status_order(exchange_result['id'])
+                execute_result = {'exchange': self.get_exchange_name(),
+                                  'id': exchange_result['id'],
+                                  'executed_price_usd': exchange_status['avg_execution_price']}
+                if exchange_status['is_cancelled']:
+                    execute_result['status'] = "Cancelled"
+                else:
+                    execute_result['status'] = 'Finished'
+                    execute_result['order_status'] = True
+        except Exception as e:
+            self.log.error("%s %s", action_type, e)
+            execute_result['status'] = 'Error'
+            execute_result['order_status'] = True
         return execute_result
 
     def buy_immediate_or_cancel(self, execute_size_coin, price_fiat, crypto_type):

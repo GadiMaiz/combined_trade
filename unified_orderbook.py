@@ -10,7 +10,8 @@ class UnifiedOrderbook:
         self._is_thread_orderbook = False
 
     def set_orderbook(self, exchange, orderbook):
-        self._orderbooks[exchange] = orderbook
+        if exchange in self._orderbooks:
+            self._orderbooks[exchange] = orderbook
 
     def get_unified_orderbook(self, symbol, size):
         client_orderbooks = []

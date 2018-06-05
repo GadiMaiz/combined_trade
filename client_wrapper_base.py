@@ -67,7 +67,7 @@ class ClientWrapperBase:
 
     def send_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec, max_order_size):
         order_sent = {'order_status': False, 'execution_size': 0, 'execution_message': ''}
-        if not self._is_client_init:
+        if not self.is_client_initialized():
             order_sent['execution_message'] = 'Exchange client not initialized'
         else:
             order_allowed = self.can_send_order(action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec)
@@ -78,6 +78,7 @@ class ClientWrapperBase:
                 if duration_sec == 0:
                     order_sent = self.send_immediate_order(action_type, size_coin, crypto_type, price_fiat, fiat_type,
                                                            False, 0)
+                    self._order_complete()
                 else:
                     actions_dict = {'timed_sell': 'sell', 'timed_buy': 'buy'}
                     self.log.info("Time order, action: <%s>, size_coin: <%f>, crypto_type: <%s>, price: <%f> "
@@ -92,9 +93,29 @@ class ClientWrapperBase:
         return order_sent
 
     def can_send_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec):
+        result, refuse_reason = ClientWrapperBase.verify_order_params(size_coin, price_fiat, duration_sec)
+
+        if result:
+            balance_before_order = self.account_balance()
+            if result and action_type == 'sell' and size_coin > \
+                    balance_before_order['balances'][crypto_type]['available']:
+                refuse_reason = "Available balance " + \
+                                str(balance_before_order['balances'][crypto_type]['available']) + \
+                                crypto_type + " is less than required size " + str(size_coin) + crypto_type
+                result = False
+            elif result and action_type == 'buy' and (price_fiat * size_coin * (1 + 0.01 *
+                                                                                balance_before_order['fee'])) > \
+                    float(balance_before_order['balances'][fiat_type]['available']):
+                refuse_reason = "Available balance " + str(balance_before_order['balances'][fiat_type]['available']) + \
+                                "USD is less than required balance " + \
+                                str(price_fiat * size_coin * (1 + 0.01 * balance_before_order['fee']))
+                result = False
+        return {'can_send_order': result, 'reason': refuse_reason}
+
+    @staticmethod
+    def verify_order_params(size_coin, price_fiat, duration_sec):
         result = True
         refuse_reason = ''
-        balance_before_order = self.account_balance()
         try:
             refuse_reason = "Invalid size"
             if float(size_coin) <= 0:
@@ -117,17 +138,7 @@ class ClientWrapperBase:
         except ValueError:
             result = False
 
-        if result and action_type == 'sell' and size_coin > balance_before_order['balances'][crypto_type]['available']:
-            refuse_reason = "Available balance " + str(balance_before_order['balances'][crypto_type]['available']) + \
-                            crypto_type + " is less than required size " + str(size_coin) + crypto_type
-            result = False
-        elif result and action_type == 'buy' and (price_fiat * size_coin * (1 + 0.01 * balance_before_order['fee'])) > \
-                float(balance_before_order['balances'][fiat_type]['available']):
-            refuse_reason = "Available balance " + str(balance_before_order['balances'][fiat_type]['available']) + \
-                            "USD is less than required balance " + str(price_fiat * size_coin * (1 + 0.01 * balance_before_order['fee']))
-            result = False
-
-        return {'can_send_order': result, 'reason': refuse_reason}
+        return result, refuse_reason
 
     def execute_timed_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec, max_order_size):
         if self._timed_order_thread is not None and self._timed_order_thread.is_alive():
@@ -255,10 +266,12 @@ class ClientWrapperBase:
                 self.log.error("Unexpected error during timed order: %s", str(e))
         self._reserved_crypto = 0
         self._reserved_usd = 0
+        self._order_complete()
 
         self.log.info("Timed sell finished")
 
-    def send_immediate_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, relative_size, max_order_size):
+    def send_immediate_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, relative_size,
+                             max_order_size):
         sent_order = None
         execution_message = ''
         order_timestamp = datetime.datetime.utcnow()
@@ -267,59 +280,59 @@ class ClientWrapperBase:
         order_info = {'exchange': self.get_exchange_name(), 'action_type': action_type, 'price_fiat': price_fiat,
                       'order_time': order_time, 'timed_order': self.TIMED_ORDERS_DICT[relative_size],
                       'status': "Init", 'crypto_type': crypto_type}
-        #try:
-        execute_size_coin = size_coin
-        price_and_spread = None
-        if relative_size:
-            price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(crypto_type + "-USD")
-
-        if action_type == 'buy':
+        try:
+            execute_size_coin = size_coin
+            price_and_spread = None
             if relative_size:
-                if price_and_spread['ask'] > price_fiat:
-                    self.log.info("price is too high: <%f> maximum price: <%f>",price_and_spread['ask'], price_fiat)
-                    execute_size_coin = 0
-                else:
-                    execute_size_coin = min(size_coin, self._get_relative_size(price_and_spread['ask'],
-                                                                               self.ORDER_EXECUTION_MIN_FACTOR,
-                                                                               self.ORDER_EXECUTION_MAX_FACTOR))
+                price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(crypto_type + "-USD")
 
-                execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
-                execute_size_coin = max(execute_size_coin, self.minimum_order_size(crypto_type))
-                self.log.debug("size: <%f> execute_size: <%f> max_order_size: <%f>", size_coin, execute_size_coin,
-                               max_order_size)
+            if action_type == 'buy':
+                if relative_size:
+                    if price_and_spread['ask'] > price_fiat:
+                        self.log.info("price is too high: <%f> maximum price: <%f>",price_and_spread['ask'], price_fiat)
+                        execute_size_coin = 0
+                    else:
+                        execute_size_coin = min(size_coin, self._get_relative_size(price_and_spread['ask'],
+                                                                                   self.ORDER_EXECUTION_MIN_FACTOR,
+                                                                                   self.ORDER_EXECUTION_MAX_FACTOR))
 
+                    execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
+                    execute_size_coin = max(execute_size_coin, self.minimum_order_size(crypto_type))
+                    self.log.debug("size: <%f> execute_size: <%f> max_order_size: <%f>", size_coin, execute_size_coin,
+                                   max_order_size)
+
+                if execute_size_coin > 0:
+                    order_info['crypto_size'] = execute_size_coin
+                    self.log.info("Buying <%f> <%s> for <%f>", execute_size_coin, crypto_type, price_fiat)
+                    sent_order = self.buy_immediate_or_cancel(execute_size_coin, price_fiat,
+                                                              self.CRYPTO_CURRENCIES_DICT[crypto_type])
+                    self.log.debug("sent order: <%s>", str(sent_order))
+            elif action_type == 'sell':
+                if relative_size:
+                    if price_and_spread['bid'] < price_fiat:
+                        execute_size_coin = 0
+                    else:
+                        execute_size_coin = min(size_coin, self._get_relative_size(price_and_spread['bid'],
+                                                                                   self.ORDER_EXECUTION_MIN_FACTOR,
+                                                                                   self.ORDER_EXECUTION_MAX_FACTOR))
+
+                    execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
+                    execute_size_coin = max(execute_size_coin, self.minimum_order_size(crypto_type))
+                    self.log.debug("size: <%f> execute_size: <%f>, max_order_size: <%f>", size_coin, execute_size_coin,
+                                   max_order_size)
+
+                if execute_size_coin > 0:
+                    order_info['crypto_size'] = execute_size_coin
+                    self.log.info("Selling <%f> <%s> with limit of <%f>", execute_size_coin, crypto_type, price_fiat)
+                    sent_order = self.sell_immediate_or_cancel(execute_size_coin, price_fiat,
+                                                               self.CRYPTO_CURRENCIES_DICT[crypto_type])
+                    self.log.debug("sent order: <%s>", str(sent_order))
             if execute_size_coin > 0:
-                order_info['crypto_size'] = execute_size_coin
-                self.log.info("Buying <%f> <%s> for <%f>", execute_size_coin, crypto_type, price_fiat)
-                sent_order = self.buy_immediate_or_cancel(execute_size_coin, price_fiat,
-                                                          self.CRYPTO_CURRENCIES_DICT[crypto_type])
-                self.log.debug("sent order: <%s>", str(sent_order))
-        elif action_type == 'sell':
-            if relative_size:
-                if price_and_spread['bid'] < price_fiat:
-                    execute_size_coin = 0
-                else:
-                    execute_size_coin = min(size_coin, self._get_relative_size(price_and_spread['bid'],
-                                                                               self.ORDER_EXECUTION_MIN_FACTOR,
-                                                                               self.ORDER_EXECUTION_MAX_FACTOR))
-
-                execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
-                execute_size_coin = max(execute_size_coin, self.minimum_order_size(crypto_type))
-                self.log.debug("size: <%f> execute_size: <%f>, max_order_size: <%f>", size_coin, execute_size_coin,
-                               max_order_size)
-
-            if execute_size_coin > 0:
-                order_info['crypto_size'] = execute_size_coin
-                self.log.info("Selling <%f> <%s> with limit of <%f>", execute_size_coin, crypto_type, price_fiat)
-                sent_order = self.sell_immediate_or_cancel(execute_size_coin, price_fiat,
-                                                           self.CRYPTO_CURRENCIES_DICT[crypto_type])
-                self.log.debug("sent order: <%s>", str(sent_order))
-        if execute_size_coin > 0:
-            self.log.debug("Order sent in size <%f> for action <%s>", execute_size_coin, action_type)
-        """except Exception as e:
+                self.log.debug("Order sent in size <%f> for action <%s>", execute_size_coin, action_type)
+        except Exception as e:
             order_info = None
             self.log.error("Order not sent: <%s>", str(e))
-            sent_order = None"""
+            sent_order = None
 
         order_status = False
         if sent_order is not None:
@@ -413,3 +426,9 @@ class ClientWrapperBase:
     def minimum_order_size(self, crypto_type):
         minimum_sizes = {'BTC': 0.0006, 'BCH': 0.001}
         return minimum_sizes[crypto_type]
+
+    def is_client_initialized(self):
+        return self._is_client_init
+
+    def _order_complete(self):
+        pass
