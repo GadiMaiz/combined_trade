@@ -196,6 +196,8 @@
 				<option value="buy" data-dict-value="buy">Buy</option>
 				<option value="timed_sell" data-dict-value="timed_sell">Timed Sell</option>
 				<option value="timed_buy" data-dict-value="timed_buy">Timed Buy</option>
+				<option value="buy_limit" data-dict-value="buy_limit">Buy Limit</option>
+				<option value="sell_limit" data-dict-value="buy_limit">Sell Limit</option>
 			</select>
 			<select id="exchange" name="exchange">
 				<option value="Best" data-dict-value="best_exchange">Best Exchange</option>
@@ -746,17 +748,22 @@
 			var exchange_display_dict = {"Bitstamp" : get_language_element("bitstamp_short","BSMP"),
 										 "Bitfinex" : get_language_element("bitfinex_short","BFNX")};
 
-			var action_type_dict = {"buy" : "+", "sell" : "-"};
+			var action_type_dict = {"buy" : "+", "sell" : "-", "buy_limit": "+?", "sell_limit": "-?"};
 			get_sent_orders(orders_limit.value, function(sent_orders_response) {
 			sent_transactions_placeholder.innerHTML = '';
-			var order_type_colors_dict = {'buy':'"Green"', 'sell':'"Red"'};
+			var order_type_colors_dict = {'buy':'"Green"', 'sell':'"Red"', 'buy_limit': '"Green"', 'sell_limit': '"Red"'};
 			for (i = 0; i < sent_orders_response.length; i++)
 			{
-				sent_transactions_placeholder.innerHTML = sent_transactions_placeholder.innerHTML + '<font color = ' + order_type_colors_dict[sent_orders_response[i].action_type] + ' >' + exchange_display_dict[sent_orders_response[i].exchange] +
+				var exchange_display = exchange_display_dict[sent_orders_response[i].exchange];
+				if (exchange_display == null)
+				{
+					exchange_display = sent_orders_response[i].exchange;
+				}
+				sent_transactions_placeholder.innerHTML = sent_transactions_placeholder.innerHTML + '<font color = ' + order_type_colors_dict[sent_orders_response[i].action_type] + ' >' + exchange_display +
 				" " + sent_orders_response[i].order_time + "(" + timed_order_dict[sent_orders_response[i].timed_order] + "): " +
 					action_type_dict[sent_orders_response[i].action_type] + parseFloat(sent_orders_response[i].crypto_size).toFixed(4) + 
 					get_language_element(sent_orders_response[i].crypto_type,sent_orders_response[i].crypto_type) +
-					" " + get_language_element('buy_at','@') + sent_orders_response[i].price_fiat + "," + 
+					" " + get_language_element('buy_at','@') + sent_orders_response[i].price_fiat.toFixed(2) + "," + 
 					get_language_element(sent_orders_response[i].status.toLowerCase(),sent_orders_response[i].status) + "</font><BR>";
 			}})
 		}

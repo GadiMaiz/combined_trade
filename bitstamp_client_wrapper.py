@@ -3,8 +3,8 @@ import client_wrapper_base
 import logging
 
 class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
-    def __init__(self, credentials, orderbook, db_interface):
-        super().__init__(orderbook, db_interface)
+    def __init__(self, credentials, orderbook, db_interface, clients_manager):
+        super().__init__(orderbook, db_interface, clients_manager)
         self.log = logging.getLogger(__name__)
         self._bitstamp_client = None
         self._signed_in_user = ""
@@ -73,7 +73,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
     def get_exchange_name(self):
         return "Bitstamp"
 
-    def _execute_immediate_or_cancel(self, exchange_method, size, price, crypto_type):
+    def _execute_immediate_or_cancel(self, exchange_method, size, price, crypto_type, cancel_not_done):
         self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type=<%s>", exchange_method, size, price, crypto_type)
         execute_result = {'exchange': self.get_exchange_name(), 'order_status': False}
         try:
@@ -95,7 +95,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                 elif order_status is None:
                     execute_result['status'] = 'Finished'
                     execute_result['order_status'] = True
-                else:
+                elif cancel_not_done:
                     self.log.debug("Cancelling order")
                     if order_status is not None:
                         try:
@@ -106,7 +106,10 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                         except Exception as e:
                             self.log.debug("Exception while cancelling order: <%s>", str(e))
 
-                if cancel_status is None:
+                if cancel_status is None and not cancel_not_done:
+                    execute_result['status'] = 'Open'
+                    execute_result['order_status'] = True
+                elif cancel_status is None:
                     execute_result['status'] = 'Finished'
                     try:
                         found_transaction = False
@@ -130,11 +133,11 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
 
     def buy_immediate_or_cancel(self, execute_size_coin, price_fiat, crypto_type):
         return self._execute_immediate_or_cancel(self._bitstamp_client.buy_limit_order, execute_size_coin, price_fiat,
-                                                 crypto_type)
+                                                 crypto_type, True)
 
     def sell_immediate_or_cancel(self, execute_size_coin, price_fiat, crypto_type):
         return self._execute_immediate_or_cancel(self._bitstamp_client.sell_limit_order, execute_size_coin, price_fiat,
-                                                 crypto_type)
+                                                 crypto_type, True)
 
     def order_status(self, order_id):
         order_status = None
@@ -169,3 +172,11 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
 
     def exchange_fee(self, crypto_type):
         return self._fee
+
+    def buy_limit(self, execute_size_coin, price_fiat, crypto_type):
+        return self._execute_immediate_or_cancel(self._bitstamp_client.buy_limit_order, execute_size_coin, price_fiat,
+                                                 crypto_type, False)
+
+    def sell_limit(self, execute_size_coin, price_fiat, crypto_type):
+        return self._execute_immediate_or_cancel(self._bitstamp_client.sell_limit_order, execute_size_coin, price_fiat,
+                                                 crypto_type, False)

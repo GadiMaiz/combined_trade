@@ -108,12 +108,14 @@ def cancel_timed_order():
 def send_order():
     log.debug("Send Order")
     request_params = json.loads(request.data)
+    print("Sending order in web service")
     order_status = exchanges_manager.send_order(request_params['exchanges'], request_params['action_type'],
                                                 float(request_params['size_coin']), request_params['crypto_type'],
                                                 float(request_params['price_fiat']), request_params['fiat_type'],
                                                 int(request_params['duration_sec']),
                                                 float(request_params['max_order_size']))
     result = order_status
+    print(result)
     result['order_status'] = str(result['order_status'])
     log.info("command sent")
     return str(result)

@@ -8,9 +8,9 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
     MAXIMUM_ORDER_ATTEMPTS = 20
     ORDERBOOK_COMMANDS_FOR_ORDER = 20
 
-    def __init__(self, clients, orderbook, db_interface, watchdog, sent_order_identifier):
+    def __init__(self, clients, orderbook, db_interface, watchdog, sent_order_identifier, clients_manager):
         self._clients = clients
-        super().__init__(orderbook, db_interface)
+        super().__init__(orderbook, db_interface, clients_manager)
         self.log = logging.getLogger(__name__)
         self._watchdog = watchdog
         self._sent_order_identifier = sent_order_identifier
@@ -70,6 +70,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
 
                 if remaining_size == 0:
                     break
+
             self.log.info("Command split to exchanges: <%s>", exchanges_to_execute)
             for exchange in exchanges_to_execute:
                 client_for_order = self._clients[exchange]
@@ -96,15 +97,17 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
             if not self._clients[client].is_client_initialized():
                 are_clients_init = False
                 break
-        print(are_clients_init)
         return are_clients_init
 
     def send_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec, max_order_size):
         self._watchdog.register_orderbook(self._sent_order_identifier, self._orderbook)
-        return super().send_order(action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec, max_order_size)
+        return super().send_order(action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec,
+                                  max_order_size)
 
-    def _order_complete(self):
+    def _order_complete(self, is_timed_order):
         self._watchdog.unregister_orderbook(self._sent_order_identifier)
+        self._clients_manager.unregister_client(self._sent_order_identifier)
+        super()._order_complete(is_timed_order)
 
     def get_exchange_name(self):
         all_names = ""
@@ -125,5 +128,6 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
             exchange = orders['bids'][0]['source']
 
         if exchange != "":
-            executer = TimedOrderExecuter(self._clients[exchange], self._orderbook, asset_pair)
+            print("Creating timed executer for exchange {}".format(exchange))
+            executer = TimedOrderExecuter(self._clients[exchange], {'orderbook': self._orderbook}, asset_pair)
         return executer

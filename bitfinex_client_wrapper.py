@@ -3,8 +3,8 @@ import client_wrapper_base
 import logging
 
 class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
-    def __init__(self, credentials, orderbook, db_interface):
-        super().__init__(orderbook, db_interface)
+    def __init__(self, credentials, orderbook, db_interface, clients_manager):
+        super().__init__(orderbook, db_interface, clients_manager)
         self.log = logging.getLogger(__name__)
         self._bitfinex_client = None
         self._signed_in_user = ""
@@ -67,15 +67,16 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
     def get_exchange_name(self):
         return "Bitfinex"
 
-    def _execute_exchange_order(self, action_type, size, price, crypto_type):
-        self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type=<%s>", action_type, size, price, crypto_type)
-        print("Executing <{}>, size=<{}>, price=<{}>, type=<{}>".format(action_type, size, price, crypto_type))
+    def _execute_exchange_order(self, action_type, size, price, crypto_type, exchange_instruction):
+        self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type=<%s>, exchange_instruction=<%s>", action_type, size,
+                       price, crypto_type, exchange_instruction)
+        print("Executing <{}>, size=<{}>, price=<{}>, type=<{}>".format(action_type, size, price, crypto_type,
+                                                                        exchange_instruction))
         execute_result = {'order_status': False}
         try:
             if self._bitfinex_client is not None and self._signed_in_user != "":
                 exchange_result = self._bitfinex_client.place_order(str(size), str(price), action_type,
-                                                           "exchange fill-or-kill", crypto_type.lower() + "usd")
-                print(exchange_result)
+                                                                    exchange_instruction, crypto_type.lower() + "usd")
                 exchange_status = self._bitfinex_client.status_order(exchange_result['id'])
                 execute_result = {'exchange': self.get_exchange_name(),
                                   'id': exchange_result['id'],
@@ -92,10 +93,10 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
         return execute_result
 
     def buy_immediate_or_cancel(self, execute_size_coin, price_fiat, crypto_type):
-        return self._execute_exchange_order("buy", execute_size_coin, price_fiat, crypto_type)
+        return self._execute_exchange_order("buy", execute_size_coin, price_fiat, crypto_type, "exchange fill-or-kill")
 
     def sell_immediate_or_cancel(self, execute_size_coin, price_fiat, crypto_type):
-        return self._execute_exchange_order("sell", execute_size_coin, price_fiat, crypto_type)
+        return self._execute_exchange_order("sell", execute_size_coin, price_fiat, crypto_type, "exchange fill-or-kill")
 
     def order_status(self, order_id):
         order_status = {}
@@ -123,3 +124,9 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
     def minimum_order_size(self, asset_pair):
         minimum_sizes = {'BTC-USD': 0.002, 'BCH-USD': 0.02}
         return minimum_sizes[asset_pair]
+
+    def buy_limit(self, execute_size_coin, price_fiat, crypto_type):
+        return self._execute_exchange_order("buy", execute_size_coin, price_fiat, crypto_type, "exchange limit")
+
+    def sell_limit(self, execute_size_coin, price_fiat, crypto_type):
+        return self._execute_exchange_order("sell", execute_size_coin, price_fiat, crypto_type, "exchange limit")

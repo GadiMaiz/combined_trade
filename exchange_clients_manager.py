@@ -9,14 +9,15 @@ class ExchangeClientManager():
         self._reserved_balances = {'BTC': 0, 'BCH': 0, 'USD': 0}
         self._clients = dict()
         self._db_interface = TradeDB(db_file)
-        self._timed_order_exchange = None
         self._orderbooks = dict()
         self._watchdog = watchdog
         self._sent_orders_multiple_exchanges_identifier = 0
+        self._multiple_clients = dict()
+        self._last_multiple_client_timed_status = None
         for curr_exchange in exchanges_params:
             self._clients[curr_exchange] = {}
             self._clients[curr_exchange]['client'] = exchanges_params[curr_exchange]['creator']\
-                (db_interface=self._db_interface, **exchanges_params[curr_exchange]['args'])
+                (db_interface=self._db_interface, clients_manager=self, **exchanges_params[curr_exchange]['args'])
             self._orderbooks[curr_exchange] = exchanges_params[curr_exchange]['args']['orderbook']
 
     def exchange_currency_balance(self, exchange, currency):
@@ -52,10 +53,11 @@ class ExchangeClientManager():
                    max_order_size):
         result = dict()
         if len(exchanges) == 1 and exchanges[0] in self._clients:
-            if duration_sec > 0:
-                self._timed_order_exchange = exchanges[0]
-            result = self._clients[exchanges[0]]['client'].send_order(action_type, size_coin, crypto_type, price_fiat,
-                                                                      fiat_type, duration_sec, max_order_size)
+            #if duration_sec > 0:
+            print("Sending order to", exchanges[0])
+            result = self._clients[exchanges[0]]['client'].send_order(action_type, size_coin, crypto_type,
+                                                                      price_fiat, fiat_type, duration_sec,
+                                                                      max_order_size)
         else:
             valid_exchanges = True
             order_clients = dict()
@@ -74,19 +76,19 @@ class ExchangeClientManager():
                 multiple_client = MultipleExchangesClientWrapper(order_clients,
                                                                  orderbook_for_order, self._db_interface,
                                                                  self._watchdog,
-                                                                 self._sent_orders_multiple_exchanges_identifier)
+                                                                 self._sent_orders_multiple_exchanges_identifier,
+                                                                 self)
+                self._multiple_clients[self._sent_orders_multiple_exchanges_identifier] = multiple_client
                 self._sent_orders_multiple_exchanges_identifier = self._sent_orders_multiple_exchanges_identifier + 1
                 result = multiple_client.send_order(action_type, size_coin, crypto_type, price_fiat, fiat_type,
                                                     duration_sec,  max_order_size)
-                print("Multiple exchanges result:", result)
         return result
 
     def is_timed_order_running(self):
         result = False
-        for curr_exchange in self._clients:
-            if self._clients[curr_exchange]['client'].is_timed_order_running():
-                result = True
-                break
+        timed_order_client = self._get_timed_order_client()
+        if timed_order_client:
+            result = True
         return result
 
     def get_timed_order_status(self):
@@ -99,16 +101,40 @@ class ExchangeClientManager():
                   'timed_order_elapsed_time': 0,
                   'timed_order_duration_sec': 0,
                   'timed_order_price_fiat': 0}
-        if self._timed_order_exchange is not None:
-            result = self._clients[self._timed_order_exchange]['client'].get_timed_order_status()
 
+        timed_order_client = self._get_timed_order_client()
+        if timed_order_client:
+            result = timed_order_client.get_timed_order_status()
+        elif self._last_multiple_client_timed_status is not None:
+            result = self._last_multiple_client_timed_status
         return result
 
     def cancel_timed_order(self):
         result = False
-        if self._timed_order_exchange is not None:
-            result = self._clients[self._timed_order_exchange]['client'].cancel_timed_order()
+        timed_order_client = self._get_timed_order_client()
+        if timed_order_client:
+            result = timed_order_client.cancel_timed_order()
         return result
 
     def get_sent_orders(self, limit):
         return self._db_interface.get_sent_orders(limit)
+
+    def unregister_client(self, identifier):
+        self._multiple_clients.pop(identifier, None)
+
+    def _get_timed_order_client(self):
+        timed_order_client = None
+        for curr_exchange in self._clients:
+            if self._clients[curr_exchange]['client'].is_timed_order_running():
+                timed_order_client = self._clients[curr_exchange]['client']
+                break
+
+        if not timed_order_client:
+            for multiple_client_identifier in self._multiple_clients:
+                if self._multiple_clients[multiple_client_identifier].is_timed_order_running():
+                    timed_order_client = self._multiple_clients[multiple_client_identifier]
+                    break
+        return timed_order_client
+
+    def set_last_status(self, last_status):
+        self._last_multiple_client_timed_status = last_status
