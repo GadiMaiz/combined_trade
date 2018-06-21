@@ -4,7 +4,7 @@ trading_client = bitstamp.client.Trading(username='934248', key='pCYdWylg6SOYraz
 #import trade_client
 #trading_client = trade_client.TradeClient()
 print('balance',trading_client.account_balance())
-sent_order = trading_client.sell_limit_order(0.0008, 10000)
+"""sent_order = trading_client.sell_limit_order(0.0008, 10000)
 #sent_order = trading_client.buy_limit_order(0.0018, 7962)
 print('sent order', sent_order,'balance',trading_client.account_balance())
 all_orders = trading_client.open_orders()
@@ -23,3 +23,4 @@ print(len(all_orders), "open orders: ", all_orders)
 trade_history = trading_client.user_transactions()
 print('transactions', trade_history)
 
+"""

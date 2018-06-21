@@ -22,13 +22,18 @@ class TradeDB:
             self.log.error("Can't connect to DB")
         else:
             try:
-                insert_str = "INSERT INTO sent_orders VALUES('{}', '{}', {}, {}, {}, '{}', '{}', {}, '{}', {}, " \
-                             "{})".format(order_info['exchange'], order_info['action_type'], order_info['crypto_size'],
+                if 'ask' not in order_info or 'bid' not in order_info:
+                    order_info['ask'] = 0
+                    order_info['bid'] = 0
+                insert_str = "INSERT INTO sent_orders VALUES('{}', '{}', {}, {}, '{}', '{}', '{}', {}, '{}', {}, {}, {}" \
+                             ",{})".format(order_info['exchange'], order_info['action_type'], order_info['crypto_size'],
                                           order_info['price_fiat'], order_info['exchange_id'], order_info['status'],
                                           order_info['order_time'], order_info['timed_order'],
                                           order_info['crypto_type'],
                                           order_info['balance']['balances']['USD']['available'],
-                                          order_info['balance']['balances'][order_info['crypto_type']]['available'])
+                                          order_info['balance']['balances'][order_info['crypto_type']]['available'],
+                                          order_info['ask'], order_info['bid'])
+                print(insert_str)
                 self.log.info(insert_str)
                 conn.execute(insert_str)
                 conn.commit()
@@ -47,17 +52,19 @@ class TradeDB:
             exchange_id = curr_order[4]
             if exchange_id is None:
                 exchange_id = ""
-            order_dict = {'exchange' : curr_order[0],
-                          'action_type' : curr_order[1],
+            order_dict = {'exchange': curr_order[0],
+                          'action_type': curr_order[1],
                           'crypto_size': curr_order[2],
                           'price_fiat': curr_order[3],
                           'exchange_id': exchange_id,
                           'status': curr_order[5],
-                          'order_time' : curr_order[6],
-                          'timed_order' : curr_order[7],
+                          'order_time': curr_order[6],
+                          'timed_order': curr_order[7],
                           'crypto_type': curr_order[8],
                           'usd_balance': curr_order[9],
-                          'crypto_available': curr_order[10]}
+                          'crypto_available': curr_order[10],
+                          'ask': curr_order[11],
+                          'bid': curr_order[12]}
             all_orders.append(order_dict)
         conn.close()
         return all_orders

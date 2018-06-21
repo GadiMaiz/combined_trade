@@ -1,10 +1,13 @@
 from flask import Flask, send_from_directory, request
 from bitfinex_orderbook import BitfinexOrderbook
+from orderbook_base import OrderbookFee
 from bitfinex_client_wrapper import BitfinexClientWrapper
 from gdax_orderbook import GdaxOrderbook
 from unified_orderbook import UnifiedOrderbook
 from bitstamp_client_wrapper import BitstampClientWrapper
 from bitstamp_orderbook import BitstampOrderbook
+from kraken_orderbook import KrakenOrderbook
+from kraken_client_wrapper import KrakenClientWrapper
 from orderbook_watchdog import OrderbookWatchdog
 from exchange_clients_manager import ExchangeClientManager
 import logging
@@ -34,44 +37,36 @@ def send_favicon():
     return send_from_directory('','favicon.ico')
 
 @app.route('/Orderbook/<exchange>/<currency>')
+def get_orderbook_str(exchange, currency):
+    return str(get_orderbook(exchange, currency))
+
 def get_orderbook(exchange, currency):
-    request_orders = orderbooks[exchange]
-    result = {'asks' : [], 'bids' : [], 'average_spread' : 0}
-    if request_orders != None:
+    result = {'asks': [], 'bids': [], 'average_spread': 0, 'currency': currency}
+    if exchange in orderbooks and orderbooks[exchange]:
+        request_orders = orderbooks[exchange]
         if exchange == "Unified":
-            curr_orders = request_orders['orderbook'].get_unified_orderbook(currency, 8)
-            return str(curr_orders)
+            curr_orders = request_orders['orderbook'].get_unified_orderbook(currency, 8, OrderbookFee.NO_FEE)
+            curr_orders['currency'] = currency
+            return curr_orders
         else:
-            result = request_orders['orderbook'].get_current_partial_book(currency, 8)
-            if result != None:
-                result['average_spread'] = request_orders['orderbook'].get_average_spread(currency)
-                last_price = request_orders['orderbook'].get_last(currency)
-                if last_price is not None:
-                    result['last_price'] = last_price
+            if request_orders['orderbook']:
+                result = request_orders['orderbook'].get_current_partial_book(currency, 8, OrderbookFee.NO_FEE)
+                result['currency'] = currency
+                if result != None:
+                    result['average_spread'] = request_orders['orderbook'].get_average_spread(currency)
+                    last_price = request_orders['orderbook'].get_last(currency)
+                    if last_price is not None:
+                        result['last_price'] = last_price
+                    result['rate'] = request_orders['orderbook'].get_tracked_info(currency)
 
-    return str(result)
+    return result
 
-@app.route('/AccountBalance/<exchange>')
-def get_account_balance(exchange):
-    account_balance = {}
-    #first_currency = True
-    if exchange in orderbooks:
-        account_balance = exchanges_manager.exchange_balance(exchange)
-    """for curr_currency in valid_currencies:
-        if first_currency:
-            first_currency = False
-            account_balance = bitstamp_client.account_balance(curr_currency)
-        else:
-            curr_balance = bitstamp_client.account_balance(curr_currency)
-            for curr_account_balance_key in curr_balance:
-                if curr_account_balance_key.endswith("_available") and not curr_account_balance_key.startswith("usd"):
-                    account_balance[curr_account_balance_key] = curr_balance[curr_account_balance_key]
-                    break
-        currency_price = bitstamp_orderbook.get_current_price(curr_currency + "-USD")
-        if currency_price is not None and currency_price['ask'] is not None and currency_price['bid'] is not None:
-            account_balance[curr_currency.lower() + "_price"] = (currency_price['ask'] + currency_price['bid']) / 2"""
 
-    return str(account_balance)
+@app.route('/AccountBalance')
+def get_all_accounts_balance():
+    account_balances = exchanges_manager.get_all_account_balances()
+    return str(account_balances)
+
 
 @app.route('/Transactions/<exchange>')
 def get_bitstamp_transactions(exchange):
@@ -138,15 +133,28 @@ def set_client_credentials():
     try:
         request_params = json.loads(request.data)
         exchange = request_params['exchange']
-        if exchange in orderbooks:
+        fees = dict()
+        try:
+            fees['take'] = float(request_params['taker_fee'])
+        except ValueError as e:
+            pass
+        try:
+            fees['make'] = float(request_params['maker_fee'])
+        except ValueError as e:
+            pass
+        if exchange in orderbooks and 'username' in request_params and 'key' in request_params and \
+                'secret' in request_params:
             credentials = {'username': request_params['username'],
                            'key': request_params['key'],
                            'secret': request_params['secret']}
+            orderbooks[exchange]['fees'].update(fees)
+            orderbooks[exchange]['orderbook'].set_fees(orderbooks[exchange]['fees'])
         result['set_credentials_status'] = str(exchanges_manager.set_exchange_credentials(exchange, credentials))
-    except:
+    except Exception as e:
         result['set_credentials_status'] = 'False'
 
     return str(result)
+
 
 @app.route('/Logout/<exchange>')
 def logout(exchange):
@@ -155,12 +163,14 @@ def logout(exchange):
         result['set_credentials_status'] = str(exchanges_manager.logout_from_exchange(exchange))
     return str(result)
 
-@app.route('/GetSignedInCredentials/<exchange>')
-def get_bitstamp_signed_in_credentials(exchange):
-    result = {'signed_in_user': "", 'is_user_signed_in': "False"}
-    if exchange in orderbooks:
-        result = exchanges_manager.get_signed_in_credentials(exchange)
+
+@app.route('/GetSignedInCredentials')
+def get_signed_in_credentials():
+    result = {}
+    for exchange in orderbooks:
+        result[exchange] = exchanges_manager.get_signed_in_credentials(exchange)
     return str(result)
+
 
 @app.route('/RestartOrderbook/<exchange>')
 def restart_orderbook(exchange):
@@ -169,6 +179,39 @@ def restart_orderbook(exchange):
     if exchange in orderbooks:
         watchdog.restart_orderbook(exchange)
         result["restart_result"] = "True"
+
+    return str(result)
+
+@app.route('/StartOrderbook/<exchange>')
+def start_orderbook(exchange):
+    result = {"start_result": "False",
+              "exchange": exchange}
+    if exchange in orderbooks:
+        watchdog.start_orderbook(exchange)
+        result["start_result"] = "True"
+    return str(result)
+
+@app.route('/StopOrderbook/<exchange>')
+def stop_orderbook(exchange):
+    result = {"stop_result": "False",
+              "exchange": exchange}
+    if exchange in orderbooks:
+        watchdog.stop_orderbook(exchange)
+        result["stop_result"] = "True"
+        logout(exchange)
+    return str(result)
+
+@app.route('/ActiveExchanges')
+def get_active_exchanges():
+    return str(watchdog.get_active_exchanges())
+
+@app.route('/ActiveOrderbooks/<currency>')
+def get_active_orderbooks(currency):
+    active_exchanges = watchdog.get_active_exchanges()
+    active_exchanges.append("Unified")
+    result = dict()
+    for exchange in active_exchanges:
+        result[exchange] = get_orderbook(exchange, currency)
 
     return str(result)
 
@@ -190,7 +233,7 @@ if __name__ == '__main__':
     bitstamp_api_key = ''
     bitstamp_secret = ''
     listener_port = 5000
-    frozen_orderbook_timeout_sec = 20
+    frozen_orderbook_timeout_sec = 30
     log_level = logging.ERROR
 
     try:
@@ -240,33 +283,45 @@ if __name__ == '__main__':
     log.setLevel(logging.ERROR)
 
     print("Connecting to orderbooks")
-    bitstamp_currencies = {'BTC-USD' : 'BTC-USD', 'BCH-USD': 'BCH-USD'}
+    bitstamp_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD'}
     bitstamp_args = {'log_level': logging.ERROR}
+    bitstamp_fees = {'take': 0.25, 'make': 0.25}
     bitstamp_orderbook = BitstampOrderbook(asset_pairs=[bitstamp_currencies['BTC-USD'], bitstamp_currencies['BCH-USD']],
-                                           **bitstamp_args)
+                                           fees=bitstamp_fees, **bitstamp_args)
     bitstamp_orderbook.start_orderbook()
     print("Bitstamp started")
     bitfinex_currencies = {'BTC-USD': 'BTCUSD', 'BCH-USD': 'BCHUSD'}
-    bitfinex_orderbook = BitfinexOrderbook([bitfinex_currencies['BTC-USD'], bitfinex_currencies['BCH-USD']])
+    bitfinex_fees = {'take': 0.1, 'make': 0.2}
+    bitfinex_orderbook = BitfinexOrderbook([bitfinex_currencies['BTC-USD'], bitfinex_currencies['BCH-USD']],
+                                           bitfinex_fees)
     bitfinex_orderbook.start_orderbook()
     print("Bitfinex started")
     gdax_currencies = {'BTC-USD' : 'BTC-USD', 'BCH-USD': 'BCH-USD'}
-    gdax_orderbook = GdaxOrderbook([gdax_currencies['BTC-USD'], gdax_currencies['BCH-USD']])
+    gdax_fees = {'take': 0.3, 'make': 0}
+    gdax_orderbook = GdaxOrderbook([gdax_currencies['BTC-USD'], gdax_currencies['BCH-USD']], gdax_fees)
     gdax_orderbook.start_orderbook()
+
+    kraken_fees = {'take': 0.26, 'make': 0.16}
+    kraken_orderbook = KrakenOrderbook(['BTC-USD', 'BCH-USD'], kraken_fees)
+    kraken_orderbook.start_orderbook()
 
     print("Orderbooks started")
     unified_orderbook = UnifiedOrderbook({"Bitstamp": bitstamp_orderbook,
                                           "Bitfinex": bitfinex_orderbook,
-                                          "GDAX": gdax_orderbook})
+                                          "GDAX": gdax_orderbook,
+                                          "Kraken": kraken_orderbook})
 
-    orderbooks = {'Bitstamp' : { 'orderbook' : bitstamp_orderbook, 'currencies_dict': bitstamp_currencies,
-                                 'creator': BitstampOrderbook, 'args': bitstamp_args},
-                  'GDAX' : { 'orderbook' : gdax_orderbook, 'currencies_dict': gdax_currencies,
-                             'creator': GdaxOrderbook },
-                  'Bitfinex' : { 'orderbook' : bitfinex_orderbook, 'currencies_dict': bitfinex_currencies,
-                                 'creator': BitfinexOrderbook},
-                  'Unified' : { 'orderbook' : unified_orderbook, 'currencies_dict': bitstamp_currencies,
-                                'creator': UnifiedOrderbook}}
+    orderbooks = {'Bitstamp': {'orderbook': bitstamp_orderbook, 'currencies_dict': bitstamp_currencies,
+                               'creator': BitstampOrderbook, 'args': bitstamp_args, 'active': True,
+                               'fees': bitstamp_fees},
+                  'GDAX': {'orderbook': gdax_orderbook, 'currencies_dict': gdax_currencies,
+                           'creator': GdaxOrderbook, 'active': True, 'fees': gdax_fees},
+                  'Bitfinex': {'orderbook': bitfinex_orderbook, 'currencies_dict': bitfinex_currencies,
+                               'creator': BitfinexOrderbook, 'active': True, 'fees': bitfinex_fees},
+                  'Kraken': {'orderbook': kraken_orderbook, 'currencies_dict': bitstamp_currencies,
+                             'creator': KrakenOrderbook, 'active': True, 'fees': kraken_fees},
+                  'Unified': {'orderbook': unified_orderbook, 'currencies_dict': bitstamp_currencies,
+                              'creator': UnifiedOrderbook, 'active': False, 'fees': dict()}}
     watchdog = OrderbookWatchdog(orderbooks, frozen_orderbook_timeout_sec)
     watchdog.start()
     exchanges_manager = ExchangeClientManager({'Bitstamp': {'creator': BitstampClientWrapper,
@@ -274,7 +329,11 @@ if __name__ == '__main__':
                                                                      'orderbook': orderbooks['Bitstamp']}},
                                                'Bitfinex': {'creator': BitfinexClientWrapper,
                                                             'args': {'credentials': {},
-                                                                     'orderbook': orderbooks['Bitfinex']}}},
+                                                                     'orderbook': orderbooks['Bitfinex']}},
+                                               'Kraken': {'creator': KrakenClientWrapper,
+                                                          'args': {'credentials': {},
+                                                                   'orderbook': orderbooks['Kraken']}}
+                                               },
                                               "./Transactions.data",
                                               watchdog)
     #app.run(host= '0.0.0.0', ssl_context='adhoc')

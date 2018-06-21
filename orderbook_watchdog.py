@@ -1,6 +1,7 @@
 import logging
 from threading import Thread
 import time
+from orderbook_base import OrderbookFee
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +31,8 @@ class OrderbookWatchdog():
         compare_orderbooks = {}
         empty_orderbook = {}
         for curr_orderbook_dict in self._orderbooks_dict:
-            if self._orderbooks_dict[curr_orderbook_dict]['orderbook'].is_thread_orderbook():
+            if self._orderbooks_dict[curr_orderbook_dict]['orderbook'] and \
+                    self._orderbooks_dict[curr_orderbook_dict]['orderbook'].is_thread_orderbook():
                 compare_orderbooks[curr_orderbook_dict] = self._get_partial_books(self._orderbooks_dict[curr_orderbook_dict])
                 empty_orderbook[curr_orderbook_dict] = 0
 
@@ -38,8 +40,10 @@ class OrderbookWatchdog():
             time.sleep(self._sleep_timeout_sec)
             current_orderbooks = {}
             for curr_orderbook_dict in self._orderbooks_dict:
-                if self._orderbooks_dict[curr_orderbook_dict]['orderbook'].is_thread_orderbook():
-                    current_orderbooks[curr_orderbook_dict] = self._get_partial_books(self._orderbooks_dict[curr_orderbook_dict])
+                if self._orderbooks_dict[curr_orderbook_dict]['orderbook'] and \
+                        self._orderbooks_dict[curr_orderbook_dict]['orderbook'].is_thread_orderbook():
+                    current_orderbooks[curr_orderbook_dict] = \
+                        self._get_partial_books(self._orderbooks_dict[curr_orderbook_dict])
                     #print("Current {}:\n{}".format(curr_orderbook_dict, current_orderbooks[curr_orderbook_dict]))
                     restarted_orderbook = False
                     log.debug("Comparing <%s>, current book is: <%s>",
@@ -83,7 +87,9 @@ class OrderbookWatchdog():
     def _get_partial_books(orderbook_dict):
         result = {}
         for currency in orderbook_dict['currencies_dict']:
-            result[currency] = orderbook_dict['orderbook'].get_current_partial_book(orderbook_dict['currencies_dict'][currency], 8)
+            result[currency] = \
+                orderbook_dict['orderbook'].get_current_partial_book(orderbook_dict['currencies_dict'][currency], 8,
+                                                                     OrderbookFee.NO_FEE)
 
         return result
 
@@ -129,19 +135,48 @@ class OrderbookWatchdog():
         return result
 
     def restart_orderbook(self, exchange):
-        self._orderbooks_dict[exchange]['orderbook'].stop_orderbook()
-        if 'args' not in self._orderbooks_dict[exchange]:
-            self._orderbooks_dict[exchange]['orderbook'] = self._orderbooks_dict[exchange]['creator'](self._orderbooks_dict[exchange]['currencies_dict'].values())
-        else:
-            self._orderbooks_dict[exchange]['orderbook'] = self._orderbooks_dict[exchange]['creator'](
-                self._orderbooks_dict[exchange]['currencies_dict'].values(), **self._orderbooks_dict[exchange]['args'])
-        self._orderbooks_dict[exchange]['orderbook'].start_orderbook()
-        self._orderbooks_dict['Unified']['orderbook'].set_orderbook(exchange, self._orderbooks_dict[exchange]['orderbook'])
-        for identifier in self._running_orderbooks:
-            self._running_orderbooks[identifier].set_orderbook(exchange, self._orderbooks_dict[exchange]['orderbook'])
+        self.stop_orderbook(exchange)
+        self.start_orderbook(exchange)
+
+    def stop_orderbook(self, exchange):
+        if self._orderbooks_dict[exchange]['active']:
+            self._orderbooks_dict[exchange]['orderbook'].stop_orderbook()
+            self._orderbooks_dict['Unified']['orderbook'].set_orderbook(exchange, None)
+            self._orderbooks_dict[exchange]['orderbook'] = None
+            self._orderbooks_dict[exchange]['active'] = False
+            for identifier in self._running_orderbooks:
+                self._running_orderbooks[identifier].set_orderbook(exchange, None)
+
+    def start_orderbook(self, exchange):
+        if not self._orderbooks_dict[exchange]['active']:
+            if 'args' not in self._orderbooks_dict[exchange]:
+                self._orderbooks_dict[exchange]['orderbook'] = \
+                    self._orderbooks_dict[exchange]['creator'](
+                        self._orderbooks_dict[exchange]['currencies_dict'].values(),
+                        self._orderbooks_dict[exchange]['fees'])
+            else:
+                self._orderbooks_dict[exchange]['orderbook'] = \
+                    self._orderbooks_dict[exchange]['creator'](
+                        self._orderbooks_dict[exchange]['currencies_dict'].values(),
+                        self._orderbooks_dict[exchange]['fees'],
+                        **self._orderbooks_dict[exchange]['args'])
+            self._orderbooks_dict[exchange]['orderbook'].start_orderbook()
+            self._orderbooks_dict['Unified']['orderbook'].set_orderbook(exchange,
+                                                                        self._orderbooks_dict[exchange]['orderbook'])
+            self._orderbooks_dict[exchange]['active'] = True
+            for identifier in self._running_orderbooks:
+                self._running_orderbooks[identifier].set_orderbook(exchange,
+                                                                   self._orderbooks_dict[exchange]['orderbook'])
 
     def register_orderbook(self, identifier, orderbook):
         self._running_orderbooks[identifier] = orderbook
 
     def unregister_orderbook(self, identifier):
         self._running_orderbooks.pop(identifier, None)
+
+    def get_active_exchanges(self):
+        active_orderbooks = []
+        for exchange in self._orderbooks_dict:
+            if self._orderbooks_dict[exchange]['active']:
+                active_orderbooks.append(exchange)
+        return active_orderbooks

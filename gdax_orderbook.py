@@ -9,8 +9,8 @@ import dateutil.parser
 
 class GdaxOrderbook(OrderbookBase):
     _event_loop = None
-    def __init__(self, asset_pairs):
-        super().__init__(asset_pairs)
+    def __init__(self, asset_pairs, fees):
+        super().__init__(asset_pairs, fees)
         self.running = False
         self._orderbook_thread = None
         self._orderbook = None
@@ -62,7 +62,7 @@ class GdaxOrderbook(OrderbookBase):
                 except Exception as e:
                     self._log.error("Error handling message, message is: <%s>, error is: <%s>", message, str(e))
 
-    def get_current_partial_book(self, product_id, book_size):
+    def _get_orderbook_from_exchange(self, product_id, book_size):
         result = {
             'asks': [],
             'bids': [],

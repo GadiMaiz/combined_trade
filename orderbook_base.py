@@ -1,6 +1,14 @@
 import time
 from threading import Thread
 import logging
+from execution_rate_tracker import ExecutionRateTracker
+from enum import Enum
+
+
+class OrderbookFee(Enum):
+    NO_FEE = 0
+    TAKER_FEE = 1
+    MAKER_FEE = 2
 
 class OrderbookBase:
     SPREAD_MOVING_AVERAGE_INTERVAL_SEC = 0.1
@@ -10,7 +18,7 @@ class OrderbookBase:
     SPREAD_MINIMUM_SAMPLES_FOR_MOVING = 100
     LIVE_TRADES_MAXIMUM_AGE_SEC = 600
 
-    def __init__(self, asset_pairs):
+    def __init__(self, asset_pairs, fees):
         self._calculate_orderbook_thread = None
         self._orderbook_running = False
         self._average_spreads = {}
@@ -18,11 +26,17 @@ class OrderbookBase:
         self._last_trade = {}
         self._asset_pairs = asset_pairs
         self._live_trades = {}
+        self._rate_trackers = {}
+        self._fees = None
+        self.set_fees(fees)
         for curr_asset_pair in self._asset_pairs:
             self._live_trades[curr_asset_pair] = []
+            self._rate_trackers[curr_asset_pair] = {'buy': ExecutionRateTracker(),
+                                                    'sell': ExecutionRateTracker()}
         self._log = logging.getLogger(__name__)
+        self._orders_for_listening = {}
 
-        for curr_asset_pair in self.get_assets_pair():
+        for curr_asset_pair in self.get_asset_pairs():
             self._average_spreads[curr_asset_pair] = 0
             self._spread_samples[curr_asset_pair] = 0
 
@@ -53,25 +67,43 @@ class OrderbookBase:
     def _stop(self):
         print("stop")
 
-    def get_current_partial_book(self, asset_pair, size):
+    def _get_orderbook_from_exchange(self, asset_pair, size):
         result = {'asks': [],
                   'bids': []}
         return result
+
+    def get_current_partial_book(self, asset_pair, size, include_fees_in_price):
+        partial_orderbook = self._get_orderbook_from_exchange(asset_pair, size)
+        if include_fees_in_price != OrderbookFee.NO_FEE:
+            fees = self.get_fees()
+            change_fee = 0
+            if include_fees_in_price == OrderbookFee.MAKER_FEE:
+                change_fee = fees['make']
+            elif include_fees_in_price == OrderbookFee.TAKER_FEE:
+                change_fee = fees['take']
+            partial_orderbook['asks_with_fee'] = list(partial_orderbook['asks'])
+            partial_orderbook['bids_with_fee'] = list(partial_orderbook['bids'])
+            self._set_fee_to_orders(partial_orderbook['asks_with_fee'], change_fee)
+            self._set_fee_to_orders(partial_orderbook['bids_with_fee'], change_fee * -1)
+        return partial_orderbook
+
+    @staticmethod
+    def _set_fee_to_orders(orders, fee):
+        for order_index in range(len(orders)):
+            orders[order_index]['price'] *= (1 + 0.01 * fee)
 
     def _calculate_orderbook_params(self):
         curr_time = time.time()
         prev_average_time = 0
         prev_orderbooks_compare_time = 0
         different_orderbooks_timestamp = curr_time
-        compare_orderbook = {}
+        """compare_orderbook = {}
         for curr_asset_pair in self._asset_pairs:
             self._spread_samples[curr_asset_pair] = 0
             compare_orderbook[curr_asset_pair] = self.get_current_partial_book(curr_asset_pair,
-                                                                               OrderbookBase.ORDERBOOK_HEALTH_COMPARE_LENGTH)
-
-
+                                                                               OrderbookBase.ORDERBOOK_HEALTH_COMPARE_LENGTH)"""
         while self._orderbook_running:
-            for curr_asset_pair in self.get_assets_pair():
+            for curr_asset_pair in self.get_asset_pairs():
                 if curr_time - prev_average_time >= OrderbookBase.SPREAD_MOVING_AVERAGE_INTERVAL_SEC:
                     curr_spread = self.get_current_spread(curr_asset_pair)
                     if curr_spread > 0:
@@ -117,23 +149,27 @@ class OrderbookBase:
         return self._average_spreads[asset_pair]
 
     def get_current_spread_and_price(self, asset_pair):
-        curr_spread = 0
         curr_price = self.get_current_price(asset_pair)
-        if 'ask' in curr_price is not None and curr_price['bid'] is not None:
-            curr_spread = curr_price['ask'] - curr_price['bid']
-
-        curr_price['spread'] = curr_spread
+        if curr_price:
+            curr_price['spread'] = curr_price['ask']['price'] - curr_price['bid']['price']
         return curr_price
 
     def get_current_spread(self, asset_pair):
-        return self.get_current_spread_and_price(asset_pair)['spread']
+        curr_spread = 0
+        curr_price_and_spread = self.get_current_spread_and_price(asset_pair)
+        if curr_price_and_spread:
+            curr_spread = curr_price_and_spread['spread']
+        return curr_spread
 
-    def get_current_price(self, asset_pair):
-        curr_price = {'ask': None, 'bid': None}
-        curr_orders = self.get_current_partial_book(asset_pair, 1)
+    def get_current_price(self, asset_pair, include_fee=OrderbookFee.NO_FEE):
+        curr_price = None
+        curr_orders = self.get_current_partial_book(asset_pair, 1, include_fee)
         if curr_orders is not None and len(curr_orders['asks']) > 0 and len(curr_orders['bids']) > 0:
-            curr_price['ask'] = curr_orders['asks'][0]['price']
-            curr_price['bid'] = curr_orders['bids'][0]['price']
+            curr_price = {'ask': {'price': curr_orders['asks'][0]['price'], 'size': curr_orders['asks'][0]['size']},
+                          'bid': {'price': curr_orders['bids'][0]['price'], 'size': curr_orders['bids'][0]['size']}}
+            if include_fee != OrderbookFee.NO_FEE:
+                curr_price['ask_with_fee'] = {'price': curr_orders['asks_with_fee'][0]['price']}
+                curr_price['bid_with_fee'] = {'price': curr_orders['bids_with_fee'][0]['price']}
 
         return curr_price
 
@@ -149,9 +185,31 @@ class OrderbookBase:
     def is_thread_orderbook(self):
         return True
 
-    def get_assets_pair(self):
+    def get_asset_pairs(self):
         return self._asset_pairs
 
     def get_exchange_rate(self, crypto_type, price):
         asset_pair = crypto_type + "-USD"
         live_trades_size = len(self._live_trades[asset_pair])
+
+    def listen_for_order(self, order_id, order_listener):
+        self._orders_for_listening[order_id] = order_listener
+
+    def stop_listening_for_order(self, order_id):
+        self._orders_for_listening.pop(order_id, None)
+
+    def get_tracked_info(self, asset_pair):
+        return {'buy_price': self._rate_trackers[asset_pair]['buy'].get_price(),
+                'buy_size': self._rate_trackers[asset_pair]['buy'].get_size(),
+                'sell_price': self._rate_trackers[asset_pair]['sell'].get_price(),
+                'sell_size': self._rate_trackers[asset_pair]['sell'].get_size()}
+
+    def get_fees(self):
+        return self._fees
+
+    def set_fees(self, fees):
+        self._fees = fees
+
+    def add_fees_to_partial_orderbook(self, partial_orderbook):
+        fees = self.get_fees()
+

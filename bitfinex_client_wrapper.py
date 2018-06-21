@@ -1,6 +1,7 @@
 import bitfinex
 import client_wrapper_base
 import logging
+from order_tracker import BitfinexOrderTracker
 
 class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
     def __init__(self, credentials, orderbook, db_interface, clients_manager):
@@ -22,7 +23,7 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
                 key = client_credentials['key']
                 secret = client_credentials['secret']
 
-            if len(username) != 0 and len(username) != 0 and len(username) != 0:
+            if len(username) != 0 and len(key) != 0 and len(secret) != 0:
                 self._bitfinex_client = bitfinex.TradeClient(key=key, secret=secret)
                 self._bitfinex_client.balances()
                 self._signed_in_user = username
@@ -77,9 +78,10 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
             if self._bitfinex_client is not None and self._signed_in_user != "":
                 exchange_result = self._bitfinex_client.place_order(str(size), str(price), action_type,
                                                                     exchange_instruction, crypto_type.lower() + "usd")
-                exchange_status = self._bitfinex_client.status_order(exchange_result['id'])
+                exchange_status = self.order_status(exchange_result['id'])
+                print(exchange_result)
                 execute_result = {'exchange': self.get_exchange_name(),
-                                  'id': exchange_result['id'],
+                                  'id': int(exchange_result['id']),
                                   'executed_price_usd': exchange_status['avg_execution_price']}
                 if exchange_status['is_cancelled']:
                     execute_result['status'] = "Cancelled"
@@ -99,17 +101,17 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
         return self._execute_exchange_order("sell", execute_size_coin, price_fiat, crypto_type, "exchange fill-or-kill")
 
     def order_status(self, order_id):
-        order_status = {}
-        if self._bitfinex is not None and self._signed_in_user != "":
+        result = {}
+        if self._bitfinex_client is not None and self._signed_in_user != "":
             try:
-                order_status = self._bitfinex.order_status(order_id)
+                result = self._bitfinex_client.status_order(order_id)
             except Exception as e:
                 self.log.error("%s", str(e))
-        return order_status
+        return result
 
     def transactions(self, transactions_limit):
         transactions = []
-        exchange_asset_pairs = self._orderbook.get_assets_pair()
+        exchange_asset_pairs = self._orderbook.get_asset_pairs()
         for asset_pair_key in exchange_asset_pairs:
             try:
                 asset_pair = exchange_asset_pairs[asset_pair_key].lower()
@@ -130,3 +132,20 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
 
     def sell_limit(self, execute_size_coin, price_fiat, crypto_type):
         return self._execute_exchange_order("sell", execute_size_coin, price_fiat, crypto_type, "exchange limit")
+
+    def create_order_tracker(self, order, orderbook, order_info):
+        order['id'] = int(order['id'])
+        return BitfinexOrderTracker(order, orderbook, self, order_info)
+
+    def exchange_accuracy(self):
+        return '1e-1'
+
+    def _cancel_order(self, order_id):
+        cancel_status = False
+        if self._bitfinex_client is not None and self._signed_in_user != "":
+            try:
+                cancel_status = self._bitfinex_client.delete_order(order_id)
+                self.log.debug("Cancel status: <%s>", cancel_status)
+            except Exception as e:
+                self.log.error("Cancel exception: %s", str(e))
+        return cancel_status

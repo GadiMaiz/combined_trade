@@ -53,6 +53,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
         if self._bitstamp_client is not None and self._signed_in_user != "":
             try:
                 bitstamp_account_balance = self._bitstamp_client.account_balance(False, False)
+                fees = dict()
                 if 'btcusd_fee' in bitstamp_account_balance:
                     self._fee = float(bitstamp_account_balance['btcusd_fee'])
                 elif 'fee' in bitstamp_account_balance:
@@ -66,6 +67,11 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                             balance = float(bitstamp_account_balance[balance_key])
                         currency = bitstamp_balance_key.replace("_available", "")
                         result[currency.upper()] = {"amount": balance, "available": available_balance}
+                    """elif bitstamp_balance_key.endswith("usd_fee"):
+                        fees[bitstamp_balance_key.replace("usd_fee", "")] = \
+                            float(bitstamp_account_balance[bitstamp_balance_key])
+                self._orderbook['fees'].update(fees)
+                self._orderbook['orderbook'].set_fees(self._orderbook['fees'])"""
             except Exception as e:
                 self.log.error("%s", str(e))
         return result
@@ -81,7 +87,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                 limit_order_result = exchange_method(size, price, crypto_type)
                 self.log.info("Execution result: <%s>", execute_result)
                 order_id = limit_order_result['id']
-                execute_result['id'] = order_id
+                execute_result['id'] = int(order_id)
                 execute_result['executed_price_usd'] = price
                 order_status = self.order_status(order_id)
                 self.log.debug("order status <%s>", order_status)
@@ -128,6 +134,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
 
         except Exception as e:
             self.log.error("%s %s", str(type(exchange_method)), str(e))
+            print("Error:", e)
             execute_result['status'] = 'Error'
         return execute_result
 

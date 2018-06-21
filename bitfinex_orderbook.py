@@ -9,12 +9,14 @@ class BitfinexOrderbook(OrderbookBase):
     symbols_dict = {'BTCUSD': 'BTC', 'BCHUSD': 'BCH', 'BTC-USD': 'BTC', 'BCH-USD': 'BCH'}
     pairs_dict = {'BTCUSD': 'BTC-USD', 'BCHUSD': 'BCH-USD'}
 
-    def __init__(self, asset_pairs):
+    def __init__(self, asset_pairs, fees):
         self._external_asset_pairs = []
+        self._inverse_pairs = {}
         for curr_pair in BitfinexOrderbook.pairs_dict:
             if curr_pair in asset_pairs:
                 self._external_asset_pairs.append(BitfinexOrderbook.pairs_dict[curr_pair])
-        super().__init__(asset_pairs)
+                self._inverse_pairs[BitfinexOrderbook.pairs_dict[curr_pair]] = curr_pair
+        super().__init__(asset_pairs, fees)
         self._running = False
         self._orderbook_thread = None
         self._orderbook = {'BTC': None, 'BCH': None}
@@ -128,13 +130,13 @@ class BitfinexOrderbook(OrderbookBase):
             if index < len(self._orderbook[crypto_type][element_type]) and self._orderbook[crypto_type][element_type][index]['price'] == change_price:
                 del self._orderbook[crypto_type][element_type][index]
 
-    def get_current_partial_book(self, asset_pair, size):
+    def _get_orderbook_from_exchange(self, asset_pair, size):
         crypto_type = self.symbols_dict[asset_pair]
-        result = { 'asks' : [],
-                   'bids' : []}
+        result = { 'asks': [],
+                   'bids': []}
         if self._orderbook[crypto_type] != None:
-            result = { 'asks' : self._orderbook[crypto_type]['asks'][0:size],
-                       'bids' : self._orderbook[crypto_type]['bids'][0:size]}
+            result = { 'asks': self._orderbook[crypto_type]['asks'][0:size],
+                       'bids': self._orderbook[crypto_type]['bids'][0:size]}
 
         return result
 
@@ -150,11 +152,33 @@ class BitfinexOrderbook(OrderbookBase):
     def _set_price(self, message):
         if not isinstance(message[2][0][0], list):
             trade_type = 'buy'
-            if float(message[2][0][1][3]) < 0:
+            if float(message[2][0][1][2]) < 0:
                 trade_type = 'sell'
             self._last_trade[self.pairs_dict[message[1]]] = {'type': trade_type,
                                                              "price": abs(float(message[2][0][1][3])),
                                                              "time": message[2][0][1][1] / 1000}
+            self._track_trade_info(message, self._inverse_pairs[self.pairs_dict[message[1]]])
 
-    def get_assets_pair(self):
+    def get_asset_pairs(self):
         return self._external_asset_pairs
+
+    def _track_trade_info(self, trade_dict, asset_pair):
+        #print(trade_dict)
+        if trade_dict[2][0][0] == 'te':
+            #print("Bitfinex {} size={}, price={}".format(asset_pair, float(trade_dict[2][0][1][2]),
+            #                                             float(trade_dict[2][0][1][3])))
+            try:
+                if float(trade_dict[2][0][1][2]) > 0:
+                    self._rate_trackers[asset_pair]['buy'].add_trade(float(trade_dict[2][0][1][2]),
+                                                                     float(trade_dict[2][0][1][3]))
+                else:
+                    #print("Sell:", trade_dict)
+                    self._rate_trackers[asset_pair]['sell'].add_trade(-1 * float(trade_dict[2][0][1][2]),
+                                                                      float(trade_dict[2][0][1][3]))
+            except Exception as e:
+                print("Bitfinex exception", e)
+            #print(self.get_tracked_info(asset_pair))
+
+    def get_tracked_info(self, asset_pair):
+        asset_pair = self._inverse_pairs[asset_pair]
+        return super().get_tracked_info(asset_pair)

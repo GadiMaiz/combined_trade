@@ -3,7 +3,7 @@ import gdax
 from aiohttp import web
 from bitex.api.WSS.bitstamp import BitstampWSS
 #from bitex.api.WSS.okcoin import OKCoinWSS
-import KrakenOrders
+import kraken_orderbook
 from bitfinex_orderbook import BitfinexOrderbook
 from unified_orderbook import UnifiedOrderbook
 
@@ -21,7 +21,7 @@ async def run_gdax_orderbook():
 
 async def run_kraken_orderbook():
     global curr_kraken_orderbook
-    kraken_query_client = KrakenOrders.KrakenQuery()
+    kraken_query_client = kraken_orderbook.KrakenQuery()
     curr_kraken_orderbook = kraken_query_client.get_current_partial_book('BTC-USD', 10)
     print("Kraken Orderbook initialized")
     while True:

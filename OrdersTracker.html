@@ -29,47 +29,66 @@
 		
 		<table border=1>
 		<tr>
-		<td>
+		<td id="bitstamp_header">
 			<font size="2">
-			<B><span data-dict-value="bitstamp">Bitstamp</span> <span data-dict-value="account_details">Account Details</span></B>
+			<button type=button onclick="start_exchange('Bitstamp')">Start</button>
+			<button type=button onclick="stop_exchange('Bitstamp')">Stop</button>
+			<br><B><span data-dict-value="bitstamp">Bitstamp</span> <span data-dict-value="account_details">Account Details</span></B>
 			<BR>
 			<span data-dict-value="usd_balance">USD Balance:</span>
-			<div style="display: inline" id="usd_balance_placeholder_1"><span data-dict-value="not_available">N/A</span></div></div>
+			<div style="display: inline" id="usd_balance_placeholder_bitstamp"><span data-dict-value="not_available">N/A</span></div></div>
 			<BR>
-			<div style="display: inline" id="crypto_available_balance_placeholder_1"><span data-dict-value="not_available">N/A</span></div>
+			<div style="display: inline" id="crypto_available_balance_placeholder_bitstamp"><span data-dict-value="not_available">N/A</span></div>
 			<BR>
 			</font>
 		</td>
-		<td>
+		<td id="bitfinex_header">
 			<font size="2">
-			<B><span data-dict-value="bitfinex">Bitfinex</span> <span data-dict-value="account_details">Account Details</span></B>
+			<button type=button onclick="start_exchange('Bitfinex')">Start</button>
+			<button type=button onclick="stop_exchange('Bitfinex')">Stop</button>
+			<br><B><span data-dict-value="bitfinex">Bitfinex</span> <span data-dict-value="account_details">Account Details</span></B>
 			<BR>
 			<span data-dict-value="usd_balance">USD Balance:</span>
-			<div style="display: inline" id="usd_balance_placeholder_2"><span data-dict-value="not_available">N/A</span></div>
+			<div style="display: inline" id="usd_balance_placeholder_bitfinex"><span data-dict-value="not_available">N/A</span></div>
 			<BR>
-			<div style="display: inline" id="crypto_available_balance_placeholder_2"><span data-dict-value="not_available">N/A</span></div>
+			<div style="display: inline" id="crypto_available_balance_placeholder_bitfinex"><span data-dict-value="not_available">N/A</span></div>
 			<BR>
 			</font>
 		</td>
-		<td>
+		<td id="gdax_header">
 			<font size="2">
-			<B><span data-dict-value="gdax">GDAX</span> <span data-dict-value="account_details">Account Details</span></B>
+			<button type=button onclick="start_exchange('GDAX')">Start</button>
+			<button type=button onclick="stop_exchange('GDAX')">Stop</button>
+			<br><B><span data-dict-value="gdax">GDAX</span> <span data-dict-value="account_details">Account Details</span></B>
 			<BR>
 			<span data-dict-value="usd_balance">USD Balance:</span>
-			<div style="display: inline" id="usd_balance_placeholder_3"><span data-dict-value="not_available">N/A</span></div>
+			<div style="display: inline" id="usd_balance_placeholder_gdax"><span data-dict-value="not_available">N/A</span></div>
 			<BR>
-			<div style="display: inline" id="crypto_available_balance_placeholder_3"><span data-dict-value="not_available">N/A</span></div>			
+			<div style="display: inline" id="crypto_available_balance_placeholder_gdax"><span data-dict-value="not_available">N/A</span></div>			
 			<BR>
 			</font>
 		</td>
-		<td>
+		<td id="kraken_header">
+			<font size="2">
+			<button type=button onclick="start_exchange('Kraken')">Start</button>
+			<button type=button onclick="stop_exchange('Kraken')">Stop</button>			
+			<br><B><span data-dict-value="kraken">Kraken</span> <span data-dict-value="account_details">Account Details</span></B>
+			<BR>
+			<span data-dict-value="usd_balance">USD Balance:</span>
+			<div style="display: inline" id="usd_balance_placeholder_kraken"><span data-dict-value="not_available">N/A</span></div>
+			<BR>
+			<div style="display: inline" id="crypto_available_balance_placeholder_kraken"><span data-dict-value="not_available">N/A</span></div>			
+			<BR>
+			</font>
+		</td>		
+		<td id="unified_header">
 			<font size="2">
 			<B><span data-dict-value="unified">Unified</span> <span data-dict-value="account_details">Account Details</span></B>
 			<BR>
 			<span data-dict-value="usd_balance">USD Balance:</span>
-			<div style="display: inline" id="usd_balance_placeholder_4"><span data-dict-value="not_available">N/A</span></div>
+			<div style="display: inline" id="usd_balance_placeholder_unified"><span data-dict-value="not_available">N/A</span></div>
 			<BR>
-			<div style="display: inline" id="crypto_available_balance_placeholder_4"><span data-dict-value="not_available">N/A</span></div>
+			<div style="display: inline" id="crypto_available_balance_placeholder_unified"><span data-dict-value="not_available">N/A</span></div>
 			<BR>
 			</font>
 		</td>
@@ -78,6 +97,7 @@
 			<select id="sign_in_exchange" onchange="set_sign_in_exchange()">
 				<option value="Bitstamp" data-dict-value="bitstamp">Bitstamp</option>
 				<option value="Bitfinex" data-dict-value="bitfinex">Bitfinex</option>
+				<option value="Kraken" data-dict-value="kraken">Kraken</option>
 			</select>
 			<B><span data-dict-value="credentials">Credentials, Current Signed-in User:</span> </B>
 			<div style="display: inline" id="user_placeholder" name="user_placeholder"><span data-dict-value="not_available">N/A</span></div>
@@ -87,16 +107,17 @@
 			<BR>
 			<span data-dict-value="api_key">API Key:</span>
 			<input id="api_key" name="api_key">
-			<BR>
+			<span data-dict-value="taker_fee">Taker Fee</span>(%): <input type="number" id="taker_fee">
+			<span data-dict-value="maker_fee">Maker Fee</span>(%): <input type="number" id="maker_fee"><br>
 			<span data-dict-value="secret">Secret:</span>
 			<input type="password" id="secret" name="secret">
 			<button type=button onclick="set_credentials()" name="btnSetCredentials" id="btnSetCredentials" data-dict-value="set_credentials">Set Credentials</button>
-			<button type=button onclick="exchange_logout()" name="btnLogout" id="btnLogout"ת data-dict-value="logout">Logout</button>
+			<button type=button onclick="exchange_logout()" name="btnLogout" id="btnLogout"ת data-dict-value="logout">Logout</button><br>
 			</font>
 		</td>		
 		</tr>
 		<tr>
-		<td style="width:7%">
+		<td style="width:7%" id="bitstamp_content">
 			<div style="display: inline" class="column">
 				<font size="2"><B><span data-dict-value="bitstamp">Bitstamp</span> <span data-dict-value="asks">Asks</span></B><BR>
 				<div style="display: inline" id="bitstamp_asks_placeholder">Bitstamp Asks<br></div>
@@ -104,14 +125,18 @@
 			<B><span data-dict-value="spread">Spread (USD)</span><BR><span data-dict-value="current">Current:</span> </B><div style="display: inline" id="bitstamp_spread_placeholder"><br></div>
 			<BR>
 			<B><span data-dict-value="average">Average:</span> </B><div style="display: inline" id="bitstamp_average_spread_placeholder"><br></div><br>
-			<B><span data-dict-value="last">Last:</span> </B><div style="display: inline" id="bitstamp_last_placeholder"><br></div>
+			<B><span data-dict-value="last">Last:</span> </B><div style="display: inline" id="bitstamp_last_placeholder"><br></div><br>
+			<!--<B><span data-dict-value="average_sell_rate">Sell rate (</span><span id="size_rate_1">BTC</span><span data-dict-value="short_second">/Sec):</span> </B><div style="display: inline" id="bitstamp_sell_rate_placeholder"></div><br>			
+			<B><span data-dict-value="average_buy_rate">Buy rate (</span><span id="size_rate_2">BTC</span><span data-dict-value="short_second">/Sec):</span> </B><div style="display: inline" id="bitstamp_buy_rate_placeholder"></div><br>
+			<B><span data-dict-value="sell_price">Sell price:</span> </B><div style="display: inline" id="bitstamp_sell_price_placeholder"></div><br>
+			<B><span data-dict-value="buy_price">Buy price:</span> </B><div style="display: inline" id="bitstamp_buy_price_placeholder"></div><br>-->
 			<div class="column">
 				<B><span data-dict-value="bitstamp">Bitstamp</span> <span data-dict-value="bids">Bids</span></B><BR>
 				<div style="display: inline" id="bitstamp_bids_placeholder">Bitstamp Bids<br></div>
 				</font>
 			</div>
 		</td>
-		<td style="width:7%">
+		<td style="width:7%" id="bitfinex_content">
 			<div style="display: inline" class="column">
 				<font size="2"><B><span data-dict-value="bitfinex">Bitfinex</span> <span data-dict-value="asks">Asks</span></B><BR>
 				<div style="display: inline" id="bitfinex_asks_placeholder">Bitfinex Asks<br></div>
@@ -119,14 +144,18 @@
 			<B><span data-dict-value="spread">Spread (USD)</span><BR><span data-dict-value="current">Current:</span> </B><div style="display: inline" id="bitfinex_spread_placeholder"><br></div>
 			<BR>
 			<B><span data-dict-value="average">Average:</span> </B><div style="display: inline" id="bitfinex_average_spread_placeholder"><br></div><br>
-			<B><span data-dict-value="last">Last:</span> </B><div style="display: inline" id="bitfinex_last_placeholder"><br></div>
+			<B><span data-dict-value="last">Last:</span> </B><div style="display: inline" id="bitfinex_last_placeholder"><br></div><br>
+			<!--<B><span data-dict-value="average_sell_rate">Sell rate (</span><span id="size_rate_3">BTC</span><span data-dict-value="short_second">/Sec):</span> </B><div style="display: inline" id="bitfinex_sell_rate_placeholder"></div><br>			
+			<B><span data-dict-value="average_buy_rate">Buy rate (</span><span id="size_rate_4">BTC</span><span data-dict-value="short_second">/Sec):</span> </B><div style="display: inline" id="bitfinex_buy_rate_placeholder"></div><br>
+			<B><span data-dict-value="sell_price">Sell price:</span> </B><div style="display: inline" id="bitfinex_sell_price_placeholder"></div><br>
+			<B><span data-dict-value="buy_price">Buy price:</span> </B><div style="display: inline" id="bitfinex_buy_price_placeholder"></div><br>-->
 			<div class="column">
 				<B><span data-dict-value="bitfinex">Bitfinex</span> <span data-dict-value="bids">Bids</span></B><BR>
 				<div style="display: inline" id="bitfinex_bids_placeholder">Bitfinex Bids<br></div>
 				</font>
 			</div>
 		</td>
-		<td style="width:7%">
+		<td style="width:7%" id="gdax_content">
 			<div style="display: inline" class="column">
 				<font size="2"><B><span data-dict-value="gdax">GDAX</span> <span data-dict-value="asks">Asks</span></B><BR>
 				<div style="display: inline" id="gdax_asks_placeholder">GDAX Asks<br></div>
@@ -141,7 +170,22 @@
 				</font>
 			</div>
 		</td>
-		<td style="width:8%">
+		<td style="width:7%" id="kraken_content">
+			<div style="display: inline" class="column">
+				<font size="2"><B><span data-dict-value="kraken">Kraken</span> <span data-dict-value="asks">Asks</span></B><BR>
+				<div style="display: inline" id="kraken_asks_placeholder">Kraken Asks<br></div>
+			</div>
+			<B><span data-dict-value="spread">Spread (USD)</span><BR><span data-dict-value="current">Current:</span> </B><div style="display: inline" id="kraken_spread_placeholder">Kraken Spread<br></div>
+			<BR>
+			<B><span data-dict-value="average">Average:</span> </B><div style="display: inline" id="kraken_average_spread_placeholder">Kraken Spread<br></div><br>
+			<B><span data-dict-value="last">Last:</span> </B><div style="display: inline" id="kraken_last_placeholder"><br></div><br>
+			<div class="column">
+				<B><span data-dict-value="kraken">Kraken</span> <span data-dict-value="bids">Bids</span></B><BR>
+				<div style="display: inline" id="kraken_bids_placeholder">Kraken Bids<br></div>
+				</font>
+			</div>
+		</td>		
+		<td style="width:8%" id="unified_content">
 			<div style="display: inline" class="column">
 				<font size="2"><B><span data-dict-value="unified">Unified</span> <span data-dict-value="asks">Asks</span></B><BR>
 				<div style="display: inline" id="unified_asks_placeholder"><span data-dict-value="unified">Unified</span> <span data-dict-value="asks">Asks</span><br></div>
@@ -203,6 +247,7 @@
 				<option value="Best" data-dict-value="best_exchange">Best Exchange</option>
 				<option value="Bitstamp" data-dict-value="bitstamp">Bitstamp</option>
 				<option value="Bitfinex" data-dict-value="bitfinex">Bitfinex</option>
+				<option value="Kraken" data-dict-value="kraken">Kraken</option>
 			</select>
 			<span data-dict-value="duration">Duration (minutes):</span>
 			<input type="number" step="1" id="order_duration" name="order_duration">
@@ -241,6 +286,9 @@
 			gdaxBidsPlaceholder = document.getElementById("gdax_bids_placeholder"),
             gdaxAsksPlaceholder = document.getElementById("gdax_asks_placeholder"),
 			gdaxSpreadPlaceholder = document.getElementById("gdax_spread_placeholder"),
+			krakenBidsPlaceholder = document.getElementById("kraken_bids_placeholder"),
+            krakenAsksPlaceholder = document.getElementById("kraken_asks_placeholder"),
+			krakenSpreadPlaceholder = document.getElementById("kraken_spread_placeholder"),			
 			unifiedBidsPlaceholder = document.getElementById("unified_bids_placeholder"),
             unifiedAsksPlaceholder = document.getElementById("unified_asks_placeholder"),
 			unifiedSpreadPlaceholder = document.getElementById("unified_spread_placeholder"),
@@ -248,10 +296,10 @@
 			transaction_fee = 0,
 			available_crypto = {},
 			available_fiat = {},
+			all_exchanges = ["Bitstamp", "Bitfinex", "GDAX", "Kraken", "Unified"],
 			i = 0,
 			language_dict = null,
-			signed_in_users = {'Bitstamp': false, 'Bitfinex': false};
-			const EXCHANGES_NUM = 4;
+			signed_in_users = {'Bitstamp': false, 'Bitfinex': false, 'Kraken': false};
 			btnLogout.disabled = true;
 			set_currency_type();			
 			refresh_bitstamp_transactions();
@@ -264,57 +312,80 @@
 			set_text_language(url_lang);
 			window.setInterval(function(){
 			var orders_request_suffix = currency_type + "-USD";
+			var orderbooks_request = new XMLHttpRequest();
+			orderbooks_request.open("GET", "/ActiveOrderbooks/" + orders_request_suffix, true);
 			var bitstamp_request = new XMLHttpRequest();
 			bitstamp_request.open("GET", "/Orderbook/Bitstamp/" + orders_request_suffix, true);
 			var bitfinex_request = new XMLHttpRequest();
 			bitfinex_request.open("GET", "/Orderbook/Bitfinex/" + orders_request_suffix, true);
 			var gdax_request = new XMLHttpRequest();
 			gdax_request.open("GET", "/Orderbook/GDAX/" + orders_request_suffix, true);
+			var kraken_request = new XMLHttpRequest();
+			kraken_request.open("GET", "/Orderbook/Kraken/" + orders_request_suffix, true);
 			var unified_request = new XMLHttpRequest();
 			unified_request.open("GET", "/Orderbook/Unified/" + orders_request_suffix, true);
-			function get_orders(orders_request, asksPlaceholder, bidsPlaceholder, spreadPlaceholder, averageSpreadPlaceholder, show_source, last_placeholder) {
-				
-				if (orders_request.readyState == 4 && orders_request.status == 200) {
-					var orders_response = JSON.parse(orders_request.responseText.replace(/'/g, '"'));
-					set_commands(bidsPlaceholder, orders_response.bids, show_source, false);
-					set_commands(asksPlaceholder, orders_response.asks, show_source, true);
-					if (averageSpreadPlaceholder != null)
+			function get_orders(orders_request, asksPlaceholder, bidsPlaceholder, spreadPlaceholder, averageSpreadPlaceholder, 
+								show_source, last_placeholder, buy_rate_placeholder, sell_rate_placeholder, buy_price_placeholder,
+								sell_price_placeholder) {
+				//if (orders_request.readyState == 4 && orders_request.status == 200) {
+					var orders_response = orders_request;//JSON.parse(orders_request.responseText.replace(/'/g, '"'));
+					if (orders_response.currency == currency_type + "-USD")
 					{
-						averageSpreadPlaceholder.innerHTML = orders_response.average_spread.toFixed(2);
+						set_commands(bidsPlaceholder, orders_response.bids, show_source, false);
+						set_commands(asksPlaceholder, orders_response.asks, show_source, true);
+						if (averageSpreadPlaceholder != null)
+						{
+							averageSpreadPlaceholder.innerHTML = orders_response.average_spread.toFixed(2);
+						}
+						if (orders_response.asks.length == 0 || orders_response.bids.length == 0)
+						{
+							orders_spread = 0;
+						}
+						else
+						{
+							orders_spread = parseFloat(orders_response.asks[0].price) - parseFloat(orders_response.bids[0].price);
+						}
+						
+						spread_html = orders_spread.toFixed(2);
+						if (orders_spread < 0)
+						{
+							spread_html = '<font color = "red">' + spread_html + '</html>';
+						}
+						spreadPlaceholder.innerHTML = spread_html;
+						
+						if (last_placeholder != null)
+						{
+							if (orders_response["last_price"] == null)
+							{
+								last_placeholder.innerHTML = "";
+							}
+							else
+							{
+								last_colors = {'buy': "Green", 'sell': "Red"};
+								var last_time = new Date(orders_response.last_price.time * 1000);
+								var hours = last_time.getUTCHours();
+								var minutes = String(last_time.getUTCMinutes()).padStart(2, "0");
+								var seconds =  String(last_time.getSeconds()).padStart(2, "0");
+								last_placeholder.innerHTML = '<font color = "' + last_colors[orders_response.last_price.type] + '">' + 
+															 parseFloat(orders_response.last_price.price).toFixed(2) + 
+															 " " + hours + ":" + minutes + ":" + seconds + "</font>";
+								if (buy_rate_placeholder != null && sell_rate_placeholder != null && buy_price_placeholder != null &&
+									sell_price_placeholder != null)
+								{
+									buy_rate_placeholder.innerHTML = orders_response.rate.buy_size.toFixed(3);
+									sell_rate_placeholder.innerHTML = orders_response.rate.sell_size.toFixed(3);
+									buy_price_placeholder.innerHTML = orders_response.rate.buy_price.toFixed(2);
+									sell_price_placeholder.innerHTML = orders_response.rate.sell_price.toFixed(2);
+								}
+							}
+						}
 					}
-					if (orders_response.asks.length == 0 || orders_response.bids.length == 0)
-					{
-						orders_spread = 0;
-					}
-					else
-					{
-						orders_spread = parseFloat(orders_response.asks[0].price) - parseFloat(orders_response.bids[0].price);
-					}
-					
-					spread_html = orders_spread.toFixed(2);
-					if (orders_spread < 0)
-					{
-						spread_html = '<font color = "red">' + spread_html + '</html>';
-					}
-					spreadPlaceholder.innerHTML = spread_html;
-					
-					if (last_placeholder != null && orders_response["last_price"] != null)
-					{
-						last_colors = {'buy': "Green", 'sell': "Red"};
-						var last_time = new Date(orders_response.last_price.time * 1000);
-						var hours = last_time.getUTCHours();
-						var minutes = String(last_time.getUTCMinutes()).padStart(2, "0");
-						var seconds =  String(last_time.getSeconds()).padStart(2, "0");
-						last_placeholder.innerHTML = '<font color = "' + last_colors[orders_response.last_price.type] + '">' + 
-													 parseFloat(orders_response.last_price.price).toFixed(2) + 
-													 " " + hours + ":" + minutes + ":" + seconds + "</font>";
-					}
-				}
+				//}
 			}
 			
 			function set_commands(ordersPlaceholder, orders, show_source, reverse_order)
 			{
-				var order_colors = {"Bitstamp" : "Blue", "Bitfinex" : "Green", "GDAX" : "Olive"};
+				var order_colors = {"Bitstamp" : "Blue", "Bitfinex" : "Green", "GDAX" : "Olive", "Kraken": "DarkMagenta"};
 				ordersPlaceholder.innerHTML = '';
 				for(i = 0; i < orders.length; i += 1) {
 					var new_order_html = orders[i].size.toFixed(4) + ' ' + get_language_element('buy_at','@') + ' ' + orders[i].price.toFixed(2);
@@ -335,15 +406,86 @@
 				}
 			}
 			
+			orderbooks_request.onreadystatechange = function() {
+				if (orderbooks_request.readyState == 4 && orderbooks_request.status == 200) 
+				{
+					var orders_response = JSON.parse(orderbooks_request.responseText.replace(/'/g, '"'));
+					known_exchanges = {"Bitstamp": false, "Bitfinex": false, "GDAX": false, "Kraken": false};
+					active_exchanges = [];
+					for (var exchange_name in orders_response)
+					{
+						if (known_exchanges[exchange_name] != null)
+						{
+							active_exchanges.push(exchange_name);
+						}
+						known_exchanges[exchange_name] = true;
+						table_columns = [document.getElementById(exchange_name.toLowerCase() + "_header"),
+										 document.getElementById(exchange_name.toLowerCase() + "_content")]
+						for (var curr_td in table_columns)
+						{
+							if (table_columns[curr_td] != null)
+							{
+								table_columns[curr_td].style.background = "";
+							}
+						}
+						var show_source = false;
+						if (exchange_name == "Unified")
+						{
+							show_source = true;
+						}
+						get_orders(orders_response[exchange_name], document.getElementById(exchange_name.toLowerCase() + "_asks_placeholder"),
+								   document.getElementById(exchange_name.toLowerCase() + "_bids_placeholder"),
+								   document.getElementById(exchange_name.toLowerCase() + "_spread_placeholder"), 
+								   document.getElementById(exchange_name.toLowerCase() + "_average_spread_placeholder"), show_source,
+								   document.getElementById(exchange_name.toLowerCase() + "_last_placeholder"));
+					}
+					
+					set_exchanges_in_select(active_exchanges.slice(), false, false, sign_in_exchange);
+					set_exchanges_in_select(active_exchanges.slice(), true, true, exchange);
+					if (exchange.options.length == 0)
+					{
+						btnExecute.disabled = true;
+					}
+					
+					empty_response = {"asks": [], "bids": [], "currency": orders_request_suffix, "average_spread": 0};
+					for (var exchange_name in known_exchanges)
+					{
+						if (!known_exchanges[exchange_name])
+						{
+							table_columns = [document.getElementById(exchange_name.toLowerCase() + "_header"),
+											 document.getElementById(exchange_name.toLowerCase() + "_content")]
+							for (var curr_td in table_columns)
+							{
+								if (table_columns[curr_td] != null)
+								{
+									table_columns[curr_td].style.background = "Silver";
+								}
+							}
+							
+							get_orders(empty_response, document.getElementById(exchange_name.toLowerCase() + "_asks_placeholder"),
+								   document.getElementById(exchange_name.toLowerCase() + "_bids_placeholder"),
+								   document.getElementById(exchange_name.toLowerCase() + "_spread_placeholder"), 
+								   document.getElementById(exchange_name.toLowerCase() + "_average_spread_placeholder"), show_source,
+								   document.getElementById(exchange_name.toLowerCase() + "_last_placeholder"))
+						}
+					}
+				}
+				//get_orders(bitstamp_request, bitstampAsksPlaceholder, bitstampBidsPlaceholder, bitstampSpreadPlaceholder, 
+				//		   bitstamp_average_spread_placeholder, false, bitstamp_last_placeholder/*, bitstamp_buy_rate_placeholder,
+				//		   bitstamp_sell_rate_placeholder, bitstamp_buy_price_placeholder, bitstamp_sell_price_placeholder*/);
+			};
+			orderbooks_request.send();
 			bitstamp_request.onreadystatechange = function() {
 
 				get_orders(bitstamp_request, bitstampAsksPlaceholder, bitstampBidsPlaceholder, bitstampSpreadPlaceholder, 
-						   bitstamp_average_spread_placeholder, false, bitstamp_last_placeholder);
+						   bitstamp_average_spread_placeholder, false, bitstamp_last_placeholder/*, bitstamp_buy_rate_placeholder,
+						   bitstamp_sell_rate_placeholder, bitstamp_buy_price_placeholder, bitstamp_sell_price_placeholder*/);
 			};
 
 			bitfinex_request.onreadystatechange = function() {
 				get_orders(bitfinex_request, bitfinexAsksPlaceholder, bitfinexBidsPlaceholder, bitfinexSpreadPlaceholder, 
-						   bitfinex_average_spread_placeholder, false, bitfinex_last_placeholder);
+						   bitfinex_average_spread_placeholder, false, bitfinex_last_placeholder/*, bitfinex_buy_rate_placeholder,
+						   bitfinex_sell_rate_placeholder, bitfinex_buy_price_placeholder, bitfinex_sell_price_placeholder*/);
 			};
 			
 			gdax_request.onreadystatechange = function() {
@@ -351,15 +493,21 @@
 						   gdax_average_spread_placeholder, false, gdax_last_placeholder);
 			};
 			
+			kraken_request.onreadystatechange = function() {
+				get_orders(kraken_request, krakenAsksPlaceholder, krakenBidsPlaceholder, krakenSpreadPlaceholder, 
+						   kraken_average_spread_placeholder, false, kraken_last_placeholder);
+			};
+			
 			unified_request.onreadystatechange = function() {
 
 				get_orders(unified_request, unifiedAsksPlaceholder, unifiedBidsPlaceholder, unifiedSpreadPlaceholder, null, true, null);
 			};
 			
-			bitstamp_request.send();
+			/*bitstamp_request.send();
 			bitfinex_request.send();
 			unified_request.send();
-			gdax_request.send();
+			kraken_request.send();
+			gdax_request.send();*/
 		}, 1000);
 		
 		var time_order_running = false;
@@ -422,12 +570,15 @@
 		}
 		
 		window.setInterval(function(){
-			show_sent_orders();
-			refresh_bitstamp_balance();
-			refresh_bitfinex_balance();
+			refresh_all_accounts_balance();
 			refresh_bitstamp_transactions();
 			get_exchange_credentials();
 		}, 5000);
+		
+		window.setInterval(function(){
+			show_sent_orders();
+		}, 1000);
+
 
 		function can_execute_order(action_type, size_crypto, price_fiat, timed_order, duration, max_order_size)
 		{
@@ -475,7 +626,7 @@
 			var timed_order = false;
 			var alert_text = "";
 			var order_action_type = action_type.value;
-			if (order_action_type == "timed_sell")
+			if (order_action_type == "timed_sell" || order_action_type == "sell_limit")
 			{
 				order_action_type = "sell";
 				action_order_duration = order_duration.value;
@@ -483,7 +634,7 @@
 							 fiat_type.value + " over " + action_order_duration + " minutes";
 				timed_order = true;
 			}
-			else if(order_action_type == "timed_buy")
+			else if(order_action_type == "timed_buy" || order_action_type == "buy_limit")
 			{
 				order_action_type = "buy";
 				action_order_duration = order_duration.value;
@@ -509,7 +660,14 @@
 				var exchanges = null;
 				if (exchange.value == "Best")
 				{
-					exchanges = ["Bitstamp", "Bitfinex"];
+					exchanges = [];
+					for (var curr_option = 0; curr_option < exchange.options.length; ++curr_option)
+					{
+						if (exchange.options[curr_option].value != "Best")
+						{
+							exchanges.push(exchange.options[curr_option].value);
+						}
+					}
 				}
 				else
 				{
@@ -546,8 +704,7 @@
 						}
 						btnExecute.disabled = false;
 						should_enable_timed_orders();
-						refresh_bitstamp_balance();
-						refresh_bitfinex_balance();
+						refresh_all_accounts_balance();
 						show_sent_orders();
 					}
 				};
@@ -556,7 +713,7 @@
 			
 		}
 		
-		function refresh_bitstamp_balance()
+		/*function refresh_bitstamp_balance()
 		{
 			refresh_account_balance("usd_balance_placeholder_1", "crypto_available_balance_placeholder_1", "Bitstamp", currency_type, 1);
 		}
@@ -566,7 +723,12 @@
 			refresh_account_balance("usd_balance_placeholder_2", "crypto_available_balance_placeholder_2", "Bitfinex", currency_type, 2);
 		}
 		
-		function refresh_account_balance(fiat_balance_id, crypto_balance_id, exchange, currency, exchange_index)
+		function refresh_kraken_balance()
+		{
+			refresh_account_balance("usd_balance_placeholder_4", "crypto_available_balance_placeholder_4", "Kraken", currency_type, 4);
+		}*/
+		
+		/*function refresh_account_balance(fiat_balance_id, crypto_balance_id, exchange, currency, exchange_index)
 		{
 			var exchangeFiatPlaceholder = document.getElementById(fiat_balance_id),
 				exchangeCryptoPlaceholder = document.getElementById(crypto_balance_id);
@@ -589,10 +751,10 @@
 							//alert(balances.USD.available + " " + account_response.server_usd_reserved + 
 							//" " + (balances.USD.available - account_response.server_usd_reserved));
 							available_fiat[exchange] = balances.USD.available - account_response.server_usd_reserved;
-							/*var x = balances.USD.available - account_response.server_usd_reserved;
-							alert(x);
-							available_fiat[exchange] = x;
-							alert(exchange + " " + typeof(available_fiat) + " " + typeof(available_fiat[exchange]) + " " + available_fiat[exchange]);*/
+							// /*var x = balances.USD.available - account_response.server_usd_reserved;
+							//alert(x);
+							//available_fiat[exchange] = x;
+							//alert(exchange + " " + typeof(available_fiat) + " " + typeof(available_fiat[exchange]) + " " + available_fiat[exchange]);
 							exchangeFiatPlaceholder.innerHTML = balances.USD.available.toFixed(2) + "(" + available_fiat[exchange].toFixed(2) + ")";
 							total_usd_value = balances.USD.amount;
 						}
@@ -643,7 +805,77 @@
 				}
 			};
 			account_request.send();	
-		}
+		}*/
+		
+		function refresh_all_accounts_balance()
+		{
+			var account_request = new XMLHttpRequest();
+			account_request.open("GET", "/AccountBalance", true);
+			account_request.onreadystatechange = function() {
+				if (account_request.readyState == 4 && account_request.status == 200) {
+					var account_response = JSON.parse(account_request.responseText.replace(/'/g, '"'));
+					var not_available_text = get_language_element('not_available', 'N/A');
+					for (var curr_exchange in account_response)
+					{
+						var exchangeCryptoPlaceholder = document.getElementById("crypto_available_balance_placeholder_" + curr_exchange.toLowerCase());
+						var exchangeFiatPlaceholder = document.getElementById("usd_balance_placeholder_" + curr_exchange.toLowerCase());
+						available_fiat[curr_exchange] = not_available_text;
+						var exchange_available_crypto = not_available_text;
+						var balances = account_response[curr_exchange].balances;
+						if (balances != null)
+						{
+							exchangeCryptoPlaceholder.innerHTML = "";
+							var total_usd_value = 0;
+							if (balances.USD != null && balances.USD.available != null && balances.USD.amount != null)
+							{
+								available_fiat[curr_exchange] = balances.USD.available - account_response[curr_exchange].server_usd_reserved;
+								exchangeFiatPlaceholder.innerHTML = balances.USD.available.toFixed(2) + "(" + available_fiat[curr_exchange].toFixed(2) + ")";
+							}
+							currencies = ['BTC', 'BCH'];
+							if (currency_type == "BCH")
+							{
+								currencies = ['BCH', 'BTC'];
+							}
+							
+							for (var currency_index in currencies)
+							{
+								var currency = currencies[currency_index];
+								if (balances[currency] != null)
+								{
+									exchange_available_crypto = balances[currency].available;
+									var curr_available_crypto = exchange_available_crypto;
+									if (account_response.reserved_crypto_type == currency && account_response.reserved_crypto != null)
+									{
+										curr_available_crypto = exchange_available_crypto - account_response.reserved_crypto;
+									}
+									
+									if (currency_index == 0)
+									{
+										available_crypto[exchange] = curr_available_crypto;
+									}
+									
+									exchangeCryptoPlaceholder.innerHTML = exchangeCryptoPlaceholder.innerHTML + get_language_element(currency, currency) + " " + get_language_element("balance", "Balance:") + 
+										" " + exchange_available_crypto.toFixed(4) + "(" + curr_available_crypto.toFixed(4) + ")<br>";
+								}
+							}
+							exchangeCryptoPlaceholder.innerHTML = exchangeCryptoPlaceholder.innerHTML + get_language_element("total", "Total") + " " + get_language_element("usd_balance", "USD Balance:") + 
+								" " + account_response[curr_exchange].total_usd_value.toFixed(2);
+						}
+						else
+						{
+							reset_balances(curr_exchange);
+						}
+						
+						transaction_fee = 0;
+						if (account_response.fee != null)
+						{
+							transaction_fee = account_response[curr_exchange].fee;
+						}
+					}
+				}
+			};
+			account_request.send();	
+		}		
 		
 		function refresh_bitstamp_transactions()
 		{
@@ -690,7 +922,8 @@
 		
 		function should_enable_timed_orders()
 		{
-			if (action_type.value == "timed_sell" || action_type.value == "timed_buy")
+			if (action_type.value == "timed_sell" || action_type.value == "timed_buy" || 
+				action_type.value == "buy_limit"|| action_type.value == "sell_limit")
 			{
 				order_duration.disabled = false;
 				max_order_size.disabled = false;
@@ -715,8 +948,7 @@
 					if (cancel_time_order_response.cancel_time_order_result)
 					{
 						cancel_msg = cancel_msg + "Success";
-						refresh_bitstamp_balance();
-						refresh_bitfinex_balance();
+						refresh_all_accounts_balance();
 					}
 					else
 					{
@@ -746,7 +978,8 @@
 		{
 			var timed_order_dict = {0 : get_language_element("manual_short","M"), 1 : get_language_element("timed_short","T")};
 			var exchange_display_dict = {"Bitstamp" : get_language_element("bitstamp_short","BSMP"),
-										 "Bitfinex" : get_language_element("bitfinex_short","BFNX")};
+										 "Bitfinex" : get_language_element("bitfinex_short","BFNX"),
+										 "Kraken" : get_language_element("kraken_short","KRKN")};
 
 			var action_type_dict = {"buy" : "+", "sell" : "-", "buy_limit": "+?", "sell_limit": "-?"};
 			get_sent_orders(orders_limit.value, function(sent_orders_response) {
@@ -759,12 +992,19 @@
 				{
 					exchange_display = sent_orders_response[i].exchange;
 				}
-				sent_transactions_placeholder.innerHTML = sent_transactions_placeholder.innerHTML + '<font color = ' + order_type_colors_dict[sent_orders_response[i].action_type] + ' >' + exchange_display +
-				" " + sent_orders_response[i].order_time + "(" + timed_order_dict[sent_orders_response[i].timed_order] + "): " +
+				
+				var curr_transaction = '<font color = ' + order_type_colors_dict[sent_orders_response[i].action_type] + ' >' + exchange_display +
+					" " + sent_orders_response[i].order_time + "(" + timed_order_dict[sent_orders_response[i].timed_order] + "): " +
 					action_type_dict[sent_orders_response[i].action_type] + parseFloat(sent_orders_response[i].crypto_size).toFixed(4) + 
 					get_language_element(sent_orders_response[i].crypto_type,sent_orders_response[i].crypto_type) +
 					" " + get_language_element('buy_at','@') + sent_orders_response[i].price_fiat.toFixed(2) + "," + 
-					get_language_element(sent_orders_response[i].status.toLowerCase(),sent_orders_response[i].status) + "</font><BR>";
+					get_language_element(sent_orders_response[i].status.toLowerCase(),sent_orders_response[i].status);
+					
+					if (sent_orders_response[i].ask != 0 || sent_orders_response[i].bid != 0)
+					{
+						curr_transaction = curr_transaction + " " + sent_orders_response[i].ask + "/" + sent_orders_response[i].bid;
+					}
+					sent_transactions_placeholder.innerHTML = sent_transactions_placeholder.innerHTML + curr_transaction + "</font><BR>";
 			}})
 		}
 		
@@ -784,11 +1024,10 @@
 				}
 			}
 
-			refresh_bitstamp_balance();
-			refresh_bitfinex_balance();
+			refresh_all_accounts_balance();
 		}
 		
-		function reset_balances(exchange_index)
+		function reset_balances(exchange_name)
 		{
 			var main_currency_type_text = get_language_element(crypto_type.value, crypto_type.value);
 			var other_currencies_texts = [];
@@ -800,17 +1039,17 @@
 					other_currencies_texts.push(get_language_element(crypto_type[coin_index].value, crypto_type[coin_index].value));
 				}
 			}
-			var start_index = 1;
-			var end_index = EXCHANGES_NUM;
-			if (exchange_index != null)
+			
+			var exchanges_to_resest = all_exchanges;
+			if (exchange_name != null)
 			{
-				start_index = exchange_index;
-				end_index = exchange_index;
+				exchanges_to_resest = [exchange_name];
 			}
-			for (var exchange_index = start_index; exchange_index <= end_index; ++exchange_index)
+			
+			for (var curr_exchange in exchanges_to_resest)
 			{
-				var usd_balance_placeholder = document.getElementById("usd_balance_placeholder_" + exchange_index);
-				var balance_type_placeholder = document.getElementById("crypto_available_balance_placeholder_" + exchange_index);
+				var usd_balance_placeholder = document.getElementById("usd_balance_placeholder_" + exchanges_to_resest[curr_exchange].toLowerCase());
+				var balance_type_placeholder = document.getElementById("crypto_available_balance_placeholder_" + exchanges_to_resest[curr_exchange].toLowerCase());
 				usd_balance_placeholder.innerHTML = get_language_element("not_available", "N/A");
 				var balance_text = get_language_element('balance', "Balance:");
 				if (balance_type_placeholder != null)
@@ -834,7 +1073,9 @@
 			var credentials_params = JSON.stringify({"username" : account_number.value,
 												     "key" : api_key.value,
 												     "secret" : secret.value,
-													 "exchange": sign_in_exchange.value});
+													 "exchange": sign_in_exchange.value,
+													 "taker_fee": taker_fee.value,
+													 "maker_fee": maker_fee.value});
 			var set_credentials_request = new XMLHttpRequest();
 			set_credentials_request.open("POST", "/SetClientCredentials", true);
 			set_credentials_request.setRequestHeader("Content-Type", "application/json");
@@ -845,6 +1086,7 @@
 					if (set_credentials_response.set_credentials_status == "True")
 					{
 						alert("Setting credentials status: success");
+						signed_in_users[sign_in_exchange.value] = true;
 					}
 					else
 					{
@@ -852,30 +1094,41 @@
 					}
 					btnSetCredentials.disabled = false;
 					refresh_bitstamp_transactions();
-					refresh_bitstamp_balance();
-					refresh_bitfinex_balance();
+					refresh_all_accounts_balance();
 				}
 			};
 			set_credentials_request.send(credentials_params);
+			secret.value = "";
 		}
 		
 		function get_exchange_credentials()
 		{
 			var credentials_request = new XMLHttpRequest();
-			credentials_request.open("GET", "/GetSignedInCredentials/"  + sign_in_exchange.value, true);
+			credentials_request.open("GET", "/GetSignedInCredentials", true);
 			credentials_request.onreadystatechange = function() {
 				if (credentials_request.readyState == 4 && credentials_request.status == 200) {
 					var credentials_response = JSON.parse(credentials_request.responseText.replace(/'/g, '"'));
-					if (credentials_response.signed_in_user != '')
+					for (var exchange_name in credentials_response)
 					{
-						user_placeholder.innerHTML = credentials_response.signed_in_user;
-						signed_in_users[sign_in_exchange.value] = true;
+						if (credentials_response[exchange_name].signed_in_user != '')
+						{
+
+							signed_in_users[exchange_name] = true;
+						}
+						else
+						{
+							signed_in_users[exchange_name] = false;
+						}
+					}
+					
+					if (signed_in_users[sign_in_exchange.value])
+					{
+						user_placeholder.innerHTML = credentials_response[sign_in_exchange.value].signed_in_user;						
 					}
 					else
 					{
-						user_placeholder.innerHTML = get_language_element('no_user',"None");
-						signed_in_users[sign_in_exchange.value] = false;
-					}
+						user_placeholder.innerHTML = get_language_element('no_user',"None");						
+					}					
 					btnLogout.disabled = !signed_in_users[sign_in_exchange.value];
 				}
 			};
@@ -922,8 +1175,17 @@
 			document.body.removeChild(link);
 		}
 		
-		function exchange_logout()
+		function exchange_logout(exchange, show_message)
 		{
+			if (exchange == null)
+			{
+				exchange = sign_in_exchange.value;
+			}
+			
+			if (show_message == null)
+			{
+				show_message = true;
+			}
 			var logout_request = new XMLHttpRequest();
 			logout_request.open("GET", "/Logout/" + sign_in_exchange.value, true);
 			logout_request.onreadystatechange = function() {
@@ -933,16 +1195,19 @@
 					if (logout_response.set_credentials_status == 'True')
 					{
 						logout_msg = logout_msg + "Success";
-						btnBitstampLogout.disabled = true;
+						btnLogout.disabled = true;
 						refresh_bitstamp_transactions();
-						refresh_bitstamp_balance();
-						refresh_bitfinex_balance();
+						refresh_all_accounts_balance();
+						signed_in_users[exchange] = false;
 					}
 					else
 					{
 						logout_msg = logout_msg + "Failure";
 					}
-					alert(logout_msg);
+					if (show_message)
+					{
+						alert(logout_msg);
+					}
 				}
 			};
 			logout_request.send();		
@@ -1003,6 +1268,85 @@
 		function set_sign_in_exchange()
 		{
 			get_exchange_credentials();
+		}
+		
+		function start_exchange(exchange)
+		{
+			var start_request = new XMLHttpRequest();
+			start_request.open("GET", "/StartOrderbook/" + exchange, true);
+			start_request.onreadystatechange = function() {
+				if (start_request.readyState == 4 && start_request.status == 200) {
+					alert(exchange + " Started");
+				}
+			}
+			start_request.send();
+		}
+		
+		function stop_exchange(exchange)
+		{
+			var stop_request = new XMLHttpRequest();
+			stop_request.open("GET", "/StopOrderbook/" + exchange, true);
+			stop_request.onreadystatechange = function() {
+				if (stop_request.readyState == 4 && stop_request.status == 200) {
+					alert(exchange + " Stopped");
+				}
+			}
+			stop_request.send();		
+		}
+		
+		function set_exchanges_in_select(exchanges, add_best, only_signed_in, selector)
+		{
+			var curr_value = "";
+			if (selector.options.length > 0)
+			{
+				curr_value = selector.value;
+				var initial_length = selector.length;
+				for (var item_index = 0; item_index < initial_length; ++item_index)
+				{
+					selector.remove(0);
+				}
+			}
+
+			if(only_signed_in)
+			{
+				for (var item_index = exchanges.length - 1; item_index >= 0; --item_index)
+				{
+					if (!signed_in_users[exchanges[item_index]])
+					{
+						exchanges.splice(item_index, 1);
+					}
+				}
+			}
+			
+			if(exchanges.length > 1 && add_best)
+			{
+				var option = document.createElement("option");
+				option.text = get_language_element("best_exchange", "Best Exchange");
+				option.value = "Best";
+				selector.add(option);
+				if (curr_value == "Best")
+				{
+					selector.value = "Best";
+				}
+			}
+			
+			var found_curr_option = false;
+			for (var item_index = 0; item_index < exchanges.length; ++item_index)
+			{
+				var option = document.createElement("option");
+				option.text = get_language_element(exchanges[item_index].toLowerCase(), exchanges[item_index]);
+				option.value = exchanges[item_index];
+				selector.add(option);
+				if (curr_value == exchanges[item_index])
+				{
+					found_curr_option = true;
+				}
+			}
+			
+			if (found_curr_option)
+			{
+				selector.value = curr_value;
+			}
 		}
         </script>
 
