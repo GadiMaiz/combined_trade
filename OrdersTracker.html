@@ -20,7 +20,7 @@
         </style>
     <body style="">
 		<font color="Blue" size="5"><link_button onclick='set_text_language("en_us")'>English</link_button></font><font color="Red" size="5">  <link_button onclick='set_text_language("zh_cn")'>&nbsp&nbsp&nbsp中文&nbsp&nbsp&nbsp</link_button></font>
-        <h1><span id="orderbook_header" data-dict-value="orderbook_header">Order Book</span> (v0.2)
+        <h1><span id="orderbook_header" data-dict-value="orderbook_header">Order Book</span> (v0.3)
 			<select id="crypto_type" name="crypto_type" onchange="set_currency_type()">
 				<option value="BTC" data-dict-value="btc_usd_option">BTC/USD</option>
 				<option value="BCH" data-dict-value="bch_usd_option">BCH/USD</option>
@@ -238,10 +238,10 @@
 			<select id="action_type" name="action_type" onchange="should_enable_timed_orders()">
 				<option value="sell" data-dict-value="sell">Sell</option>
 				<option value="buy" data-dict-value="buy">Buy</option>
-				<option value="timed_sell" data-dict-value="timed_sell">Timed Sell</option>
-				<option value="timed_buy" data-dict-value="timed_buy">Timed Buy</option>
-				<option value="buy_limit" data-dict-value="buy_limit">Buy Limit</option>
-				<option value="sell_limit" data-dict-value="buy_limit">Sell Limit</option>
+				<option value="timed_sell" data-dict-value="timed_sell">Timed Sell Taking</option>
+				<option value="timed_buy" data-dict-value="timed_buy">Timed Buy Taking</option>
+				<option value="buy_limit" data-dict-value="buy_limit">Buy Limit Making</option>
+				<option value="sell_limit" data-dict-value="buy_limit">Sell Limit Making</option>
 			</select>
 			<select id="exchange" name="exchange">
 				<option value="Best" data-dict-value="best_exchange">Best Exchange</option>
@@ -524,10 +524,14 @@
 					timed_order_status_placeholder.innerHTML = timed_order_status_dict[time_order_response.timed_order_running];
 					timed_order_details_placeholder.innerHTML = time_order_response.action_type + " " + get_language_element("for","for") + 
 						" " + time_order_response.timed_order_price_fiat + " " + get_language_element("usd","USD");
-					timed_order_sent_time_placeholder.innerHTML = time_order_response.timed_order_sent_time;
+					
 					var timed_order_status = get_language_element('not_started', "Not started");
 					if (time_order_response.timed_order_required_size > 0)
 					{
+						var sent_time = new Date(time_order_response.timed_order_sent_time * 1000);
+						timed_order_sent_time_placeholder.innerHTML = 
+							sent_time.getHours().toString().padStart(2,"0") + ":" + sent_time.getMinutes().toString().padStart(2,"0") + 
+							":" + sent_time.getSeconds().toString().padStart(2,"0");
 						if (time_order_response.timed_order_running == "True")
 						{
 							if (time_order_response.timed_order_execution_start_time != "")
@@ -550,16 +554,30 @@
 								timed_order_status = get_language_element('done', "Done");
 							}
 						}
+						timed_order_execution_status_placeholder.innerHTML = timed_order_status;
+						var start_time = new Date(time_order_response.timed_order_execution_start_time * 1000);
+						timed_order_execution_start_time_placeholder.innerHTML = 
+							start_time.getHours().toString().padStart(2,"0") + ":" + start_time.getMinutes().toString().padStart(2,"0") + 
+							":" + start_time.getSeconds().toString().padStart(2,"0");
+						timed_order_total_size_placeholder.innerHTML = time_order_response.timed_order_required_size;
+						timed_order_current_size_placeholder.innerHTML = time_order_response.timed_order_done_size.toFixed(4);
+						timed_order_duration.innerHTML = (time_order_response.timed_order_duration_sec / 60).toFixed(0);
+						var minutes = Math.floor(time_order_response.timed_order_elapsed_time / 60);
+						var seconds = time_order_response.timed_order_elapsed_time - minutes * 60;
+						//alert(time_order_response.server_time + "\n" + time_order_response.timed_order_execution_start_time + "\n" + 
+						//	(time_order_response.server_time - time_order_response.timed_order_execution_start_time));
+						var execution_duration = /*new Date*/(time_order_response.server_time - time_order_response.timed_order_execution_start_time);
+						//alert(execution_duration);
+						//timed_order_execution_duration.innerHTML = (execution_duration.getHours() * 60 + execution_duration.getMinutes()).toString().padStart(2,"0") +
+						//	":" + execution_duration.getSeconds().toString().padStart(2,"0");
+						var execution_minutes = Math.floor(execution_duration / 60);
+						var execution_seconds = Math.floor(execution_duration - 60 * execution_minutes);
+						if (time_order_response.timed_order_running == "True")
+						{
+							timed_order_execution_duration.innerHTML = execution_minutes.toString().padStart(2,"0") + ":" + execution_seconds.toString().padStart(2,"0");
+						}
+						timed_order_current_size_placeholder.innerHTML = time_order_response.timed_order_done_size.toFixed(4); 	 	
 					}
-					timed_order_execution_status_placeholder.innerHTML = timed_order_status;
-					timed_order_execution_start_time_placeholder.innerHTML = time_order_response.timed_order_execution_start_time;
-					timed_order_total_size_placeholder.innerHTML = time_order_response.timed_order_required_size;
-					timed_order_current_size_placeholder.innerHTML = time_order_response.timed_order_done_size.toFixed(4);
-					timed_order_duration.innerHTML = (time_order_response.timed_order_duration_sec / 60).toFixed(0);
-					var minutes = Math.floor(time_order_response.timed_order_elapsed_time / 60);
-					var seconds = time_order_response.timed_order_elapsed_time - minutes * 60;
-					timed_order_execution_duration.innerHTML = str_pad_left(minutes,'0',2)+':'+str_pad_left(parseFloat(seconds).toFixed(0),'0',2);
-					timed_order_current_size_placeholder.innerHTML = time_order_response.timed_order_done_size.toFixed(4); 	 	
 				}
 			};
 			time_order_request.send();	

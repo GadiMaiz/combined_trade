@@ -54,12 +54,20 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
         if self._bitfinex_client is not None and self._signed_in_user != "":
             try:
                 bitfinex_account_balance = self._bitfinex_client.balances()
-                for curr_balance in bitfinex_account_balance:
-                    currency = curr_balance['currency']
-                    result[currency.upper()] = {"amount": float(curr_balance['amount']),
-                                                "available": float(curr_balance['available'])}
+                print("Bitfinex account", bitfinex_account_balance)
+                if 'error' in bitfinex_account_balance and \
+                        bitfinex_account_balance['error'] == "ERR_RATE_LIMIT" or \
+                        'message' in bitfinex_account_balance and \
+                        bitfinex_account_balance['message'] == 'Nonce is too small.':
+                    result['error'] = "ERR_RATE_LIMIT"
+                else:
+                    for curr_balance in bitfinex_account_balance:
+                        currency = curr_balance['currency']
+                        result[currency.upper()] = {"amount": float(curr_balance['amount']),
+                                                    "available": float(curr_balance['available'])}
             except Exception as e:
                 self.log.error("%s", str(e))
+                print("Bitfinex account error:", e)
 
             if "USD" not in result:
                 result["USD"] = {'amount': 0, 'available': 0}

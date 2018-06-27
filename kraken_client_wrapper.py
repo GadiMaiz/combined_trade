@@ -65,7 +65,7 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
                                                "available": float(kraken_account_balance[currency])}
             except Exception as e:
                 self.log.error("%s", str(e))
-
+                result['error'] = str(e)
             if "USD" not in result:
                 result["USD"] = {'amount': 0, 'available': 0}
         return result

@@ -16,5 +16,5 @@ sub = CoinAPIv1_subscribe(test_key);
 ws.send(json.dumps(sub.__dict__))
 while True:
   msg =  ws.recv()
-  print(msg);
+  #print(msg);
 ws.close()

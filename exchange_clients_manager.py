@@ -2,6 +2,8 @@ import logging
 from trade_db import TradeDB
 from multiple_exchanges_client_wrapper import MultipleExchangesClientWrapper
 from unified_orderbook import UnifiedOrderbook
+import time
+
 
 class ExchangeClientManager():
     def __init__(self, exchanges_params, db_file, watchdog):
@@ -32,13 +34,15 @@ class ExchangeClientManager():
         result['exchange'] = exchange
         return result
 
-    def get_all_account_balances(self):
+    def get_all_account_balances(self, force_exchange):
         result = dict()
         unified_balance = {'total_usd_value': 0,
                            'reserved_crypto_type': '',
                            'reserved_crypto:': 0,
                            'server_usd_reserved': 0}
         for exchange in self._clients:
+            if force_exchange:
+                self._clients[exchange]['client'].set_balance_changed()
             result[exchange] = self.exchange_balance(exchange)
             if 'total_usd_value' in result[exchange]:
                 unified_balance['total_usd_value'] += result[exchange]['total_usd_value']
@@ -48,11 +52,15 @@ class ExchangeClientManager():
                 for currency in result[exchange]['balances']:
                     if currency not in unified_balance['balances']:
                         unified_balance['balances'][currency] = dict()
-                        unified_balance['balances'][currency]['available'] = result[exchange]['balances'][currency]['available']
-                        unified_balance['balances'][currency]['amount'] = result[exchange]['balances'][currency]['amount']
+                        unified_balance['balances'][currency]['available'] = \
+                            result[exchange]['balances'][currency]['available']
+                        unified_balance['balances'][currency]['amount'] = \
+                            result[exchange]['balances'][currency]['amount']
                     else:
-                        unified_balance['balances'][currency]['available'] += result[exchange]['balances'][currency]['available']
-                        unified_balance['balances'][currency]['amount'] += result[exchange]['balances'][currency]['amount']
+                        unified_balance['balances'][currency]['available'] += \
+                            result[exchange]['balances'][currency]['available']
+                        unified_balance['balances'][currency]['amount'] += \
+                            result[exchange]['balances'][currency]['amount']
         #result['reserved_balances'] = self._reserved_balances
         result['Unified'] = unified_balance
         return result
@@ -133,7 +141,7 @@ class ExchangeClientManager():
                   'timed_order_execution_start_time': 0,
                   'timed_order_elapsed_time': 0,
                   'timed_order_duration_sec': 0,
-                  'timed_order_price_fiat': 0}
+                  'timed_order_price_fiat': 0,}
 
         timed_order_client = self._get_timed_order_client()
         #print(timed_order_client)
@@ -143,6 +151,7 @@ class ExchangeClientManager():
         elif self._last_multiple_client_timed_status is not None:
             result = self._last_multiple_client_timed_status
             #print("Getting last multiple status:", result)
+        result['server_time'] = time.time()
         return result
 
     def cancel_timed_order(self):

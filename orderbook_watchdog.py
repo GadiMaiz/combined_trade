@@ -2,8 +2,12 @@ import logging
 from threading import Thread
 import time
 from orderbook_base import OrderbookFee
+import psutil
+import os
+import threading
 
 log = logging.getLogger(__name__)
+
 
 class OrderbookWatchdog():
     def __init__(self, orderbooks_dict, sleep_timeout_sec=20):
@@ -35,10 +39,19 @@ class OrderbookWatchdog():
                     self._orderbooks_dict[curr_orderbook_dict]['orderbook'].is_thread_orderbook():
                 compare_orderbooks[curr_orderbook_dict] = self._get_partial_books(self._orderbooks_dict[curr_orderbook_dict])
                 empty_orderbook[curr_orderbook_dict] = 0
-
+        #restart_counter = 1
+        restarts_log = []
         while self._watchdog_running:
+            #restart_counter += 1
             time.sleep(self._sleep_timeout_sec)
+            process = psutil.Process(os.getpid())
+            threads = threading.enumerate()
+            """print(time.time(), "Memory usage:", process.memory_info().rss, "Number of threads:", len(threads),
+                  "Restarts:", len(restarts_log), restarts_log)
+            for curr_thread in threads:
+                print(curr_thread)"""
             current_orderbooks = {}
+
             for curr_orderbook_dict in self._orderbooks_dict:
                 if self._orderbooks_dict[curr_orderbook_dict]['orderbook'] and \
                         self._orderbooks_dict[curr_orderbook_dict]['orderbook'].is_thread_orderbook():
@@ -51,8 +64,8 @@ class OrderbookWatchdog():
                     log.debug("Comparing <%s>, compare book is: <%s>",
                               curr_orderbook_dict, compare_orderbooks[curr_orderbook_dict])
                     if curr_orderbook_dict in compare_orderbooks and \
-                            compare_orderbooks[curr_orderbook_dict] is not None and \
-                            current_orderbooks[curr_orderbook_dict] is not None:
+                            compare_orderbooks[curr_orderbook_dict] and \
+                            current_orderbooks[curr_orderbook_dict]:
                                 #print("Comparing {}\n{}".format(curr_orderbook_dict, current_orderbooks[curr_orderbook_dict]))
                                 compare_result = self._compare_orderbooks(current_orderbooks[curr_orderbook_dict],
                                                                           compare_orderbooks[curr_orderbook_dict])
@@ -62,7 +75,12 @@ class OrderbookWatchdog():
                                     empty_orderbook[curr_orderbook_dict] = 0
                                     restarted_orderbook = True
                                     self.restart_orderbook(curr_orderbook_dict)
-                                elif compare_result[1]:
+                                    restarts_log.append(curr_orderbook_dict)
+                                    #number_of_restarts += 1
+                                elif compare_result[1]: #or restart_counter % 30 == 0:
+                                    #if restart_counter % 30 == 0:
+                                        #restart_counter = 0
+                                        #print("Restarting after some attemps")
                                     log.error("Empty orderbook: %s", current_orderbooks[curr_orderbook_dict])
                                     empty_orderbook[curr_orderbook_dict] += 1
                                     if empty_orderbook[curr_orderbook_dict] >= 3:
@@ -70,7 +88,8 @@ class OrderbookWatchdog():
                                         empty_orderbook[curr_orderbook_dict] = 0
                                         restarted_orderbook = True
                                         self.restart_orderbook(curr_orderbook_dict)
-
+                                        #number_of_restarts += 1
+                                        restarts_log.append(curr_orderbook_dict)
                                 else:
                                     empty_orderbook[curr_orderbook_dict] = 0
                     if not restarted_orderbook:
@@ -113,6 +132,7 @@ class OrderbookWatchdog():
                                                                             curr_orderbook[currency]['bids'])
             if identical_books:
                 break
+        #return [identical_books and False, empty_orderbook and False, invalid_workbook and False]
         return [identical_books, empty_orderbook, invalid_workbook]
 
     @staticmethod
@@ -135,8 +155,9 @@ class OrderbookWatchdog():
         return result
 
     def restart_orderbook(self, exchange):
-        self.stop_orderbook(exchange)
-        self.start_orderbook(exchange)
+            #self.stop_orderbook(exchange)
+            #self.start_orderbook(exchange)
+            pass
 
     def stop_orderbook(self, exchange):
         if self._orderbooks_dict[exchange]['active']:

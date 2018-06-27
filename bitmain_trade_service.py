@@ -64,7 +64,13 @@ def get_orderbook(exchange, currency):
 
 @app.route('/AccountBalance')
 def get_all_accounts_balance():
-    account_balances = exchanges_manager.get_all_account_balances()
+    account_balances = exchanges_manager.get_all_account_balances(False)
+    return str(account_balances)
+
+
+@app.route('/AccountBalanceForce')
+def get_all_accounts_balance_force():
+    account_balances = exchanges_manager.get_all_account_balances(True)
     return str(account_balances)
 
 
@@ -110,7 +116,7 @@ def send_order():
                                                 int(request_params['duration_sec']),
                                                 float(request_params['max_order_size']))
     result = order_status
-    print(result)
+    #print(result)
     result['order_status'] = str(result['order_status'])
     log.info("command sent")
     return str(result)
@@ -233,7 +239,7 @@ if __name__ == '__main__':
     bitstamp_api_key = ''
     bitstamp_secret = ''
     listener_port = 5000
-    frozen_orderbook_timeout_sec = 30
+    frozen_orderbook_timeout_sec = 60
     log_level = logging.ERROR
 
     try:

@@ -40,8 +40,11 @@ class BitfinexOrderTracker(RequestOrderTracker):
     def update_order_from_exchange(self):
         order_status = self._client_wrapper.order_status(self._order['id'])
         executed_size = 0
-        if order_status:
-            executed_size = float(order_status['executed_amount'])
+        try:
+            if order_status:
+                executed_size = float(order_status['executed_amount'])
+        except Exception as e:
+            print(order_status)
         self._client_wrapper.set_order_executed_size(executed_size + self._initial_size)
 
 
