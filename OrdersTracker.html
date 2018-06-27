@@ -1030,10 +1030,19 @@
 		{
 			currency_type = crypto_type.value;
 			reset_balances();
-			var placeholder_names = ["bitstamp_bids_placeholder", "bitstamp_asks_placeholder", "bitfinex_bids_placeholder",
+			var placeholder_names = [];
+			var placeholder_suffixes = ["_bids_placeholder", "_asks_placeholder", "_last_placeholder"];
+			for (var curr_exchange in all_exchanges)
+			{
+				for (var suffix in placeholder_suffixes)
+				{
+					placeholder_names.push(all_exchanges[curr_exchange].toLowerCase() + placeholder_suffixes[suffix]);
+				}
+			}
+			/*var placeholder_names = ["bitstamp_bids_placeholder", "bitstamp_asks_placeholder", "bitfinex_bids_placeholder",
 									 "bitfinex_asks_placeholder", "gdax_bids_placeholder", "gdax_asks_placeholder",
 									 "unified_bids_placeholder", "unified_asks_placeholder", "bitstamp_last_placeholder",
-									 "bitfinex_last_placeholder", "gdax_last_placeholder"];
+									 "bitfinex_last_placeholder", "gdax_last_placeholder"];*/
 			for (var placeholder_index = 0; placeholder_index < placeholder_names.length; ++placeholder_index){
 				curr_placeholder = document.getElementById(placeholder_names[placeholder_index]);
 				if (curr_placeholder != null)

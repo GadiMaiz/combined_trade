@@ -135,6 +135,7 @@ class ClientWrapperBase:
         if result:
             action_types_dict = {'sell': 'sell', 'timed_sell': 'sell', 'sell_limit': 'sell',
                                  'buy': 'buy', 'timed_buy': 'buy', 'buy_limit': 'buy'}
+            fee_type_dict = {'buy': 'take', 'buy_limit': 'make'}
             if action_type not in action_types_dict:
                 result = False
                 refuse_reason = 'Invalid action: {}, valid actions are: {}'.format(action_type,
@@ -149,12 +150,14 @@ class ClientWrapperBase:
                                     crypto_type + " is less than required size " + str(size_coin) + crypto_type
                     result = False
                 elif result and check_action_type == 'buy' and (
-                        price_fiat * size_coin * (1 + 0.01 * balance_before_order['fee'])) > \
+                        price_fiat * size_coin * (1 + 0.01 * self._orderbook['orderbook'].get_fees(
+                        )[fee_type_dict[action_type]])) > \
                         float(balance_before_order['balances'][fiat_type]['available']):
                     refuse_reason = "Available balance " + str(
                         balance_before_order['balances'][fiat_type]['available']) + \
                         "USD is less than required balance " + \
-                        str(price_fiat * size_coin * (1 + 0.01 * balance_before_order['fee']))
+                        str(price_fiat * size_coin * (1 + 0.01 * self._orderbook['orderbook'].get_fees(
+                        )[fee_type_dict[action_type]]))
                     result = False
         return {'can_send_order': result, 'reason': refuse_reason}
 
@@ -208,7 +211,8 @@ class ClientWrapperBase:
         order_time = "%s.%02d" % (dt, int(micro) / 1000)
         order_info = {'exchange': self.get_exchange_name(), 'action_type': action_type, 'crypto_size': size_coin,
                       'price_fiat': price_fiat, 'exchange_id': 0, 'order_time' : order_time,
-                      'timed_order': self.TIMED_ORDERS_DICT[True], 'status': "Timed Take Order", 'crypto_type': crypto_type,
+                      'timed_order': self.TIMED_ORDERS_DICT[True], 'status': "Timed Take Order",
+                      'crypto_type': crypto_type,
                       'balance': self.account_balance()}
         self.log.debug("order info before execution: <%s>", order_info)
         self._db_interface.write_order_to_db(order_info)
@@ -216,8 +220,7 @@ class ClientWrapperBase:
         if action_type == 'sell':
             self._reserved_crypto = size_coin
         elif action_type == 'buy':
-            balance_before_order = self.account_balance()
-            self._reserved_usd = price_fiat * size_coin * (1 + 0.01 * balance_before_order['fee'])
+            self._reserved_usd = price_fiat * size_coin * (1 + 0.01 * self._orderbook['orderbook'].get_fees['take_fee'])
         self._timed_order_action = action_type
         self._timed_order_price_fiat = price_fiat
         action_started = False
@@ -502,6 +505,7 @@ class ClientWrapperBase:
                       'timed_order': self.TIMED_ORDERS_DICT[True], 'status': "Make Order", 'crypto_type': crypto_type,
                       'balance': self.account_balance()}
         self.log.info("order info before execution: <%s>", order_info)
+        print("order info before execution: <{}>".format(order_info))
         self._db_interface.write_order_to_db(order_info)
         self._reserved_crypto_type = crypto_type
         """if action_type == 'sell':
@@ -556,6 +560,8 @@ class ClientWrapperBase:
                         (action_type == 'sell_limit' and new_order_price < (price_fiat * (1 + 0.01 * fee))):
                     self.log.debug("Order for <%s> is out of market price: <%s>, price: <%s>, order price: <%f>",
                                    action_type, order_info, current_price_and_spread, price_fiat)
+                    print("Order for <{}> is out of market price: <{}>, price: <{}>, order price: <{}>".format(
+                        action_type, order_info, current_price_and_spread, price_fiat))
                     execute_order_on_current_market = False
 
             if active_order is not None and (price_changed or not execute_order_on_current_market):

@@ -115,7 +115,7 @@ class ExchangeClientManager():
             if valid_exchanges:
                 orderbook_for_order = UnifiedOrderbook(curr_order_orderbooks)
                 multiple_client = MultipleExchangesClientWrapper(order_clients,
-                                                                 orderbook_for_order, self._db_interface,
+                                                                 {'orderbook': orderbook_for_order}, self._db_interface,
                                                                  self._watchdog,
                                                                  self._sent_orders_multiple_exchanges_identifier,
                                                                  self)
