@@ -132,6 +132,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
 
     def _create_timed_order_executer(self, asset_pair, action_type):
         orders = self._orderbook['orderbook'].get_unified_orderbook(asset_pair, 1, OrderbookFee.TAKER_FEE)
+        print(orders)
         exchange = ""
         executer = None
         if action_type == 'buy' and len(orders['asks']) > 0:

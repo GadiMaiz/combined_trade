@@ -13,7 +13,7 @@ from exchange_clients_manager import ExchangeClientManager
 import logging
 from logging.handlers import RotatingFileHandler
 import json
-import time
+import re
 import sys
 import getopt
 
@@ -110,12 +110,15 @@ def send_order():
     log.debug("Send Order")
     request_params = json.loads(request.data)
     print("Sending order in web service")
-    order_status = exchanges_manager.send_order(request_params['exchanges'], request_params['action_type'],
-                                                float(request_params['size_coin']), request_params['crypto_type'],
-                                                float(request_params['price_fiat']), request_params['fiat_type'],
-                                                int(request_params['duration_sec']),
-                                                float(request_params['max_order_size']))
-    result = order_status
+    result = dict()
+    result['order_status'] = str('Invalid parameters')
+    if request_params['fiat_type'] in ['USD'] and request_params['crypto_type'] in ['BTC', 'BCH']:
+        order_status = exchanges_manager.send_order(request_params['exchanges'], request_params['action_type'],
+                                                    float(request_params['size_coin']), request_params['crypto_type'],
+                                                    float(request_params['price_fiat']), request_params['fiat_type'],
+                                                    int(request_params['duration_sec']),
+                                                    float(request_params['max_order_size']))
+        result = order_status
     #print(result)
     result['order_status'] = str(result['order_status'])
     log.info("command sent")
@@ -133,6 +136,7 @@ def get_sent_orders():
     sent_orders = exchanges_manager.get_sent_orders(orders_limit)
     return str(sent_orders)
 
+
 @app.route('/SetClientCredentials', methods=['POST'])
 def set_client_credentials():
     result = {'set_credentails_status': 'True'}
@@ -141,20 +145,29 @@ def set_client_credentials():
         exchange = request_params['exchange']
         fees = dict()
         try:
-            fees['take'] = float(request_params['taker_fee'])
+            fee = float(request_params['taker_fee'])
+            if 0 <= fee < 100:
+                fees['take'] = fee
         except ValueError as e:
             pass
         try:
-            fees['make'] = float(request_params['maker_fee'])
+            fee = float(request_params['maker_fee'])
+            if 0 <= fee < 100:
+                fees['make'] = fee
         except ValueError as e:
             pass
         if exchange in orderbooks and 'username' in request_params and 'key' in request_params and \
                 'secret' in request_params:
-            credentials = {'username': request_params['username'],
-                           'key': request_params['key'],
-                           'secret': request_params['secret']}
-            orderbooks[exchange]['fees'].update(fees)
-            orderbooks[exchange]['orderbook'].set_fees(orderbooks[exchange]['fees'])
+            # Make sure that the username is a number
+            user_reg = re.compile('^[0-9\.]+$')
+            key_reg = re.compile('^[0-9a-zA-Z=+\./]+$')
+            if user_reg.match(request_params['username']) and key_reg.match(request_params['key']) and \
+                    key_reg.match(request_params['secret']):
+                credentials = {'username': request_params['username'],
+                               'key': request_params['key'],
+                               'secret': request_params['secret']}
+                orderbooks[exchange]['fees'].update(fees)
+                orderbooks[exchange]['orderbook'].set_fees(orderbooks[exchange]['fees'])
         result['set_credentials_status'] = str(exchanges_manager.set_exchange_credentials(exchange, credentials))
     except Exception as e:
         result['set_credentials_status'] = 'False'
@@ -241,10 +254,12 @@ if __name__ == '__main__':
     listener_port = 5000
     frozen_orderbook_timeout_sec = 60
     log_level = logging.ERROR
-
+    bitstamp_key = None
     try:
-        opts, args = getopt.getopt(argv, "ru:k:s:p:t:l:")
+        opts, args = getopt.getopt(argv, "ru:k:s:p:t:l:b:")
         for opt, arg in opts:
+            if opt == '-r':
+                bitstamp_key = opt
             if opt == '-r':
                 bind_ip = "0.0.0.0"
             elif opt == "-u":
@@ -291,6 +306,8 @@ if __name__ == '__main__':
     print("Connecting to orderbooks")
     bitstamp_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD'}
     bitstamp_args = {'log_level': logging.ERROR}
+    if bitstamp_key is not None:
+        bitstamp_args['key'] = bitstamp_key
     bitstamp_fees = {'take': 0.25, 'make': 0.25}
     bitstamp_orderbook = BitstampOrderbook(asset_pairs=[bitstamp_currencies['BTC-USD'], bitstamp_currencies['BCH-USD']],
                                            fees=bitstamp_fees, **bitstamp_args)

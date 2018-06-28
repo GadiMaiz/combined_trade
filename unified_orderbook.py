@@ -28,14 +28,15 @@ class UnifiedOrderbook:
                 client_orderbooks.append(self._orderbooks[curr_orderbook].get_current_partial_book(
                     symbol, size, include_fees_in_price))
             best_orders = {'asks': [], 'bids': []}
+            price_sort = 'price'
             order_keys = [[heapq.nsmallest, 'asks'], [heapq.nlargest, 'bids']]
             if include_fees_in_price != OrderbookFee.NO_FEE:
-                order_keys = [[heapq.nsmallest, 'asks_with_fee'], [heapq.nlargest, 'bids_with_fee']]
+                price_sort = 'price_with_fee'
             for curr_orderbook in client_orderbooks:
                 for curr_keyset in order_keys:
                     best_orders[curr_keyset[1]] = curr_keyset[0](size, best_orders[curr_keyset[1]] +
                                                                  curr_orderbook[curr_keyset[1]],
-                                                                 key=operator.itemgetter('price'))
+                                                                 key=operator.itemgetter(price_sort))
         finally:
             self._orders_mutex.release()
 

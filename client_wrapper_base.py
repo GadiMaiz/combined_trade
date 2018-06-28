@@ -135,7 +135,7 @@ class ClientWrapperBase:
         if result:
             action_types_dict = {'sell': 'sell', 'timed_sell': 'sell', 'sell_limit': 'sell',
                                  'buy': 'buy', 'timed_buy': 'buy', 'buy_limit': 'buy'}
-            fee_type_dict = {'buy': 'take', 'buy_limit': 'make'}
+            fee_type_dict = {'buy': 'take', 'buy_limit': 'make', 'timed_buy': 'take'}
             if action_type not in action_types_dict:
                 result = False
                 refuse_reason = 'Invalid action: {}, valid actions are: {}'.format(action_type,
@@ -220,7 +220,7 @@ class ClientWrapperBase:
         if action_type == 'sell':
             self._reserved_crypto = size_coin
         elif action_type == 'buy':
-            self._reserved_usd = price_fiat * size_coin * (1 + 0.01 * self._orderbook['orderbook'].get_fees['take_fee'])
+            self._reserved_usd = price_fiat * size_coin * (1 + 0.01 * self._orderbook['orderbook'].get_fees()['take'])
         self._timed_order_action = action_type
         self._timed_order_price_fiat = price_fiat
         action_started = False
@@ -339,77 +339,78 @@ class ClientWrapperBase:
                       'order_time': order_time, 'timed_order': self.TIMED_ORDERS_DICT[relative_size],
                       'status': "Init", 'crypto_type': crypto_type}
         print("Immediate order:", order_info)
+        #try:
+        execute_size_coin = size_coin
+        price_and_spread = None
+        if relative_size:
+            price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(crypto_type + "-USD")
         try:
-            execute_size_coin = size_coin
-            price_and_spread = None
-            if relative_size:
-                price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(crypto_type + "-USD")
-            try:
-                self._client_mutex.acquire()
-                if action_type == 'buy' or action_type == 'buy_limit':
-                    if relative_size:
-                        if price_and_spread['ask'] > price_fiat:
-                            self.log.info("price is too high: <%f> maximum price: <%f>",price_and_spread['ask'], price_fiat)
-                            execute_size_coin = 0
-                        else:
-                            execute_size_coin = min(size_coin, self._get_relative_size(price_and_spread['ask'],
-                                                                                       self.ORDER_EXECUTION_MIN_FACTOR,
-                                                                                       self.ORDER_EXECUTION_MAX_FACTOR))
+            self._client_mutex.acquire()
+            if action_type == 'buy' or action_type == 'buy_limit':
+                if relative_size:
+                    if price_and_spread['ask']['price'] > price_fiat:
+                        self.log.info("price is too high: <%f> maximum price: <%f>",price_and_spread['ask'], price_fiat)
+                        execute_size_coin = 0
+                    else:
+                        execute_size_coin = min(size_coin, self._get_relative_size(price_and_spread['ask']['price'],
+                                                                                   self.ORDER_EXECUTION_MIN_FACTOR,
+                                                                                   self.ORDER_EXECUTION_MAX_FACTOR))
 
-                        execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
-                        execute_size_coin = max(execute_size_coin, self.minimum_order_size(crypto_type + "-USD"))
-                        self.log.debug("size: <%f> execute_size: <%f> max_order_size: <%f>", size_coin, execute_size_coin,
-                                       max_order_size)
+                    execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
+                    execute_size_coin = max(execute_size_coin, self.minimum_order_size(crypto_type + "-USD"))
+                    self.log.debug("size: <%f> execute_size: <%f> max_order_size: <%f>", size_coin, execute_size_coin,
+                                   max_order_size)
 
-                    if execute_size_coin > 0:
-                        order_info['crypto_size'] = execute_size_coin
-                        self.log.info("Buying <%f> <%s> for <%f> as <%s>", execute_size_coin, crypto_type, price_fiat,
-                                      action_type)
-                        print("Buying <{}> <{}> for <{}> as {}".format(execute_size_coin, crypto_type, price_fiat,
-                                                                       action_type))
-                        if action_type == 'buy':
-                            sent_order = self.buy_immediate_or_cancel(execute_size_coin, price_fiat,
-                                                                  self.CRYPTO_CURRENCIES_DICT[crypto_type])
-                        elif action_type == 'buy_limit':
-                            sent_order = self.buy_limit(execute_size_coin, price_fiat,
-                                                        self.CRYPTO_CURRENCIES_DICT[crypto_type])
-                        self.log.debug("sent order: <%s>", str(sent_order))
-                elif action_type == 'sell' or action_type == 'sell_limit':
-                    if relative_size:
-                        if price_and_spread['bid'] < price_fiat:
-                            execute_size_coin = 0
-                        else:
-                            execute_size_coin = min(size_coin, self._get_relative_size(price_and_spread['bid'],
-                                                                                       self.ORDER_EXECUTION_MIN_FACTOR,
-                                                                                       self.ORDER_EXECUTION_MAX_FACTOR))
-
-                        execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
-                        execute_size_coin = max(execute_size_coin, self.minimum_order_size(crypto_type + "-USD"))
-                        self.log.debug("size: <%f> execute_size: <%f>, max_order_size: <%f>", size_coin, execute_size_coin,
-                                       max_order_size)
-
-                    if execute_size_coin > 0:
-                        print("Selling", execute_size_coin)
-                        order_info['crypto_size'] = execute_size_coin
-                        self.log.info("Selling <%f> <%s> with limit of <%f>", execute_size_coin, crypto_type, price_fiat)
-                        print("Selling <{}> <{}> with limit of <{}>".format(execute_size_coin, crypto_type, price_fiat))
-                        if action_type == 'sell':
-                            sent_order = self.sell_immediate_or_cancel(execute_size_coin, price_fiat,
-                                                                       self.CRYPTO_CURRENCIES_DICT[crypto_type])
-                        elif action_type == 'sell_limit':
-                            print("Sell limit {} for {}".format(execute_size_coin, price_fiat))
-                            sent_order = self.sell_limit(execute_size_coin, price_fiat,
-                                                         self.CRYPTO_CURRENCIES_DICT[crypto_type])
-                        self.log.debug("sent order: <%s>", str(sent_order))
                 if execute_size_coin > 0:
-                    self.log.debug("Order sent in size <%f> for action <%s>", execute_size_coin, action_type)
-            finally:
-                self._client_mutex.release()
-        except Exception as e:
+                    order_info['crypto_size'] = execute_size_coin
+                    self.log.info("Buying <%f> <%s> for <%f> as <%s>", execute_size_coin, crypto_type, price_fiat,
+                                  action_type)
+                    print("Buying <{}> <{}> for <{}> as {}".format(execute_size_coin, crypto_type, price_fiat,
+                                                                   action_type))
+                    if action_type == 'buy':
+                        sent_order = self.buy_immediate_or_cancel(execute_size_coin, price_fiat,
+                                                              self.CRYPTO_CURRENCIES_DICT[crypto_type])
+                    elif action_type == 'buy_limit':
+                        sent_order = self.buy_limit(execute_size_coin, price_fiat,
+                                                    self.CRYPTO_CURRENCIES_DICT[crypto_type])
+                    self.log.debug("sent order: <%s>", str(sent_order))
+            elif action_type == 'sell' or action_type == 'sell_limit':
+                if relative_size:
+                    if price_and_spread['bid']['price'] < price_fiat:
+                        execute_size_coin = 0
+                    else:
+                        execute_size_coin = min(size_coin, self._get_relative_size(price_and_spread['bid']['price'],
+                                                                                   self.ORDER_EXECUTION_MIN_FACTOR,
+                                                                                   self.ORDER_EXECUTION_MAX_FACTOR))
+
+                    execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
+                    execute_size_coin = max(execute_size_coin, self.minimum_order_size(crypto_type + "-USD"))
+                    self.log.debug("size: <%f> execute_size: <%f>, max_order_size: <%f>", size_coin, execute_size_coin,
+                                   max_order_size)
+
+                if execute_size_coin > 0:
+                    print("Selling", execute_size_coin)
+                    order_info['crypto_size'] = execute_size_coin
+                    self.log.info("Selling <%f> <%s> with limit of <%f>", execute_size_coin, crypto_type, price_fiat)
+                    print("Selling <{}> <{}> with limit of <{}>".format(execute_size_coin, crypto_type, price_fiat))
+                    if action_type == 'sell':
+                        sent_order = self.sell_immediate_or_cancel(execute_size_coin, price_fiat,
+                                                                   self.CRYPTO_CURRENCIES_DICT[crypto_type])
+                    elif action_type == 'sell_limit':
+                        print("Sell limit {} for {}".format(execute_size_coin, price_fiat))
+                        sent_order = self.sell_limit(execute_size_coin, price_fiat,
+                                                     self.CRYPTO_CURRENCIES_DICT[crypto_type])
+                    self.log.debug("sent order: <%s>", str(sent_order))
+            if execute_size_coin > 0:
+                self.log.debug("Order sent in size <%f> for action <%s>", execute_size_coin, action_type)
+        finally:
+            self._client_mutex.release()
+        """except Exception as e:
             order_info = None
             self.log.error("Order not sent: <%s>", str(e))
             print(e)
             sent_order = None
+            execute_size_coin = 0"""
 
         order_status = False
         if sent_order is not None:
@@ -428,7 +429,8 @@ class ClientWrapperBase:
         return {'execution_size': execute_size_coin, 'execution_message': execution_message,
                 'order_status': order_status}
 
-    def _get_relative_size(self,order_size, min_factor, max_factor):
+    @staticmethod
+    def _get_relative_size(order_size, min_factor, max_factor):
         return random.uniform(min_factor, max_factor) * order_size
 
     def _get_order_size_limit(self, execute_size_coin, max_order_size):
@@ -485,8 +487,9 @@ class ClientWrapperBase:
             return False
         else:
             self._timed_make_order_thread = Thread(target=self._execute_timed_make_order_in_thread,
-                                                   args=(action_type, size_coin, crypto_type, price_fiat, fiat_type,
-                                                         duration_sec, max_order_size, 0.2, 0, report_status),
+                                                   args=(action_type, float(size_coin), crypto_type, float(price_fiat),
+                                                         fiat_type, int(duration_sec), float(max_order_size), 0.2, 0,
+                                                         bool(report_status)),
                                                    daemon=True,
                                                    name='Execute Timed Make Order Thread')
             self._is_timed_order_running = True
@@ -537,7 +540,8 @@ class ClientWrapperBase:
             if active_order_tracker:
                 active_order_tracker.update_order_from_exchange()
             execute_order_on_current_market = True
-            current_price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(asset_pair)
+            current_price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(
+                asset_pair, OrderbookFee.MAKER_FEE)
             new_order_price = 0
             price_changed = False
             if current_price_and_spread is None:
@@ -592,7 +596,8 @@ class ClientWrapperBase:
                                                     max_order_size))
                 new_order_size = float(Decimal(new_order_size).quantize(Decimal('1e-4')))
                 if new_order_size > 0:
-                    print("New order size:", new_order_size, "new order price:", new_order_price)
+                    print("New order size:", new_order_size, "new order price:", new_order_price, "price and spread:",
+                          current_price_and_spread, "spread difference", spread_difference)
                     if action_type == 'buy_limit':
                         active_order = self.buy_limit(new_order_size, new_order_price, crypto_type)
                     elif action_type == 'sell_limit':

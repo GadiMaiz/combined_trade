@@ -81,16 +81,14 @@ class OrderbookBase:
                 change_fee = fees['make']
             elif include_fees_in_price == OrderbookFee.TAKER_FEE:
                 change_fee = fees['take']
-            partial_orderbook['asks_with_fee'] = list(partial_orderbook['asks'])
-            partial_orderbook['bids_with_fee'] = list(partial_orderbook['bids'])
-            self._set_fee_to_orders(partial_orderbook['asks_with_fee'], change_fee)
-            self._set_fee_to_orders(partial_orderbook['bids_with_fee'], change_fee * -1)
+            self._set_fee_to_orders(partial_orderbook['asks'], change_fee)
+            self._set_fee_to_orders(partial_orderbook['bids'], change_fee * -1)
         return partial_orderbook
 
     @staticmethod
     def _set_fee_to_orders(orders, fee):
         for order_index in range(len(orders)):
-            orders[order_index]['price'] *= (1 + 0.01 * fee)
+            orders[order_index]['price_with_fee'] = orders[order_index]['price'] * (1 + 0.01 * fee)
 
     def _calculate_orderbook_params(self):
         curr_time = time.time()
@@ -148,8 +146,8 @@ class OrderbookBase:
     def get_average_spread(self, asset_pair):
         return self._average_spreads[asset_pair]
 
-    def get_current_spread_and_price(self, asset_pair):
-        curr_price = self.get_current_price(asset_pair)
+    def get_current_spread_and_price(self, asset_pair, include_fee=OrderbookFee.NO_FEE):
+        curr_price = self.get_current_price(asset_pair, include_fee)
         if curr_price:
             curr_price['spread'] = curr_price['ask']['price'] - curr_price['bid']['price']
         return curr_price
@@ -168,8 +166,8 @@ class OrderbookBase:
             curr_price = {'ask': {'price': curr_orders['asks'][0]['price'], 'size': curr_orders['asks'][0]['size']},
                           'bid': {'price': curr_orders['bids'][0]['price'], 'size': curr_orders['bids'][0]['size']}}
             if include_fee != OrderbookFee.NO_FEE:
-                curr_price['ask_with_fee'] = {'price': curr_orders['asks_with_fee'][0]['price']}
-                curr_price['bid_with_fee'] = {'price': curr_orders['bids_with_fee'][0]['price']}
+                curr_price['ask']['price_with_fee'] = curr_orders['asks'][0]['price_with_fee']
+                curr_price['bid']['price_with_fee'] = curr_orders['bids'][0]['price_with_fee']
 
         return curr_price
 
