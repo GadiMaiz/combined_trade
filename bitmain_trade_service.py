@@ -255,8 +255,9 @@ if __name__ == '__main__':
     frozen_orderbook_timeout_sec = 60
     log_level = logging.ERROR
     bitstamp_key = None
+    start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken']
     try:
-        opts, args = getopt.getopt(argv, "ru:k:s:p:t:l:b:")
+        opts, args = getopt.getopt(argv, "ru:k:s:p:t:l:b:e:")
         for opt, arg in opts:
             if opt == '-r':
                 bitstamp_key = opt
@@ -270,6 +271,8 @@ if __name__ == '__main__':
                 bitstamp_secret = arg
             elif opt == "-t":
                 frozen_orderbook_timeout_sec = arg
+            elif opt == "-e":
+                start_exchanges = arg.split("/")
             elif opt == "-l":
                 if arg == "error":
                     log_level = logging.ERROR
@@ -311,22 +314,38 @@ if __name__ == '__main__':
     bitstamp_fees = {'take': 0.25, 'make': 0.25}
     bitstamp_orderbook = BitstampOrderbook(asset_pairs=[bitstamp_currencies['BTC-USD'], bitstamp_currencies['BCH-USD']],
                                            fees=bitstamp_fees, **bitstamp_args)
-    bitstamp_orderbook.start_orderbook()
-    print("Bitstamp started")
+    active_exchanges = dict()
+    active_exchanges['Bitstamp'] = False
+    if "Bitstamp" in start_exchanges:
+        bitstamp_orderbook.start_orderbook()
+        active_exchanges['Bitstamp'] = True
+        print("Bitstamp started")
+
     bitfinex_currencies = {'BTC-USD': 'BTCUSD', 'BCH-USD': 'BCHUSD'}
     bitfinex_fees = {'take': 0.1, 'make': 0.2}
     bitfinex_orderbook = BitfinexOrderbook([bitfinex_currencies['BTC-USD'], bitfinex_currencies['BCH-USD']],
                                            bitfinex_fees)
-    bitfinex_orderbook.start_orderbook()
-    print("Bitfinex started")
+    active_exchanges['Bitfinex'] = False
+    if "Bitfinex" in start_exchanges:
+        bitfinex_orderbook.start_orderbook()
+        active_exchanges['Bitfinex'] = True
+        print("Bitfinex started")
+
     gdax_currencies = {'BTC-USD' : 'BTC-USD', 'BCH-USD': 'BCH-USD'}
     gdax_fees = {'take': 0.3, 'make': 0}
     gdax_orderbook = GdaxOrderbook([gdax_currencies['BTC-USD'], gdax_currencies['BCH-USD']], gdax_fees)
-    gdax_orderbook.start_orderbook()
+
+    active_exchanges['GDAX'] = False
+    if "GDAX" in start_exchanges:
+        gdax_orderbook.start_orderbook()
+        active_exchanges['GDAX'] = True
 
     kraken_fees = {'take': 0.26, 'make': 0.16}
     kraken_orderbook = KrakenOrderbook(['BTC-USD', 'BCH-USD'], kraken_fees)
-    kraken_orderbook.start_orderbook()
+    active_exchanges['Kraken'] = False
+    if "Kraken" in start_exchanges:
+        kraken_orderbook.start_orderbook()
+        active_exchanges['Kraken'] = True
 
     print("Orderbooks started")
     unified_orderbook = UnifiedOrderbook({"Bitstamp": bitstamp_orderbook,
@@ -335,16 +354,16 @@ if __name__ == '__main__':
                                           "Kraken": kraken_orderbook})
 
     orderbooks = {'Bitstamp': {'orderbook': bitstamp_orderbook, 'currencies_dict': bitstamp_currencies,
-                               'creator': BitstampOrderbook, 'args': bitstamp_args, 'active': True,
-                               'fees': bitstamp_fees},
+                               'creator': BitstampOrderbook, 'args': bitstamp_args,
+                               'active': active_exchanges['Bitstamp'], 'fees': bitstamp_fees},
                   'GDAX': {'orderbook': gdax_orderbook, 'currencies_dict': gdax_currencies,
-                           'creator': GdaxOrderbook, 'active': True, 'fees': gdax_fees},
+                           'creator': GdaxOrderbook, 'active': active_exchanges['GDAX'], 'fees': gdax_fees},
                   'Bitfinex': {'orderbook': bitfinex_orderbook, 'currencies_dict': bitfinex_currencies,
-                               'creator': BitfinexOrderbook, 'active': True, 'fees': bitfinex_fees},
+                               'creator': BitfinexOrderbook, 'active': active_exchanges['Bitfinex'], 'fees': bitfinex_fees},
                   'Kraken': {'orderbook': kraken_orderbook, 'currencies_dict': bitstamp_currencies,
-                             'creator': KrakenOrderbook, 'active': True, 'fees': kraken_fees},
+                             'creator': KrakenOrderbook, 'active': active_exchanges['Kraken'], 'fees': kraken_fees},
                   'Unified': {'orderbook': unified_orderbook, 'currencies_dict': bitstamp_currencies,
-                              'creator': UnifiedOrderbook, 'active': False, 'fees': dict()}}
+                              'creator': UnifiedOrderbook, 'active': True, 'fees': dict()}}
     watchdog = OrderbookWatchdog(orderbooks, frozen_orderbook_timeout_sec)
     watchdog.start()
     exchanges_manager = ExchangeClientManager({'Bitstamp': {'creator': BitstampClientWrapper,
@@ -360,4 +379,5 @@ if __name__ == '__main__':
                                               "./Transactions.data",
                                               watchdog)
     #app.run(host= '0.0.0.0', ssl_context='adhoc')
+    print(active_exchanges)
     app.run(host=bind_ip, port=listener_port)
