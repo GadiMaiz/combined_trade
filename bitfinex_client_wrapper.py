@@ -11,11 +11,14 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
         self._signed_in_user = ""
         self.set_credentials(credentials)
 
-    def set_credentials(self, client_credentials):
+    def set_credentials(self, client_credentials, cancel_order=True):
+        super().set_credentials(client_credentials)
+        self._should_have_balance = False
         username = ''
         key = ''
         secret = ''
-        self.cancel_timed_order()
+        if cancel_order:
+            self.cancel_timed_order()
         try:
             if client_credentials is not None and 'username' in client_credentials and \
                     'key' in client_credentials and 'secret' in client_credentials:
@@ -141,9 +144,9 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
     def sell_limit(self, execute_size_coin, price_fiat, crypto_type):
         return self._execute_exchange_order("sell", execute_size_coin, price_fiat, crypto_type, "exchange limit")
 
-    def create_order_tracker(self, order, orderbook, order_info):
+    def create_order_tracker(self, order, orderbook, order_info, crypto_type):
         order['id'] = int(order['id'])
-        return BitfinexOrderTracker(order, orderbook, self, order_info)
+        return BitfinexOrderTracker(order, orderbook, self, order_info, crypto_type)
 
     def exchange_accuracy(self):
         return '1e-1'

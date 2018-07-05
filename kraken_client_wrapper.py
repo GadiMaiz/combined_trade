@@ -14,11 +14,14 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
         self._signed_in_user = ""
         self.set_credentials(credentials)
 
-    def set_credentials(self, client_credentials):
+    def set_credentials(self, client_credentials, cancel_order=True):
+        super().set_credentials(client_credentials)
+        self._should_have_balance = False
         username = ''
         key = ''
         secret = ''
-        self.cancel_timed_order()
+        if cancel_order:
+            self.cancel_timed_order()
         try:
             if client_credentials is not None and 'username' in client_credentials and \
                     'key' in client_credentials and 'secret' in client_credentials:
@@ -91,21 +94,42 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
                 exchange_order = pykraken.kprivate.kprivate_addorder(self._kraken_client, kraken_pair, action_type,
                                                                      'limit', price, None, size)
                 execute_result['id'] = exchange_order['txid'][0]
-                if self._cancel_order(execute_result['id']):
-                    execute_result['status'] = "Cancelled"
-                else:
-                    self.log.debug("Can't cancel order <%s>, order done", execute_result['id'])
-                    execute_result['order_status'] = True
-                    execute_result['status'] = 'Finished'
-                    print("Order finished")
+                if not cancel:
+                    print("Not cancelling order {}".format(execute_result['id']))
                     exchange_order_status = self.order_status(execute_result['id'])
                     if execute_result['id'] not in exchange_order_status:
                         # We don't know the price so we set the limit price as a speculation
+                        print("Price not in status", exchange_order_status)
                         execute_result['executed_price_usd'] = price
                     else:
+                        print("Price in status", exchange_order_status)
                         execute_result['executed_price_usd'] = \
                             float(exchange_order_status[execute_result['id']]['price'])
-                    print("Kraken done")
+                    if exchange_order_status[execute_result['id']]['status'] == 'open':
+                        print("Status is open")
+                        execute_result['status'] = "Open"
+                    elif exchange_order_status[execute_result['id']]['status'] == 'closed':
+                        print("Status is closed, finishing order")
+                        execute_result['status'] = "Finished"
+                    else:
+                        print("Unknown order status:", exchange_order_status)
+                        execute_result['status'] = "Error"
+                else:
+                    if self._cancel_order(execute_result['id']):
+                        execute_result['status'] = "Cancelled"
+                    else:
+                        self.log.debug("Can't cancel order <%s>, order done", execute_result['id'])
+                        execute_result['order_status'] = True
+                        execute_result['status'] = 'Finished'
+                        print("Order finished")
+                        exchange_order_status = self.order_status(execute_result['id'])
+                        if execute_result['id'] not in exchange_order_status:
+                            # We don't know the price so we set the limit price as a speculation
+                            execute_result['executed_price_usd'] = price
+                        else:
+                            execute_result['executed_price_usd'] = \
+                                float(exchange_order_status[execute_result['id']]['price'])
+                print("Kraken done")
 
         except Exception as e:
             self.log.error("%s %s", action_type, e)
@@ -127,6 +151,7 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
                 result = pykraken.kprivate.kprivate_queryorders(self._kraken_client, txid=[order_id])
             except Exception as e:
                 self.log.error("%s", str(e))
+                print("Order status error:", e)
         return result
 
     def transactions(self, transactions_limit):
@@ -151,8 +176,8 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
     def sell_limit(self, execute_size_coin, price_fiat, crypto_type):
         return self._execute_exchange_order("sell", False, execute_size_coin, price_fiat, crypto_type)
 
-    def create_order_tracker(self, order, orderbook, order_info):
-        return KrakenOrderTracker(order, orderbook, self, order_info)
+    def create_order_tracker(self, order, orderbook, order_info, crypto_type):
+        return KrakenOrderTracker(order, orderbook, self, order_info, crypto_type)
 
     def _cancel_order(self, order_id):
         cancel_status = False
@@ -164,6 +189,7 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
             except Exception as e:
                 self.log.error("Cancel exception: %s", str(e))
                 print("Kraken cancel error:", e, cancel_status)
+                print ("Cancel exception: <{}>".format(e))
         return cancel_status
 
     def exchange_accuracy(self):

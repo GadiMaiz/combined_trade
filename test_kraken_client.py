@@ -41,7 +41,7 @@ print(closed_orders)"""
 #cancelled_order_status = pykraken.kprivate.kprivate_queryorders(kraken_client, txid=order['txid'])
 #print("Cancelled order status:", cancelled_order_status)
 
-open_order_status = pykraken.kprivate.kprivate_queryorders(kraken_client, txid=['OLJG67-C7CGL-KMWIBA'])
+open_order_status = pykraken.kprivate.kprivate_queryorders(kraken_client, txid=['O6JHTU-WLJLM-OPGFC5'])
 print("Open order status:", open_order_status)
 
 #trades = pykraken.kprivate.kprivate_tradeshistory(kraken_client)

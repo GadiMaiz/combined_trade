@@ -256,6 +256,7 @@ if __name__ == '__main__':
     log_level = logging.ERROR
     bitstamp_key = None
     start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken']
+    open_log = True
     try:
         opts, args = getopt.getopt(argv, "ru:k:s:p:t:l:b:e:")
         for opt, arg in opts:
@@ -282,6 +283,8 @@ if __name__ == '__main__':
                     log_level = logging.DEBUG
                 elif arg == "info":
                     log_level = logging.INFO
+                elif arg == "none":
+                    open_log = False
             elif opt == "-p":
                 try:
                     listener_port = int(arg)
@@ -290,8 +293,9 @@ if __name__ == '__main__':
     except getopt.GetoptError as e:
         print("Parameters error:", e, "parameters:", argv)
 
-    logging.basicConfig(filename='bitmain_trade_service.log', level=log_level,
-                        format='%(asctime)s %(processName)s %(process)d %(threadName)s %(thread)d %(levelname)s %(filename)s(%(lineno)d) %(funcName)s %(message)s')
+    if open_log:
+        logging.basicConfig(filename='bitmain_trade_service.log', level=log_level,
+                            format='%(asctime)s %(processName)s %(process)d %(threadName)s %(thread)d %(levelname)s %(filename)s(%(lineno)d) %(funcName)s %(message)s')
     #handler = RotatingFileHandler('bitmain_trade_service.log', maxBytes=20000000,
     #                              backupCount=5)
     log = logging.getLogger(__name__)

@@ -34,11 +34,18 @@ class KrakenOrderbook(OrderbookBase):
                     self._last_orderbook_timestamp[kraken_pair] <= KrakenOrderbook.MINIMUM_REFRESH_INTERVAL_SEC:
                 orders = self._last_orderbooks[kraken_pair]
             else:
-                k = KrakenREST()
-                orders_bytes = k.query('GET', 'public/Depth', params={'pair': kraken_pair})
-                orders = json.loads(orders_bytes.content)
-                self._last_orderbook_timestamp[kraken_pair] = curr_time
-                self._last_orderbooks[kraken_pair] = orders
+                try:
+                    k = KrakenREST()
+                    orders_bytes = k.query('GET', 'public/Depth', params={'pair': kraken_pair})
+                    orders = json.loads(orders_bytes.content)
+                    self._last_orderbook_timestamp[kraken_pair] = curr_time
+                    self._last_orderbooks[kraken_pair] = orders
+                except Exception as e:
+                    print("Kraken exception:", e)
+                    if kraken_pair in self._last_orderbooks[kraken_pair]:
+                        orders = self._last_orderbooks[kraken_pair]
+                    else:
+                        orders = {"result": {kraken_pair: {'asks': [], 'bids': []}}}
         finally:
             self._orderbook_mutex.release()
         result = {
@@ -67,15 +74,22 @@ class KrakenOrderbook(OrderbookBase):
             if kraken_pair not in self._last_trades_timestamp or curr_time - self._last_trades_timestamp[kraken_pair] > \
                 KrakenOrderbook.MINIMUM_REFRESH_INTERVAL_SEC:
                 k = KrakenREST()
-                trades_bytes = k.query('GET', 'public/Trades', params={'pair': kraken_pair})
-                trades = json.loads(trades_bytes.content)
-                if 'result' in trades and kraken_pair in trades['result']:
-                    last_trade = trades['result'][kraken_pair][len(trades['result'][kraken_pair]) - 1]
-                    type = "buy"
-                    if last_trade[3] == 's':
-                        type = "sell"
-                    self._last_trade[kraken_pair] = {'price': float(last_trade[0]),
-                                                     'type': type,
-                                                     'time': last_trade[2]}
+                try:
+                    trades_bytes = k.query('GET', 'public/Trades', params={'pair': kraken_pair})
+                    trades = json.loads(trades_bytes.content)
+                    if 'result' in trades and kraken_pair in trades['result']:
+                        last_trade = trades['result'][kraken_pair][len(trades['result'][kraken_pair]) - 1]
+                        type = "buy"
+                        if last_trade[3] == 's':
+                            type = "sell"
+                        self._last_trade[kraken_pair] = {'price': float(last_trade[0]),
+                                                         'type': type,
+                                                         'time': last_trade[2]}
+                except Exception as e:
+                    print("Kraken orderbook exception:", e)
+                    if kraken_pair not in self._last_trades_timestamp:
+                        self._last_trade[kraken_pair] = {'price': 0,
+                                                         'type': "",
+                                                         'time': time.time()}
             result = self._last_trade[kraken_pair]
         return result

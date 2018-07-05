@@ -25,6 +25,9 @@ class TradeDB:
                 if 'ask' not in order_info or 'bid' not in order_info:
                     order_info['ask'] = 0
                     order_info['bid'] = 0
+                if 'balance' not in order_info or 'balances' not in order_info['balance']:
+                    order_info['balance'] = {'balances': {'USD': {'available': 0},
+                                                          order_info['crypto_type']: {'available': 0}}}
                 insert_str = "INSERT INTO sent_orders VALUES('{}', '{}', {}, {}, '{}', '{}', '{}', {}, '{}', {}, {}, {}" \
                              ",{})".format(order_info['exchange'], order_info['action_type'], order_info['crypto_size'],
                                           order_info['price_fiat'], order_info['exchange_id'], order_info['status'],

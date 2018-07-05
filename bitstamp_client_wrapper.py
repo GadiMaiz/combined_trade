@@ -1,6 +1,8 @@
 import bitstamp.client
 import client_wrapper_base
 import logging
+from order_tracker import BitstampOrderTracker
+
 
 class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
     def __init__(self, credentials, orderbook, db_interface, clients_manager):
@@ -11,11 +13,14 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
         self.set_credentials(credentials)
         self._fee = 0
 
-    def set_credentials(self, client_credentials):
+    def set_credentials(self, client_credentials, cancel_order=True):
+        super().set_credentials(client_credentials)
+        self._should_have_balance = False
         username = ''
         key = ''
         secret = ''
-        self.cancel_timed_order()
+        if cancel_order:
+            self.cancel_timed_order()
         try:
             if client_credentials is not None and 'username' in client_credentials and \
                     'key' in client_credentials and 'secret' in client_credentials:
@@ -119,7 +124,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                     execute_result['status'] = 'Finished'
                     try:
                         found_transaction = False
-                        all_transactions = self.user_transactions()
+                        all_transactions = self._bitstamp_client.user_transactions()
                         self.log.debug("curr transaction <%d> transactions: <%s>", order_id, all_transactions)
                         for curr_transaction in all_transactions:
                             if curr_transaction['order_id'] == order_id or curr_transaction['order_id'] == int(order_id):
@@ -187,3 +192,17 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
     def sell_limit(self, execute_size_coin, price_fiat, crypto_type):
         return self._execute_immediate_or_cancel(self._bitstamp_client.sell_limit_order, execute_size_coin, price_fiat,
                                                  crypto_type, False)
+
+    def get_order_status_from_transactions(self, order_id, crypto_type):
+        results = {'executed_size': 0, 'transactions': []}
+        all_transactions = self.transactions()
+        self.log.debug("curr transaction <%d> transactions: <%s>", order_id, all_transactions)
+        for curr_transaction in all_transactions:
+            if curr_transaction['order_id'] == order_id:
+                results['executed_size'] += abs(float(curr_transaction[(crypto_type.lower())]))
+                results['transactions'].append(curr_transaction)
+
+        return results
+
+    def create_order_tracker(self, order, orderbook, order_info, crypto_type):
+        return BitstampOrderTracker(order, orderbook, self, order_info, crypto_type)

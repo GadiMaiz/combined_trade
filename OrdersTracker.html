@@ -508,7 +508,7 @@
 			unified_request.send();
 			kraken_request.send();
 			gdax_request.send();*/
-		}, 1000);
+		}, 2000);
 		
 		var time_order_running = false;
 		window.setInterval(function(){
@@ -545,7 +545,7 @@
 						}
 						else
 						{
-							if (time_order_response.timed_order_required_size > time_order_response.timed_order_done_size)
+							if (time_order_response.timed_order_required_size - 0.0001 > time_order_response.timed_order_done_size)
 							{
 								timed_order_status = get_language_element('cancelled', "Cancelled");
 							}
@@ -912,7 +912,6 @@
 						var bitstamp_transactions_response = JSON.parse(bitstamp_transactions_request.responseText.replace(/'/g, '"'));
 						var transaction_dict = {'btc' : 'btc_usd', 
 												'bch' : 'bch_usd'};
-						var transaction_types = Object.keys(bitstamp_transactions_response[0]);
 						for (i = 0; i < bitstamp_transactions_response.length; i += 1)
 						{
 							var found_type = "";
@@ -1005,24 +1004,27 @@
 			var order_type_colors_dict = {'buy':'"Green"', 'sell':'"Red"', 'buy_limit': '"Green"', 'sell_limit': '"Red"'};
 			for (i = 0; i < sent_orders_response.length; i++)
 			{
-				var exchange_display = exchange_display_dict[sent_orders_response[i].exchange];
-				if (exchange_display == null)
+				if (sent_orders_response[i].status != "Make Order")
 				{
-					exchange_display = sent_orders_response[i].exchange;
-				}
-				
-				var curr_transaction = '<font color = ' + order_type_colors_dict[sent_orders_response[i].action_type] + ' >' + exchange_display +
-					" " + sent_orders_response[i].order_time + "(" + timed_order_dict[sent_orders_response[i].timed_order] + "): " +
-					action_type_dict[sent_orders_response[i].action_type] + parseFloat(sent_orders_response[i].crypto_size).toFixed(4) + 
-					get_language_element(sent_orders_response[i].crypto_type,sent_orders_response[i].crypto_type) +
-					" " + get_language_element('buy_at','@') + sent_orders_response[i].price_fiat.toFixed(2) + "," + 
-					get_language_element(sent_orders_response[i].status.toLowerCase(),sent_orders_response[i].status);
+					var exchange_display = exchange_display_dict[sent_orders_response[i].exchange];
+					if (exchange_display == null)
+					{
+						exchange_display = sent_orders_response[i].exchange;
+					}
 					
+					var curr_transaction = '<font color = ' + order_type_colors_dict[sent_orders_response[i].action_type] + ' >' + exchange_display +
+						" " + sent_orders_response[i].order_time + "(" + timed_order_dict[sent_orders_response[i].timed_order] + "): " +
+						action_type_dict[sent_orders_response[i].action_type] + parseFloat(sent_orders_response[i].crypto_size).toFixed(4) + 
+						get_language_element(sent_orders_response[i].crypto_type,sent_orders_response[i].crypto_type) +
+						" " + get_language_element('buy_at','@') + sent_orders_response[i].price_fiat.toFixed(2) + "," + 
+						get_language_element(sent_orders_response[i].status.toLowerCase(),sent_orders_response[i].status);
+						
 					if (sent_orders_response[i].ask != 0 || sent_orders_response[i].bid != 0)
 					{
 						curr_transaction = curr_transaction + " " + sent_orders_response[i].ask + "/" + sent_orders_response[i].bid;
 					}
 					sent_transactions_placeholder.innerHTML = sent_transactions_placeholder.innerHTML + curr_transaction + "</font><BR>";
+				}
 			}})
 		}
 		
@@ -1186,7 +1188,6 @@
 								orders_to_export[i].usd_balance, orders_to_export[i].crypto_available];
 				data_rows = data_rows + curr_row.join(",") + "\n";
 			}
-			
 			var encodedUri = encodeURI('data:text/csv;charset=utf-8,'+headers_row + "\n" + data_rows);
 			var link = document.createElement("a");
 			link.setAttribute("href", encodedUri);

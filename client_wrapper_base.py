@@ -29,6 +29,7 @@ class ClientWrapperBase:
     MAKE_ORDER_MINIMUM_SLEEP_SEC = 2
     MAKE_ORDER_MAXIMUM_SLEEP_SEC = 5
     BID_ASK_RATIO_SIZE_LIMIT = 0.2
+    MINIMUM_REMAINING_SIZE = 0.0001
 
     def __init__(self, orderbook, db_interface, clients_manager):
         self.log = logging.getLogger(__name__)
@@ -56,11 +57,16 @@ class ClientWrapperBase:
         self._db_interface = db_interface
         self._clients_manager = clients_manager
         self._client_mutex = Lock()
+        self._should_have_balance = False
+        self._client_credentials = client_credentials = None
+
+    def set_credentials(self, client_credentials, cancel_order=True):
+        self._client_credentials = client_credentials
 
     def set_balance_changed(self):
         self._balance_changed = True
 
-    def account_balance(self):
+    def account_balance(self, reconnect=True):
         total_usd_value = 0
         if not self._is_client_init:
             self._last_balance.pop('balances', None)
@@ -84,6 +90,12 @@ class ClientWrapperBase:
                             self._last_balance['balances'][crypto_type_key] = {'amount': 0.0, 'available': 0.0,
                                                                                'price': 0.0}
                     self._last_balance['total_usd_value'] = total_usd_value
+                    if total_usd_value > 0:
+                        self._should_have_balance = True
+
+                    if total_usd_value == 0 and self._should_have_balance and reconnect:
+                        self.set_credentials(self._client_credentials, False)
+                        return self.account_balance(False)
                     self._balance_changed = False
             except Exception as e:
                 self.log.error(e)
@@ -537,7 +549,7 @@ class ClientWrapperBase:
         tracked_order = None
         while self.is_timed_order_running():
             self._timed_order_elapsed_time = time.time() - timed_order_start_time
-            if active_order_tracker:
+            if active_order_tracker and tracked_order['status'] != 'Finished':
                 active_order_tracker.update_order_from_exchange()
             execute_order_on_current_market = True
             current_price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(
@@ -576,13 +588,26 @@ class ClientWrapperBase:
                     cancel_status = self._cancel_order(active_order['id'])
                 finally:
                     self._client_mutex.release()
+                tracked_order['order_time'] = datetime.datetime.utcnow()
                 if cancel_status:
                     tracked_order['status'] = "Cancelled"
-                    tracked_order['order_time'] = datetime.datetime.utcnow()
-                    self._db_interface.write_order_to_db(tracked_order)
+                elif tracked_order and tracked_order['executed_size'] != active_order['required_size']:
+                    print("Getting information for order {} from exchange transactions".format(active_order['id']))
+                    if tracked_order['executed_size'] > 0:
+                        # Reducing the current size because it will be recalculated from the transactions
+                        self.add_order_executed_size(-1 * tracked_order['executed_size'], None, None, None)
+                    active_order_tracker.update_order_from_transactions()
+                    if tracked_order['executed_size'] == 0:
+                        tracked_order['status'] = "Cancelled"
+                    else:
+                        tracked_order['status'] = "Make Order Executed"
+                self._db_interface.write_order_to_db(tracked_order)
                 active_order_tracker.unregister_order()
                 active_order = None
                 active_order_tracker = None
+            elif execute_order_on_current_market:
+                print("Current order {} still valid on current price {}".format(tracked_order,
+                                                                                current_price_and_spread))
 
             if execute_order_on_current_market and price_changed:
                 new_order_size = size_coin - self._timed_order_done_size
@@ -594,36 +619,48 @@ class ClientWrapperBase:
                 new_order_size = min(new_order_size, size_from_price,
                                      random.uniform(ClientWrapperBase.MAX_EXECUTION_MIN_FACTOR * max_order_size,
                                                     max_order_size))
+                if size_coin - self._timed_order_done_size - new_order_size < \
+                    self.minimum_order_size(crypto_type + "-USD"):
+                    new_order_size = size_coin - self._timed_order_done_size
                 new_order_size = float(Decimal(new_order_size).quantize(Decimal('1e-4')))
                 if new_order_size > 0:
                     print("New order size:", new_order_size, "new order price:", new_order_price, "price and spread:",
-                          current_price_and_spread, "spread difference", spread_difference)
+                          current_price_and_spread, "spread difference", spread_difference, "remaining size",
+                          size_coin - self._timed_order_done_size)
                     if action_type == 'buy_limit':
                         active_order = self.buy_limit(new_order_size, new_order_price, crypto_type)
                     elif action_type == 'sell_limit':
                         active_order = self.sell_limit(new_order_size, new_order_price, crypto_type)
                     active_order['required_size'] = new_order_size
+                    active_order['executed_size'] = 0
                     print("New order:", active_order)
                     prev_order_price = new_order_price
 
-                    if active_order and active_order['status'] != 'Error':
+                    if active_order and (active_order['status'] == 'Open' or active_order['status'] == 'Finished'):
                         tracked_order = copy.deepcopy(order_info)
                         tracked_order['exchange_id'] = active_order['id']
                         tracked_order['crypto_size'] = new_order_size
                         tracked_order['balance'] = self.account_balance()
                         tracked_order['price_fiat'] = new_order_price
                         tracked_order['order_time'] = datetime.datetime.utcnow()
-                        tracked_order['status'] = "Make Order Sent"
+                        if active_order['status'] == 'Open':
+                            tracked_order['status'] = "Make Order Sent"
+                            tracked_order['executed_size'] = 0
+                        else:
+                            tracked_order['status'] = "Finished"
+                            tracked_order['executed_size'] = new_order_size
+                            self.add_order_executed_size(new_order_size, None, None, None)
                         print("Setting price")
                         tracked_order['ask'] = current_price_and_spread['ask']['price']
                         tracked_order['bid'] = current_price_and_spread['bid']['price']
                         print("Make order info:", tracked_order)
                         self._db_interface.write_order_to_db(tracked_order)
-                        active_order_tracker = self.create_order_tracker(active_order, self._orderbook, tracked_order)
+                        active_order_tracker = self.create_order_tracker(active_order, self._orderbook, tracked_order,
+                                                                         crypto_type)
                     elif active_order and active_order['status'] == 'Error':
                         active_order = None
 
-            if self._timed_order_done_size >= size_coin:
+            if self._timed_order_done_size >= size_coin - ClientWrapperBase.MINIMUM_REMAINING_SIZE:
                 self._is_timed_order_running = False
             else:
                 time.sleep(random.uniform(ClientWrapperBase.MAKE_ORDER_MINIMUM_SLEEP_SEC,
@@ -712,9 +749,9 @@ class ClientWrapperBase:
         if self._timed_command_listener:
             self._timed_command_listener.add_order_executed_size(added_size, None, None, None)
 
-    def create_order_tracker(self, order, orderbook, order_info):
+    def create_order_tracker(self, order, orderbook, order_info, crypto_type):
         order['id'] = int(order['id'])
-        return OrderTracker(order, orderbook, self, order_info)
+        return OrderTracker(order, orderbook, self, order_info, crypto_type)
 
     def exchange_accuracy(self):
         return '1e-2'

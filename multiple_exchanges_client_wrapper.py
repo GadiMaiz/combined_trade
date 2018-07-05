@@ -25,7 +25,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         self._watchdog = watchdog
         self._sent_order_identifier = sent_order_identifier
 
-    def account_balance(self):
+    def account_balance(self, reconnect=False):
         self._last_balance = {'balances': dict()}
         for curr_client in self._clients:
             curr_account_balance = self._clients[curr_client].account_balance()
@@ -244,7 +244,9 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                                'crypto_balance': client_crypto_balance}
             min_order_sorted_clients = sorted(client_prices.values(), key=operator.itemgetter('minimum_order_size'))
             print("Order size sorted clients: {}".format(min_order_sorted_clients))
-            if remaining_size > 0:
+            if remaining_size <= ClientWrapperBase.MINIMUM_REMAINING_SIZE:
+                self._is_timed_order_running = False
+            else:
                 num_of_exchanges = 1
                 orders_big_enough = False
                 exchange_size = remaining_size
@@ -326,7 +328,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                             exchange_size = float(
                                 Decimal(balance_for_order / (
                                         num_of_exchanges - client_index - 1)).quantize(Decimal('1e-4')))
-                    if balance_for_order > 0:
+                    if balance_for_order > 0.0001:
                         print("Not enough available usd in the exchanges for executing the order")
                         self._is_timed_order_running = False
 
@@ -354,8 +356,6 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                                                                   ['execute_size'], crypto_type,
                                                                                   best_price, fiat_type, duration_sec,
                                                                                   max_order_size, False)
-            else:
-                self._is_timed_order_running = False
 
             if self.is_timed_order_running():
                 sleep_interval = random.uniform(MultipleExchangesClientWrapper.TIMED_MAKE_SLEEP_FACTOR *
