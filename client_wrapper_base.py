@@ -748,8 +748,9 @@ class ClientWrapperBase:
             order_info['price_fiat'] = price
             order_info['order_time'] = datetime.datetime.utcnow()
             order_info['status'] = "Make Order Executed"
-            print("Make order info:", order_info)
-            self._db_interface.write_order_to_db(order_info)
+            print("Make order info when updating from orders tracker:", order_info)
+            if not ('updated_from_transactions' in order_info and order_info['updated_from_transactions']):
+                self._db_interface.write_order_to_db(order_info)
         else:
             print("No order info")
         if self._timed_command_listener:
