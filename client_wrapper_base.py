@@ -28,6 +28,8 @@ class ClientWrapperBase:
     LAST_ORDERS_FOR_LIMIT_AVERAGE = 5
     MAKE_ORDER_MINIMUM_SLEEP_SEC = 2
     MAKE_ORDER_MAXIMUM_SLEEP_SEC = 5
+    MAKE_ORDER_CANCEL_MIN_SLEEP_SEC = 0.5
+    MAKE_ORDER_CANCEL_MAX_SLEEP_SEC = 1.5
     BID_ASK_RATIO_SIZE_LIMIT = 0.2
     MINIMUM_REMAINING_SIZE = 0.0001
 
@@ -580,8 +582,9 @@ class ClientWrapperBase:
                         action_type, order_info, current_price_and_spread, price_fiat))
                     execute_order_on_current_market = False
 
+            additional_sleep_time_for_cancel = 0
             if active_order is not None and (price_changed or not execute_order_on_current_market):
-                print("Done size:", self._timed_order_done_size, "Cancelling order:", active_order)
+                print("Done size:", self._timed_order_done_size, "Cancelling order if not done:", active_order)
                 cancel_status = None
                 try:
                     self._client_mutex.acquire()
@@ -589,19 +592,29 @@ class ClientWrapperBase:
                 finally:
                     self._client_mutex.release()
                 tracked_order['order_time'] = datetime.datetime.utcnow()
+                already_written_to_db = False
                 if cancel_status:
                     tracked_order['status'] = "Cancelled"
-                elif tracked_order and tracked_order['executed_size'] != active_order['required_size']:
+                    additional_sleep_time_for_cancel = random.uniform(ClientWrapperBase.MAKE_ORDER_CANCEL_MIN_SLEEP_SEC,
+                                                                      ClientWrapperBase.MAKE_ORDER_CANCEL_MAX_SLEEP_SEC)
+                    time.sleep(additional_sleep_time_for_cancel)
+
+                elif active_order and active_order['executed_size'] != active_order['required_size']:
                     print("Getting information for order {} from exchange transactions".format(active_order['id']))
-                    if tracked_order['executed_size'] > 0:
+                    if active_order['executed_size'] > 0:
                         # Reducing the current size because it will be recalculated from the transactions
-                        self.add_order_executed_size(-1 * tracked_order['executed_size'], None, None, None)
+                        self.add_order_executed_size(-1 * active_order['executed_size'], None, None, None)
                     active_order_tracker.update_order_from_transactions()
-                    if tracked_order['executed_size'] == 0:
+                    print("Tracked order after update from transactions:", tracked_order)
+                    if active_order['executed_size'] == 0:
                         tracked_order['status'] = "Cancelled"
                     else:
                         tracked_order['status'] = "Make Order Executed"
-                self._db_interface.write_order_to_db(tracked_order)
+                elif active_order and active_order['executed_size'] == active_order['required_size']:
+                    already_written_to_db = True
+
+                if not already_written_to_db:
+                    self._db_interface.write_order_to_db(tracked_order)
                 active_order_tracker.unregister_order()
                 active_order = None
                 active_order_tracker = None
@@ -663,8 +676,9 @@ class ClientWrapperBase:
             if self._timed_order_done_size >= size_coin - ClientWrapperBase.MINIMUM_REMAINING_SIZE:
                 self._is_timed_order_running = False
             else:
-                time.sleep(random.uniform(ClientWrapperBase.MAKE_ORDER_MINIMUM_SLEEP_SEC,
-                                          ClientWrapperBase.MAKE_ORDER_MAXIMUM_SLEEP_SEC))
+                time.sleep(random.uniform(
+                    ClientWrapperBase.MAKE_ORDER_MINIMUM_SLEEP_SEC, ClientWrapperBase.MAKE_ORDER_MAXIMUM_SLEEP_SEC) + \
+                           additional_sleep_time_for_cancel)
 
         if active_order:
             print("Done size:", self._timed_order_done_size, "Cancelling order:", active_order)

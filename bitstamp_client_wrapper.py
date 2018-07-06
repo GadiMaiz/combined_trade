@@ -10,6 +10,8 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
         self.log = logging.getLogger(__name__)
         self._bitstamp_client = None
         self._signed_in_user = ""
+        self._api_key = ""
+        self._secret = ""
         self.set_credentials(credentials)
         self._fee = 0
 
@@ -32,6 +34,8 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                 self._bitstamp_client = bitstamp.client.Trading(username=username, key=key, secret=secret)
                 self._bitstamp_client.account_balance()
                 self._signed_in_user = username
+                self._api_key = key
+                self._secret = secret
                 self._balance_changed = True
                 self._is_client_init = True
             else:
@@ -57,7 +61,9 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
         result = {}
         if self._bitstamp_client is not None and self._signed_in_user != "":
             try:
+                print("Getting balance from Bitstamp")
                 bitstamp_account_balance = self._bitstamp_client.account_balance(False, False)
+                print("Balance arrived from Bitstamp:", bitstamp_account_balance)
                 fees = dict()
                 if 'btcusd_fee' in bitstamp_account_balance:
                     self._fee = float(bitstamp_account_balance['btcusd_fee'])
@@ -186,16 +192,26 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
         return self._fee
 
     def buy_limit(self, execute_size_coin, price_fiat, crypto_type):
-        return self._execute_immediate_or_cancel(self._bitstamp_client.buy_limit_order, execute_size_coin, price_fiat,
-                                                 crypto_type, False)
+        self.reconnect()
+        if self._bitstamp_client is not None and self._signed_in_user != "":
+            result = self._execute_immediate_or_cancel(self._bitstamp_client.buy_limit_order, execute_size_coin,
+                                                       price_fiat, crypto_type, False)
+        else:
+            result = {'exchange': self.get_exchange_name(), 'order_status': False, 'status': 'Error'}
+        return result
 
     def sell_limit(self, execute_size_coin, price_fiat, crypto_type):
-        return self._execute_immediate_or_cancel(self._bitstamp_client.sell_limit_order, execute_size_coin, price_fiat,
-                                                 crypto_type, False)
+        self.reconnect()
+        if self._bitstamp_client is not None and self._signed_in_user != "":
+            result = self._execute_immediate_or_cancel(self._bitstamp_client.sell_limit_order, execute_size_coin,
+                                                       price_fiat, crypto_type, False)
+        else:
+            result = {'exchange': self.get_exchange_name(), 'order_status': False, 'status': 'Error'}
+        return result
 
     def get_order_status_from_transactions(self, order_id, crypto_type):
         results = {'executed_size': 0, 'transactions': []}
-        all_transactions = self.transactions()
+        all_transactions = self.transactions(500)
         self.log.debug("curr transaction <%d> transactions: <%s>", order_id, all_transactions)
         for curr_transaction in all_transactions:
             if curr_transaction['order_id'] == order_id:
@@ -206,3 +222,8 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
 
     def create_order_tracker(self, order, orderbook, order_info, crypto_type):
         return BitstampOrderTracker(order, orderbook, self, order_info, crypto_type)
+
+    def reconnect(self):
+        if self._bitstamp_client is None and self._signed_in_user != "":
+            print("Reconnect required")
+            self.set_credentials({'username': self._signed_in_user, 'key': self._api_key, 'secret': self._secret})
