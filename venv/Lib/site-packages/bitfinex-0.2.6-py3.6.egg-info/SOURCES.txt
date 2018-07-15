@@ -1,0 +1,11 @@
+setup.cfg
+setup.py
+bitfinex/__init__.py
+bitfinex/client.py
+bitfinex.egg-info/PKG-INFO
+bitfinex.egg-info/SOURCES.txt
+bitfinex.egg-info/dependency_links.txt
+bitfinex.egg-info/requires.txt
+bitfinex.egg-info/top_level.txt
+bitfinex.egg-info/zip-safe
+scripts/bitfinex-poll-orderbook
