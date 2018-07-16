@@ -217,7 +217,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
             if curr_transaction['order_id'] == order_id:
                 results['executed_size'] += abs(float(curr_transaction[(crypto_type.lower())]))
                 results['transactions'].append(curr_transaction)
-
+        print("update from transactions result:", results)
         return results
 
     def create_order_tracker(self, order, orderbook, order_info, crypto_type):

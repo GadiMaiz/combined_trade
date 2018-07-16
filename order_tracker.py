@@ -66,4 +66,5 @@ class BitstampOrderTracker(OrderTracker):
                                                                                      self._crypto_type)
         self._client_wrapper.set_order_executed_size(order_transactions['executed_size'] + self._initial_size)
         self._order['executed_size'] = order_transactions['executed_size']
+        self._order['updated_from_transactions'] = True
         print("Updated Bitstamp order from transactions:", order_transactions)
