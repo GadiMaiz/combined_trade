@@ -137,6 +137,25 @@ def get_sent_orders():
     return str(sent_orders)
 
 
+@app.route('/GetSentOrdersFiltered', methods=['POST'])
+def get_sent_orders_filtered():
+    sent_orders = []
+    request_filter = {}
+    orders_limit = 0
+    valid_parameters = False
+    try:
+        request_params = json.loads(request.data)
+        request_filter = request_params['filter']
+        orders_limit = int(request_params['limit'])
+        valid_parameters = True
+    except Exception as ex:
+        print("GetSentOrdersFiltered parameters error: {}".format(ex))
+
+    if valid_parameters:
+        sent_orders = exchanges_manager.get_sent_orders(orders_limit, request_filter)
+    return str(sent_orders)
+
+
 @app.route('/SetClientCredentials', methods=['POST'])
 def set_client_credentials():
     result = {'set_credentails_status': 'True'}

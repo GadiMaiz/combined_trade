@@ -1,5 +1,7 @@
 import sqlite3
 import logging
+import re
+import datetime
 
 class TradeDB:
     def __init__(self, db_file):
@@ -43,13 +45,64 @@ class TradeDB:
             except Exception as e:
                 self.log.error("DB error: <%s>", str(e))
 
-    def get_sent_orders(self, orders_limit):
+    def get_sent_orders(self, orders_limit, filter):
         conn = self.create_db_connection(self._db_file)
         limit_clause = ''
         if orders_limit > 0:
             limit_clause = " LIMIT " + str(orders_limit)
-        sent_orders = conn.execute("SELECT * FROM (SELECT * FROM sent_orders ORDER BY datetime(order_time) DESC)" +
-                                   limit_clause)
+        where_clause = ""
+
+        if filter:
+            if 'exchanges' in filter:
+                where_clause = 'exchange in ('
+                first_exchange = True
+                exchange_re = re.compile('^[a-zA-Z]+$')
+                for exchange in filter['exchanges']:
+                    if exchange_re.match(exchange):
+                        if first_exchange:
+                            first_exchange = False
+                        else:
+                            where_clause += ', '
+
+                        where_clause += '\'{}\''.format(exchange)
+                where_clause += ') '
+            if 'start_date' in filter:
+                try:
+                    start_date = datetime.datetime.strptime(filter['start_date'], '%Y-%m-%d %H:%M')
+                    if where_clause != "":
+                        where_clause += " AND "
+                    where_clause += 'datetime(order_time) >= datetime(\'{}\')'.format(start_date)
+                except Exception as e:
+                    pass
+
+            if 'end_date' in filter:
+                try:
+                    end_date = datetime.datetime.strptime(filter['end_date'], '%Y-%m-%d %H:%M')
+                    if where_clause != "":
+                        where_clause += " AND "
+                    where_clause += 'datetime(order_time) <= datetime(\'{}\')'.format(end_date)
+                except Exception as e:
+                    pass
+
+            if 'statuses' in filter:
+                if where_clause != "":
+                    where_clause += " AND "
+                where_clause += 'status in ('
+                first_status = True
+                status_re = re.compile('^[a-zA-Z ]+$')
+                for status in filter['statuses']:
+                    if status_re.match(status):
+                        if first_status:
+                            first_status = False
+                        else:
+                            where_clause += ', '
+                        where_clause += '\'{}\''.format(status)
+                where_clause += ') '
+        if where_clause != "":
+            where_clause = "WHERE {}".format(where_clause)
+        query = "SELECT * FROM (SELECT * FROM sent_orders ORDER BY datetime(order_time) DESC) " + where_clause + \
+                limit_clause
+        sent_orders = conn.execute(query)
         all_orders = []
         for curr_order in sent_orders:
             exchange_id = curr_order[4]
