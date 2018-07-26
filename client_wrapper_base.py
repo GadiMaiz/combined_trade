@@ -157,6 +157,7 @@ class ClientWrapperBase:
             else:
                 check_action_type = action_types_dict[action_type]
                 balance_before_order = self.account_balance()
+                print("balance_before_order", balance_before_order)
                 if result and check_action_type == 'sell' and size_coin > \
                         balance_before_order['balances'][crypto_type]['available']:
                     refuse_reason = "Available balance " + \
@@ -417,14 +418,14 @@ class ClientWrapperBase:
                     self.log.debug("sent order: <%s>", str(sent_order))
             if execute_size_coin > 0:
                 self.log.debug("Order sent in size <%f> for action <%s>", execute_size_coin, action_type)
-        finally:
-            self._client_mutex.release()
-        """except Exception as e:
+        except Exception as e:
             order_info = None
             self.log.error("Order not sent: <%s>", str(e))
             print(e)
             sent_order = None
-            execute_size_coin = 0"""
+            execute_size_coin = 0
+        finally:
+            self._client_mutex.release()
 
         order_status = False
         if sent_order is not None:
@@ -434,13 +435,16 @@ class ClientWrapperBase:
             order_info['price_fiat'] = sent_order['executed_price_usd']
             order_status = sent_order['order_status']
 
-        self.log.info("Order done, size is <%f>", execute_size_coin)
-        if order_info is not None and execute_size_coin > 0:
+        done_size = 0
+        if order_info['status'] == 'Finished':
+            done_size = execute_size_coin
+        self.log.info("Order done, size is <%f>", done_size)
+        if order_info is not None and done_size > 0:
             self._balance_changed = True
 
             order_info['balance'] = self.account_balance()
             self._db_interface.write_order_to_db(order_info)
-        return {'execution_size': execute_size_coin, 'execution_message': execution_message,
+        return {'execution_size': done_size, 'execution_message': execution_message,
                 'order_status': order_status}
 
     @staticmethod

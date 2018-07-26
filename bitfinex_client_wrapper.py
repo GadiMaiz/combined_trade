@@ -93,7 +93,8 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
                 print(exchange_result)
                 execute_result = {'exchange': self.get_exchange_name(),
                                   'id': int(exchange_result['id']),
-                                  'executed_price_usd': exchange_status['avg_execution_price']}
+                                  'executed_price_usd': exchange_status['avg_execution_price'],
+                                  'order_status': False}
                 if exchange_status['is_cancelled']:
                     execute_result['status'] = "Cancelled"
                 else:

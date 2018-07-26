@@ -90,16 +90,18 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                                                    crypto_type, price_fiat,
                                                                    fiat_type, relative_size, max_order_size)
                 self.log.debug("Sent order to exchange <%s>: <%s>", exchange, sent_order)
-                execution_messages.append(sent_order['execution_message'])
+                if sent_order['execution_message'] != '':
+                    execution_messages.append(sent_order['execution_message'])
                 if sent_order['execution_size'] > 0:
                     order_executed = True
+                    print("Order executed:", sent_order['execution_size'])
                     total_execution_size += sent_order['execution_size']
         if order_executed:
-            order_status = "Finished"
+            order_status = "True"
         else:
-            order_status = "Cancelled"
+            order_status = "False"
 
-        return {'execution_size': total_execution_size, 'execution_message': str(execution_messages),
+        return {'execution_size': total_execution_size, 'execution_message': execution_messages,
                 'order_status': order_status}
 
     def is_client_initialized(self):

@@ -98,6 +98,21 @@ class TradeDB:
                             where_clause += ', '
                         where_clause += '\'{}\''.format(status)
                 where_clause += ') '
+
+            if 'types' in filter:
+                if where_clause != "":
+                    where_clause += " AND "
+                where_clause += 'action_type in ('
+                first_type = True
+                type_re = re.compile('^[a-zA-Z _]+$')
+                for action_type in filter['types']:
+                    if type_re.match(action_type):
+                        if first_type:
+                            first_type = False
+                        else:
+                            where_clause += ', '
+                        where_clause += '\'{}\''.format(action_type)
+                where_clause += ') '
         if where_clause != "":
             where_clause = "WHERE {}".format(where_clause)
         query = "SELECT * FROM (SELECT * FROM sent_orders ORDER BY datetime(order_time) DESC) " + where_clause + \

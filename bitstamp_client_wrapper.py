@@ -92,7 +92,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
 
     def _execute_immediate_or_cancel(self, exchange_method, size, price, crypto_type, cancel_not_done):
         self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type=<%s>", exchange_method, size, price, crypto_type)
-        execute_result = {'exchange': self.get_exchange_name(), 'order_status': False}
+        execute_result = {'exchange': self.get_exchange_name(), 'order_status': False, 'executed_price_usd': price}
         try:
             if self._bitstamp_client is not None and self._signed_in_user != "":
                 limit_order_result = exchange_method(size, price, crypto_type)

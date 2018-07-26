@@ -34,7 +34,11 @@ def get_language_text(locale):
 
 @app.route('/favicon.ico')
 def send_favicon():
-    return send_from_directory('','favicon.ico')
+    return send_from_directory('', 'favicon.ico')
+
+@app.route('/bundle.js')
+def send_bundle():
+    return send_from_directory('', 'bundle.js')
 
 @app.route('/Orderbook/<exchange>/<currency>')
 def get_orderbook_str(exchange, currency):
@@ -158,7 +162,7 @@ def get_sent_orders_filtered():
 
 @app.route('/SetClientCredentials', methods=['POST'])
 def set_client_credentials():
-    result = {'set_credentails_status': 'True'}
+    result = {'set_credentials_status': 'True'}
     try:
         request_params = json.loads(request.data)
         exchange = request_params['exchange']
