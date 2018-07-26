@@ -208,13 +208,14 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                 required_rate = remaining_size / (self._timed_order_duration_sec - self._timed_order_elapsed_time)
                 curr_rate = curr_rate * MultipleExchangesClientWrapper.RATE_TIME_RATIO + \
                             (1 - MultipleExchangesClientWrapper.RATE_TIME_RATIO) * curr_run_size / time_from_prev_time
-                if curr_rate > required_rate:
-                    limit_price_difference += MultipleExchangesClientWrapper.TIMED_MAKE_PRICE_CHANGE_USD
-                    print("Current rate is too fast, increasing price difference to {}".format(
-                        limit_price_difference))
-                elif curr_rate < required_rate:
+
+                if curr_rate < required_rate or self._timed_order_elapsed_time > duration_sec:
                     limit_price_difference -= MultipleExchangesClientWrapper.TIMED_MAKE_PRICE_CHANGE_USD
                     print("Current rate is too slow, decreasing price difference to {}".format(
+                        limit_price_difference))
+                elif curr_rate > required_rate:
+                    limit_price_difference += MultipleExchangesClientWrapper.TIMED_MAKE_PRICE_CHANGE_USD
+                    print("Current rate is too fast, increasing price difference to {}".format(
                         limit_price_difference))
             client_prices = dict()
             for exchange in self._clients:
