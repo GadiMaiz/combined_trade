@@ -41,7 +41,8 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
             else:
                 self._signed_in_user = ''
                 self._bitstamp_client = None
-        except:
+        except Exception as e:
+            print("Login exception: ", e)
             self._bitstamp_client = None
             self._signed_in_user = ''
             self._balance_changed = False

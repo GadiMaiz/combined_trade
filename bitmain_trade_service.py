@@ -20,6 +20,7 @@ import time
 
 app = Flask(__name__)
 
+
 @app.route('/OrdersTracker')
 def send_orderbook_page():
     return send_from_directory('','OrdersTracker.html')
@@ -49,14 +50,14 @@ def send_bundle():
 
 @app.route('/Orderbook/<exchange>/<currency>')
 def get_orderbook_str(exchange, currency):
-    print(str(time.time()) + " start get_orderbook_str")
+    #print(str(time.time()) + " start get_orderbook_str")
     result = str(get_orderbook(exchange, currency))
-    print(str(time.time()) + " end get_orderbook_str")
+    #print(str(time.time()) + " end get_orderbook_str")
     return result
 
 
 def get_orderbook(exchange, currency):
-    print(str(time.time()) + " start get_orderbook")
+    #print(str(time.time()) + " start get_orderbook")
     result = {'asks': [], 'bids': [], 'average_spread': 0, 'currency': currency}
     if exchange in orderbooks and orderbooks[exchange]:
         request_orders = orderbooks[exchange]
@@ -75,7 +76,7 @@ def get_orderbook(exchange, currency):
                         result['last_price'] = last_price
                     result['rate'] = request_orders['orderbook'].get_tracked_info(currency)
 
-    print(str(time.time()) + " end get_orderbook")
+    #print(str(time.time()) + " end get_orderbook")
     return result
 
 
@@ -93,7 +94,7 @@ def get_all_accounts_balance_force():
 
 @app.route('/Transactions/<exchange>')
 def get_bitstamp_transactions(exchange):
-    print(str(time.time()) + " start get_bitstamp_transactions")
+    #print(str(time.time()) + " start get_bitstamp_transactions")
     transactions_limit = None
     try:
         transactions_limit = int(request.args.get('limit'))
@@ -104,7 +105,7 @@ def get_bitstamp_transactions(exchange):
     transactions = []
     if exchange in orderbooks:
         transactions = exchanges_manager.get_exchange_transactions(exchange, transactions_limit)
-    print(str(time.time()) + " end get_bitstamp_transactions")
+    #print(str(time.time()) + " end get_bitstamp_transactions")
     return str(transactions)
 
 @app.route('/IsTimedOrderRunning')
@@ -115,10 +116,10 @@ def is_time_order_running():
 
 @app.route('/GetTimedOrderStatus')
 def get_timed_order_status():
-    print(str(time.time()) + " start get_timed_order_status")
+    #print(str(time.time()) + " start get_timed_order_status")
     result = exchanges_manager.get_timed_order_status()
     result['timed_order_running'] = str(result['timed_order_running'])
-    print(str(time.time()) + " end get_timed_order_status")
+    #print(str(time.time()) + " end get_timed_order_status")
     return str(result)
 
 
@@ -133,7 +134,7 @@ def cancel_timed_order():
 def send_order():
     log.debug("Send Order")
     request_params = json.loads(request.data)
-    print("Sending order in web service")
+    #print("Sending order in web service")
     result = dict()
     result['order_status'] = str('Invalid parameters')
     if request_params['fiat_type'] in ['USD'] and request_params['crypto_type'] in ['BTC', 'BCH']:
@@ -151,7 +152,7 @@ def send_order():
 
 @app.route('/GetSentOrders', methods=['GET'])
 def get_sent_orders():
-    print(str(time.time()) + " start get_sent_orders")
+    #print(str(time.time()) + " start get_sent_orders")
     try:
         orders_limit = int(request.args.get('limit'))
     except:
@@ -160,13 +161,13 @@ def get_sent_orders():
     if orders_limit is None:
         orders_limit = 0
     sent_orders = exchanges_manager.get_sent_orders(orders_limit)
-    print(str(time.time()) + " end get_sent_orders")
+    #print(str(time.time()) + " end get_sent_orders")
     return str(sent_orders)
 
 
 @app.route('/GetSentOrdersFiltered', methods=['POST'])
 def get_sent_orders_filtered():
-    print(str(time.time()) + " start get_sent_orders_filtered")
+    #print(str(time.time()) + " start get_sent_orders_filtered")
     sent_orders = []
     request_filter = {}
     orders_limit = 0
@@ -181,7 +182,7 @@ def get_sent_orders_filtered():
 
     if valid_parameters:
         sent_orders = exchanges_manager.get_sent_orders(orders_limit, request_filter)
-    print(str(time.time()) + " start get_sent_orders_filtered")
+    #print(str(time.time()) + " start get_sent_orders_filtered")
     return str(sent_orders)
 
 
@@ -233,11 +234,11 @@ def logout(exchange):
 
 @app.route('/GetSignedInCredentials')
 def get_signed_in_credentials():
-    print(str(time.time()) + " start get_signed_in_credentials")
+    #print(str(time.time()) + " start get_signed_in_credentials")
     result = {}
     for exchange in orderbooks:
         result[exchange] = exchanges_manager.get_signed_in_credentials(exchange)
-    print(str(time.time()) + " end get_signed_in_credentials")
+    #print(str(time.time()) + " end get_signed_in_credentials")
     return str(result)
 
 
@@ -276,14 +277,14 @@ def get_active_exchanges():
 
 @app.route('/ActiveOrderbooks/<currency>')
 def get_active_orderbooks(currency):
-    print(str(time.time()) + " start get_active_orderbooks")
+    #print(str(time.time()) + " start get_active_orderbooks")
     active_exchanges = watchdog.get_active_exchanges()
     active_exchanges.append("Unified")
     result = dict()
     for exchange in active_exchanges:
         result[exchange] = get_orderbook(exchange, currency)
 
-    print(str(time.time()) + " end get_active_orderbooks")
+    #print(str(time.time()) + " end get_active_orderbooks")
     return str(result)
 
 def create_rotating_log(path):
@@ -298,12 +299,12 @@ def create_rotating_log(path):
     logger.addHandler(handler)
 
 
-@app.route('/', defaults={'path': ''})
+''''@app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
     url_path = "You want path:" + path
     print(url_path)
-    return url_path
+    return url_path'''
 
 if __name__ == '__main__':
     argv = sys.argv[1:]

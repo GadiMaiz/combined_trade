@@ -122,7 +122,7 @@ class ClientWrapperBase:
             else:
                 if duration_sec == 0:
                     order_sent = self.send_immediate_order(action_type, size_coin, crypto_type, price_fiat, fiat_type,
-                                                           False, 0)
+                                                           False, 0, False)
                     self._order_complete(False, True)
                 else:
                     actions_dict = {'timed_sell': 'sell', 'timed_buy': 'buy', 'sell_limit': 'sell_limit',
@@ -317,7 +317,7 @@ class ClientWrapperBase:
 
                                 sent_order = timed_order_executer.get_client_for_order().send_immediate_order(
                                     action_type, curr_order_size, crypto_type, price_fiat, fiat_type, relative_order,
-                                    max_order_size)
+                                    max_order_size, True)
                                 if sent_order is not None and sent_order['execution_size'] > 0:
                                     self._timed_order_done_size += sent_order['execution_size']
                                     sleep_time += random.uniform(self.EXECUTED_ORDER_MIN_DELAY_SEC,
@@ -327,7 +327,8 @@ class ClientWrapperBase:
                             self._reserved_crypto = size_coin - self._timed_order_done_size
                         elif action_type == 'buy':
                             self._reserved_usd = (size_coin - self._timed_order_done_size) * price_fiat * \
-                                                             (1 + 0.01 * self.exchange_fee(crypto_type))
+                                                             (1 + 0.01 * timed_order_executer.get_client_for_order(
+                                                                 ).exchange_fee(crypto_type))
 
                 if self._timed_order_done_size >= size_coin:
                     self._is_timed_order_running = False
@@ -343,7 +344,7 @@ class ClientWrapperBase:
         self.log.info("Timed action finished")
 
     def send_immediate_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, relative_size,
-                             max_order_size):
+                             max_order_size, is_timed_order):
         print("send_immediate", type(self), action_type, size_coin, crypto_type, price_fiat)
         sent_order = None
         execution_message = ''
@@ -351,7 +352,7 @@ class ClientWrapperBase:
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
         order_time = "%s.%02d" % (dt, int(micro) / 1000)
         order_info = {'exchange': self.get_exchange_name(), 'action_type': action_type, 'price_fiat': price_fiat,
-                      'order_time': order_time, 'timed_order': self.TIMED_ORDERS_DICT[relative_size],
+                      'order_time': order_time, 'timed_order': self.TIMED_ORDERS_DICT[is_timed_order],
                       'status': "Init", 'crypto_type': crypto_type}
         print("Immediate order:", order_info)
         #try:

@@ -90,16 +90,17 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
                 exchange_result = self._bitfinex_client.place_order(str(size), str(price), action_type,
                                                                     exchange_instruction, crypto_type.lower() + "usd")
                 exchange_status = self.order_status(exchange_result['id'])
-                print(exchange_result)
+                #print("Bitfinex status:", exchange_status)
                 execute_result = {'exchange': self.get_exchange_name(),
                                   'id': int(exchange_result['id']),
                                   'executed_price_usd': exchange_status['avg_execution_price'],
                                   'order_status': False}
-                if exchange_status['is_cancelled']:
+                if exchange_status['is_cancelled'] or exchange_status['avg_execution_price'] == 0:
                     execute_result['status'] = "Cancelled"
                 else:
                     execute_result['status'] = 'Finished'
                     execute_result['order_status'] = True
+                #print(execute_result)
         except Exception as e:
             self.log.error("%s %s", action_type, e)
             execute_result['status'] = 'Error'
