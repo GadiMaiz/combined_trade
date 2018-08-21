@@ -298,14 +298,6 @@ def create_rotating_log(path):
                                   backupCount=5)
     logger.addHandler(handler)
 
-
-''''@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def catch_all(path):
-    url_path = "You want path:" + path
-    print(url_path)
-    return url_path'''
-
 if __name__ == '__main__':
     argv = sys.argv[1:]
     bind_ip = None
