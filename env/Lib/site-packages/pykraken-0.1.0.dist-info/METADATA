@@ -1,0 +1,66 @@
+Metadata-Version: 2.0
+Name: pykraken
+Version: 0.1.0
+Summary: python implementation of https://www.kraken.com/ API
+Home-page: https://github.com/euri10/pykraken
+Author: Benoit Barthelet
+Author-email: benoit.barthelet@gmail.com
+License: ISCL
+Keywords: pykraken
+Platform: UNKNOWN
+Classifier: Development Status :: 2 - Pre-Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: ISC License (ISCL)
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.6
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+
+===============================
+pykraken
+===============================
+
+.. image:: https://img.shields.io/pypi/v/pykraken.svg
+        :target: https://pypi.python.org/pypi/pykraken
+
+.. image:: https://img.shields.io/travis/euri10/pykraken.svg
+        :target: https://travis-ci.org/euri10/pykraken
+
+.. image:: https://readthedocs.org/projects/pykraken/badge/?version=latest
+        :target: https://readthedocs.org/projects/pykraken/?badge=latest
+        :alt: Documentation Status
+
+
+python implementation of https://www.kraken.com/ API
+
+* Free software: ISC license
+* Documentation: https://pykraken.readthedocs.org.
+
+Features
+--------
+
+python implementation of https://www.kraken.com/ API
+
+Credits
+---------
+
+This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
+
+.. _Cookiecutter: https://github.com/audreyr/cookiecutter
+.. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
+
+
+=======
+History
+=======
+
+0.1.0 (2016-05-28)
+------------------
+
+* First release on PyPI.
+
+
