@@ -17,12 +17,16 @@ import re
 import sys
 import getopt
 import time
+import os
 
 app = Flask(__name__)
 
+
+client_dir = os.path.join(app.root_path, 'client')
+
 @app.route('/OrdersTracker')
 def send_orderbook_page():
-    return send_from_directory(os.path.join(app.root_path, 'client'), 'OrdersTracker.html')
+    return send_from_directory(client_dir, 'OrdersTracker.html')
 
 
 @app.route('/GetLanguageText/<locale>')
@@ -39,12 +43,12 @@ def get_language_text(locale):
 
 @app.route('/favicon.ico')
 def send_favicon():
-    return send_from_directory(os.path.join(app.root_path, 'client'), 'favicon.ico')
+    return send_from_directory(client_dir, 'favicon.ico')
 
 
 @app.route('/bundle.js')
 def send_bundle():
-    return send_from_directory(os.path.join(app.root_path, 'client'), 'bundle.js')
+    return send_from_directory(client_dir, 'bundle.js')
 
 
 @app.route('/Orderbook/<exchange>/<currency>')
