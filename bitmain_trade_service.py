@@ -17,10 +17,8 @@ import re
 import sys
 import getopt
 import time
-import os
 
 app = Flask(__name__)
-
 
 @app.route('/OrdersTracker')
 def send_orderbook_page():
