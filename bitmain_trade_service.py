@@ -314,11 +314,11 @@ if __name__ == '__main__':
     start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken']
     open_log = True
     try:
-        opts, args = getopt.getopt(argv, "ru:k:s:p:t:l:b:e:")
+        opts, args = getopt.getopt(argv, "rdu:k:s:p:t:l:b:e:")
         for opt, arg in opts:
             if opt == '-r':
                 bitstamp_key = opt
-            if opt == '-r':
+            if opt == '-d':
                 bind_ip = "0.0.0.0"
             elif opt == "-u":
                 bitstamp_user = arg
