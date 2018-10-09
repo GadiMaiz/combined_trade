@@ -1,0 +1,80 @@
+Metadata-Version: 2.1
+Name: huobi
+Version: 0.1.12
+Summary: Huobi Python SDK
+Home-page: https://github.com/ericls/huobi
+Author: Shen Li
+Author-email: dustet@gmail.com
+License: MIT License
+Platform: UNKNOWN
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Provides-Extra: socks
+Requires-Dist: requests (>=2.4.2)
+Requires-Dist: aiohttp (>=3.1.0)
+Provides-Extra: socks
+Requires-Dist: PySocks (!=1.5.7,>=1.5.6); extra == 'socks'
+Provides-Extra: socks
+Requires-Dist: win-inet-pton; (sys_platform == "win32" and (python_version == "2.7" or python_version == "2.6")) and extra == 'socks'
+
+# Huobi
+
+Huobi Python SDK
+
+## Requirements
+```bash
+Python>=3.6
+```
+
+## Installaton
+```bash
+pip install huobi
+```
+
+## Usage
+### Rest API
+Example: 
+```python
+>>> from huobi import HuobiRestClient
+>>> client = HuobiRestClient(access_key=..., secret_key=...)
+>>> trades = client.market_history_trade(symbol='ethusdt').data
+```
+To see all available methods and their arguments:
+```python
+>>> from huobi import HuobiRestClient
+>>> help(HuobiRestClient)
+>>> help(HuobiRestClient.symbols)
+```
+
+### Real Time API
+
+> Rudimentary websocket subscription support
+
+Please refer to Huobi's documentation for available subscribe channels.
+
+If callback is not a coroutine function, run_in_executor with default
+Executor will be called.
+
+Example:
+```python
+from huobi import subscribe
+>>> def btc_callback(data):
+        print(data)
+>>> async def eth_callback(data):
+        print(data)
+>>> task = subscribe({
+        'market.btcusdt.kline.1min': {
+            'callback': btc_callback
+        },
+        'market.ethusdt.kline.1min': {
+            'callback': eth_callback
+        },
+    })
+>>> asyncio.get_event_loop().run_until_complete(task)
+```
+
