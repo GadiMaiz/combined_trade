@@ -8,6 +8,7 @@ from bitstamp_client_wrapper import BitstampClientWrapper
 from bitstamp_orderbook import BitstampOrderbook
 from kraken_orderbook import KrakenOrderbook
 from kraken_client_wrapper import KrakenClientWrapper
+from huobi_orderbook import HuobiOrderbook
 from orderbook_watchdog import OrderbookWatchdog
 from exchange_clients_manager import ExchangeClientManager
 import logging
@@ -311,7 +312,7 @@ if __name__ == '__main__':
     frozen_orderbook_timeout_sec = 60
     log_level = logging.ERROR
     bitstamp_key = None
-    start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken']
+    start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken', 'Huobi']
     open_log = True
     try:
         opts, args = getopt.getopt(argv, "rdu:k:s:p:t:l:b:e:")
@@ -406,6 +407,14 @@ if __name__ == '__main__':
     if "Kraken" in start_exchanges:
         kraken_orderbook.start_orderbook()
         active_exchanges['Kraken'] = True
+
+    huobi_fees = {'take': 0.2, 'make': 0.2}
+    huobi_orderbook = HuobiOrderbook(['BTC-USD', 'BCH-USD'], huobi_fees)
+    active_exchanges['Huobi'] = False
+    if "Huobi" in start_exchanges:
+        kraken_orderbook.start_orderbook()
+        active_exchanges['Huobi'] = True
+
 
     print("Orderbooks started")
     unified_orderbook = UnifiedOrderbook({"Bitstamp": bitstamp_orderbook,
