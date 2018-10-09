@@ -11,9 +11,39 @@ baseUri: http://smart-trader/{version}/
   description: Exchange name {exchange} or "Unified" for a unified orderbook
   /{currency_to}:
     description: Currency to buy / sell
-    /{currency_from}:
+    /{currency_in}:
       description: Currency that the orders are traded in
       get:
+        description: Gets the current orderbook of an exchange
+        responses: 
+         200:
+           body: 
+             application/json:
+               type: orderbook
+
+/sendOrder:
+  description: Send an order to be executed on the exchange(s)
+  post:
+    body:
+      application/json:
+        type: order
+    responses:
+      200:
+        body:
+          application/json:
+            type: order_status
+
+/setExchangeCredentials:
+  description: Login to an exchange with API key credentials
+  post:
+    body:
+      application/json:
+          type: exchange_credentials
+    responses:
+      200:
+        body:
+          application/json:
+            type: set_credentials_status
 
 /reports:
   description: Smart-Trader reports APIs
