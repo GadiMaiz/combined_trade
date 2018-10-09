@@ -8,6 +8,7 @@ from bitstamp_client_wrapper import BitstampClientWrapper
 from bitstamp_orderbook import BitstampOrderbook
 from kraken_orderbook import KrakenOrderbook
 from kraken_client_wrapper import KrakenClientWrapper
+from huobi_orderbook import HuobiOrderbook
 from orderbook_watchdog import OrderbookWatchdog
 from exchange_clients_manager import ExchangeClientManager
 import logging
@@ -17,13 +18,16 @@ import re
 import sys
 import getopt
 import time
+import os
 
 app = Flask(__name__)
 
 
+client_dir = os.path.join(app.root_path, 'client')
+
 @app.route('/OrdersTracker')
 def send_orderbook_page():
-    return send_from_directory('','OrdersTracker.html')
+    return send_from_directory(client_dir, 'OrdersTracker.html')
 
 
 @app.route('/GetLanguageText/<locale>')
@@ -40,12 +44,12 @@ def get_language_text(locale):
 
 @app.route('/favicon.ico')
 def send_favicon():
-    return send_from_directory('', 'favicon.ico')
+    return send_from_directory(client_dir, 'favicon.ico')
 
 
 @app.route('/bundle.js')
 def send_bundle():
-    return send_from_directory('', 'bundle.js')
+    return send_from_directory(client_dir, 'bundle.js')
 
 
 @app.route('/Orderbook/<exchange>/<currency>')
@@ -308,14 +312,14 @@ if __name__ == '__main__':
     frozen_orderbook_timeout_sec = 60
     log_level = logging.ERROR
     bitstamp_key = None
-    start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken']
+    start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken', 'Huobi']
     open_log = True
     try:
-        opts, args = getopt.getopt(argv, "ru:k:s:p:t:l:b:e:")
+        opts, args = getopt.getopt(argv, "rdu:k:s:p:t:l:b:e:")
         for opt, arg in opts:
             if opt == '-r':
                 bitstamp_key = opt
-            if opt == '-r':
+            if opt == '-d':
                 bind_ip = "0.0.0.0"
             elif opt == "-u":
                 bitstamp_user = arg
@@ -403,6 +407,14 @@ if __name__ == '__main__':
     if "Kraken" in start_exchanges:
         kraken_orderbook.start_orderbook()
         active_exchanges['Kraken'] = True
+
+    huobi_fees = {'take': 0.2, 'make': 0.2}
+    huobi_orderbook = HuobiOrderbook(['BTC-USD', 'BCH-USD'], huobi_fees)
+    active_exchanges['Huobi'] = False
+    if "Huobi" in start_exchanges:
+        kraken_orderbook.start_orderbook()
+        active_exchanges['Huobi'] = True
+
 
     print("Orderbooks started")
     unified_orderbook = UnifiedOrderbook({"Bitstamp": bitstamp_orderbook,
