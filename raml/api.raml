@@ -59,34 +59,47 @@ types:
         200:
           body:
             application/json:
-              example: { "USD": { "price": 1, "available": 1500 }, "BTC": { { "price": 6500, "amount": 0.7, "available": 0.5 } } }
+              example: { "USD": { "price": 1, "amount": 1600, "available": 1500 }, "BTC": { "price": 6500, "amount": 0.7, "available": 0.5 } }
   
   /start:
     post:
-        body:
-          text/plain: !!null
-        responses:
-          200:
-            body:
-              application/json:
-                example: { "start_result": True, "exchange": "Kraken" }
+      description: Starts listening to the orderbook of the exchange {exchange}.
+      body:
+        text/plain: !!null
+      responses:
+        200:
+          body:
+            application/json:
+              example: { "status": "started", "exchange": "Kraken" }
 
   /stop:
     post:
-        body:
-          text/plain: !!null
-        responses:
-          200:
-            body:
-              application/json:
-                example: { "stop_result": True, "exchange": "Kraken" }
+      description: Stops listening to the orderbook of the exchange {exchange}. Logs out of it if an account is logged in to it.
+      body:
+        text/plain: !!null
+      responses:
+        200:
+          body:
+            application/json:
+              example: { "status": "stopped", "exchange": "Kraken" }
 
 /sendOrder:
-  description: Send an order to be executed on the exchange(s)
   post:
+    description: Send an order to be executed on the exchange(s). When a price isn't sent the order is executed as a market order.
     body:
       application/json:
         type: Order
+        example: 
+          { 
+            "exchanges": ["Kraken", "Bitstamp"],
+            "actionType": "buy",
+            "size": 0.1,
+            "currencyTo": "BTC",
+            "currencyIn": "EUR",
+            "externalOrderId": "asdf23asd",
+            "userId": "sd432g",
+            "userQuotePrice": 6500
+          }
     responses:
       200:
         body:
@@ -118,17 +131,22 @@ types:
                 [
                   { 
                     "exchange": "Bitfinex",
-                    "action_type": "buy",
-                    "crypto_size": 0.1,
-                    "price_fiat": 6581.8,
-                    "exchange_id": "17869737638",
+                    "actionType": "buy",
+                    "size": 0.1,
+                    "price": 6581.8,
+                    "exchangeOrderId": "17869737638",
                     "status": "Finished",
-                    "order_time": 2018-10-10 10:05:13.384,
-                    "timed_order": 0,
-                    "crypto_type": "BTC",
-                    "usd_balance": 3522.28410189,
-                    "crypto_available": 0.10772093,
+                    "orderTime": 2018-10-10 10:05:13.384,
+                    "timedOrder": false,
+                    "currencyTo": "BTC",
+                    "currencyIn": "EUR",
+                    "currencyInAvailable": 3522.28410189,
+                    "currencyToAvailable": 0.10772093,
                     "ask": 0.0,
-                    "bid": 0.0
+                    "bid": 0.0,
+                    "externalOrderId": "1234A",
+                    "userId": "ABC",
+                    "tradeOrderId": "850",
+                    "userQuotePrice": 6500
                   }
                 ]    
