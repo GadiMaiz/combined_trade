@@ -1,0 +1,82 @@
+#%RAML 1.0
+---
+title: Smart Trade
+version: v0.3
+protocols: [HTTP]
+mediaType: application/json
+baseUri: http://smart-trader/{version}/
+
+types: 
+  ReportFilter: !include report_filter.raml
+  Order: !include order.raml
+  OrderbookOrder: !include orderbook_order.raml
+  OrderStatus: !include order_status.raml
+  ExchangeCredentials: !include exchange_credentials.raml
+  Orderbook: !include orderbook.raml
+  Price: !include price.raml
+  LoginStatus: !include login_status.raml
+
+/exchange/{exchange}:
+  /orderbook:
+    description: Exchange name {exchange} or "Unified" for a unified orderbook
+    /{currency_to}:
+      description: Currency to buy / sell
+      /{currency_in}:
+        description: Currency that the orders are traded in
+        get:
+          description: Gets the current orderbook of an exchange
+          responses: 
+            200:
+              body: 
+                application/json:
+                  type: Orderbook
+  /login:
+    description: Login to an exchange with API key credentials
+    post:
+      body:
+        application/json:
+            type: ExchangeCredentials
+      responses:
+        200:
+          body:
+            application/json:
+              type: LoginStatus
+  
+  /logout:
+    post:
+
+  /accountBalance:
+    get:
+  
+  /start:
+    post:
+
+  /stop:
+    post:
+
+/sendOrder:
+  description: Send an order to be executed on the exchange(s)
+  post:
+    body:
+      application/json:
+        type: Order
+    responses:
+      200:
+        body:
+          application/json:
+            type: OrderStatus
+
+/reports:
+  description: Smart-Trader reports APIs
+  /sentOrders:
+    post:
+      description: Generat report on sent transactions data.
+      body:
+        application/json:
+          properties:
+            filter:
+              description: Report object.
+              required: true
+              type: ReportFilter
+  /profit:
+    post:       
