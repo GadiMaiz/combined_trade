@@ -45,15 +45,41 @@ types:
   
   /logout:
     post:
+      body:
+        text/plain: !!null
+      responses:
+        200:
+          body:
+            application/json:
+              type: LoginStatus
 
   /accountBalance:
     get:
+      responses:
+        200:
+          body:
+            application/json:
+              example: { "USD": { "price": 1, "available": 1500 }, "BTC": { { "price": 6500, "amount": 0.7, "available": 0.5 } } }
   
   /start:
     post:
+        body:
+          text/plain: !!null
+        responses:
+          200:
+            body:
+              application/json:
+                example: { "start_result": True, "exchange": "Kraken" }
 
   /stop:
     post:
+        body:
+          text/plain: !!null
+        responses:
+          200:
+            body:
+              application/json:
+                example: { "stop_result": True, "exchange": "Kraken" }
 
 /sendOrder:
   description: Send an order to be executed on the exchange(s)
