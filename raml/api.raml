@@ -15,6 +15,7 @@ types:
   Orderbook: !include orderbook.raml
   Price: !include price.raml
   LoginStatus: !include login_status.raml
+  SentOrder: !include sent_order.raml
 
 /exchange/{exchange}:
   /orderbook:
@@ -74,9 +75,36 @@ types:
       body:
         application/json:
           properties:
+            limit: 
+              description: Limit the resposnse size (default is 1000).
+              type: number
+              required: true
             filter:
               description: Report object.
               required: true
               type: ReportFilter
+      responses:
+        200:
+          body:
+            application/json:
+              type: SentOrder[]
+              example:
+                [
+                  { 
+                    "exchange": "Bitfinex",
+                    "action_type": "buy",
+                    "crypto_size": 0.1,
+                    "price_fiat": 6581.8,
+                    "exchange_id": "17869737638",
+                    "status": "Finished",
+                    "order_time": 2018-10-10 10:05:13.384,
+                    "timed_order": 0,
+                    "crypto_type": "BTC",
+                    "usd_balance": 3522.28410189,
+                    "crypto_available": 0.10772093,
+                    "ask": 0.0,
+                    "bid": 0.0
+                  }
+                ]
   /profit:
     post:       

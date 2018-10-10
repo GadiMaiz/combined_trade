@@ -4,14 +4,16 @@ type: object
 displayName: Orderbook
 properties:
   asks:
-      type: array
-      items: !include orderbook_order.raml
-      required: false
+    type: array
+    items: !include orderbook_order.raml
+    required: false
   bids: 
-   type: array
-   items: !include orderbook_order.raml
-   required: false
+    type: array
+    items: !include orderbook_order.raml
+    required: false
   currency_to: string
   currency_in: string
   average_spread: number
-  last_price?: !include price.raml
+  last_price:
+    type: !include price.raml
+    required: false
