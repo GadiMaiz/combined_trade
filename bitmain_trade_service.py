@@ -19,13 +19,15 @@ import re
 import sys
 import getopt
 import time
+import os
 
 app = Flask(__name__)
 
+client_dir = os.path.join(app.root_path, 'client')
 
 @app.route('/OrdersTracker')
 def send_orderbook_page():
-    return send_from_directory('','OrdersTracker.html')
+    return send_from_directory(client_dir,'OrdersTracker.html')
 
 
 @app.route('/GetLanguageText/<locale>')
@@ -42,12 +44,12 @@ def get_language_text(locale):
 
 @app.route('/favicon.ico')
 def send_favicon():
-    return send_from_directory('', 'favicon.ico')
+    return send_from_directory(client_dir, 'favicon.ico')
 
 
 @app.route('/bundle.js')
 def send_bundle():
-    return send_from_directory('', 'bundle.js')
+    return send_from_directory(client_dir, 'bundle.js')
 
 
 @app.route('/Orderbook/<exchange>/<currency>')
@@ -211,7 +213,7 @@ def set_client_credentials():
                 'secret' in request_params:
             # Make sure that the username is a number
             user_reg = re.compile('^[0-9\.]+$')
-            key_reg = re.compile('^[0-9a-zA-Z=+\./]+$')
+            key_reg = re.compile('^[0-9a-zA-Z=+\./\-]+$')
             if user_reg.match(request_params['username']) and key_reg.match(request_params['key']) and \
                     key_reg.match(request_params['secret']):
                 credentials = {'username': request_params['username'],
@@ -219,8 +221,12 @@ def set_client_credentials():
                                'secret': request_params['secret']}
                 orderbooks[exchange]['fees'].update(fees)
                 orderbooks[exchange]['orderbook'].set_fees(orderbooks[exchange]['fees'])
+            else:
+                print("ERROR: account id, key or secret contain forbidden characters")     
+             
         result['set_credentials_status'] = str(exchanges_manager.set_exchange_credentials(exchange, credentials))
     except Exception as e:
+        print("Exception caught  e = " + str(e))
         result['set_credentials_status'] = 'False'
 
     return str(result)
@@ -313,11 +319,11 @@ if __name__ == '__main__':
     start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken', 'Huobi']
     open_log = True
     try:
-        opts, args = getopt.getopt(argv, "ru:k:s:p:t:l:b:e:")
+        opts, args = getopt.getopt(argv, "rdu:k:s:p:t:l:b:e:")
         for opt, arg in opts:
             if opt == '-r':
                 bitstamp_key = opt
-            if opt == '-r':
+            if opt == '-d':
                 bind_ip = "0.0.0.0"
             elif opt == "-u":
                 bitstamp_user = arg
@@ -410,7 +416,7 @@ if __name__ == '__main__':
 ##############################################################
     huobi_fees = {'take' : 0.2, 'make' : 0.2}
     huobi_currencies = {'BTC-USD':'btcusdt', 'BCH-USD': 'bchusdt','LTC-USD' :'ltcusdt'}
-    huobi_orderbook = HuobiOrderbook(['btcusdt', 'bchusdt','ltcusdt'], huobi_fees)
+    huobi_orderbook = HuobiOrderbook(['BTC-USD', 'BCH-USD'], huobi_fees)
     # huobi_currencies = {'btcusdt', 'bchusdt','ltcusdt'}
     # huobi_orderbook = HuobiOrderbook(['btcusdt', 'bchusdt','ltcusdt'], huobi_fees)
     active_exchanges['Huobi'] = False
@@ -458,9 +464,9 @@ if __name__ == '__main__':
                                               "./Transactions.data",
                                               watchdog)
     #app.run(host= '0.0.0.0', ssl_context='adhoc')
-    print(active_exchanges) 
-    print(huobi_orderbook._get_orderbook_from_exchange('BTC-USD', 3))
-    print(huobi_orderbook._get_orderbook_from_exchange('BCH-USD', 3))
+    # print(active_exchanges) 
+    # print(huobi_orderbook._get_orderbook_from_exchange('BTC-USD', 3))
+    # print(huobi_orderbook._get_orderbook_from_exchange('BCH-USD', 3))
 
     app.run(host=bind_ip, port=listener_port)
     
