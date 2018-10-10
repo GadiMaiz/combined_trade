@@ -40,7 +40,6 @@ class HuobiOrderbook(OrderbookBase):
 
     def handle_data(self, asset_pair):
         print('handle data function')
-        print(asset_pair + ' ' + str(self._listener_ws))
         self._is_running = True
         while(self._is_running):
             compressData = self._listener_ws.recv()

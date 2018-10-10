@@ -290,9 +290,9 @@ def get_active_orderbooks(currency):
     return str(result)
 
 def create_rotating_log(path):
-    """
-    Creates a rotating log
-    """
+    
+    # Creates a rotating log
+    
     logger = logging.getLogger("Rotating Log")
 
     # add a rotating handler
@@ -458,5 +458,9 @@ if __name__ == '__main__':
                                               "./Transactions.data",
                                               watchdog)
     #app.run(host= '0.0.0.0', ssl_context='adhoc')
-    print(active_exchanges)
+    print(active_exchanges) 
+    print(huobi_orderbook._get_orderbook_from_exchange('BTC-USD', 3))
+    print(huobi_orderbook._get_orderbook_from_exchange('BCH-USD', 3))
+
     app.run(host=bind_ip, port=listener_port)
+    
