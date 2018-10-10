@@ -365,11 +365,11 @@ if __name__ == '__main__':
         bitstamp_credentials = {'username': bitstamp_user, 'key': bitstamp_api_key, 'secret': bitstamp_secret}
 
     log = logging.getLogger('werkzeug')
-    log.setLevel(logging.ERROR)
+    log.setLevel(log_level)
 
     print("Connecting to orderbooks")
     bitstamp_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD'}
-    bitstamp_args = {'log_level': logging.ERROR}
+    bitstamp_args = {'log_level': log_level}
     if bitstamp_key is not None:
         bitstamp_args['key'] = bitstamp_key
     bitstamp_fees = {'take': 0.25, 'make': 0.25}
