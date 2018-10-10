@@ -1,0 +1,134 @@
+#%RAML 1.0
+---
+title: Smart Trade
+version: v0.3
+protocols: [HTTP]
+mediaType: application/json
+baseUri: http://smart-trader/{version}/
+
+types: 
+  ReportFilter: !include report_filter.raml
+  Order: !include order.raml
+  OrderbookOrder: !include orderbook_order.raml
+  OrderStatus: !include order_status.raml
+  ExchangeCredentials: !include exchange_credentials.raml
+  Orderbook: !include orderbook.raml
+  Price: !include price.raml
+  LoginStatus: !include login_status.raml
+  SentOrder: !include sent_order.raml
+
+/exchange/{exchange}:
+  /orderbook:
+    description: Exchange name {exchange} or "Unified" for a unified orderbook
+    /{currency_to}:
+      description: Currency to buy / sell
+      /{currency_in}:
+        description: Currency that the orders are traded in
+        get:
+          description: Gets the current orderbook of an exchange
+          responses: 
+            200:
+              body: 
+                application/json:
+                  type: Orderbook
+  /login:
+    description: Login to an exchange with API key credentials
+    post:
+      body:
+        application/json:
+            type: ExchangeCredentials
+      responses:
+        200:
+          body:
+            application/json:
+              type: LoginStatus
+  
+  /logout:
+    post:
+      body:
+        text/plain: !!null
+      responses:
+        200:
+          body:
+            application/json:
+              type: LoginStatus
+
+  /accountBalance:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              example: { "USD": { "price": 1, "available": 1500 }, "BTC": { { "price": 6500, "amount": 0.7, "available": 0.5 } } }
+  
+  /start:
+    post:
+        body:
+          text/plain: !!null
+        responses:
+          200:
+            body:
+              application/json:
+                example: { "start_result": True, "exchange": "Kraken" }
+
+  /stop:
+    post:
+        body:
+          text/plain: !!null
+        responses:
+          200:
+            body:
+              application/json:
+                example: { "stop_result": True, "exchange": "Kraken" }
+
+/sendOrder:
+  description: Send an order to be executed on the exchange(s)
+  post:
+    body:
+      application/json:
+        type: Order
+    responses:
+      200:
+        body:
+          application/json:
+            type: OrderStatus
+
+/reports:
+  description: Smart-Trader reports APIs
+  /sentOrders:
+    post:
+      description: Generat report on sent transactions data.
+      body:
+        application/json:
+          properties:
+            limit: 
+              description: Limit the resposnse size (default is 1000).
+              type: number
+              required: true
+            filter:
+              description: Report object.
+              required: true
+              type: ReportFilter
+      responses:
+        200:
+          body:
+            application/json:
+              type: SentOrder[]
+              example:
+                [
+                  { 
+                    "exchange": "Bitfinex",
+                    "action_type": "buy",
+                    "crypto_size": 0.1,
+                    "price_fiat": 6581.8,
+                    "exchange_id": "17869737638",
+                    "status": "Finished",
+                    "order_time": 2018-10-10 10:05:13.384,
+                    "timed_order": 0,
+                    "crypto_type": "BTC",
+                    "usd_balance": 3522.28410189,
+                    "crypto_available": 0.10772093,
+                    "ask": 0.0,
+                    "bid": 0.0
+                  }
+                ]    

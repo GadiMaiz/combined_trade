@@ -3,63 +3,8 @@
 type: object
 displayName: ReportFilter
 properties:
-  start_date:
-    type: date
-  end_date:
-  
-order:
-type: object
-properties: 
-  exchanges: string[]
-  action_type: string
-  size_coin: number
-  currency_to: string
-  currency_in: string
-  price?: number
-  duration_sec?: number
-  max_order_size?: number
-  external_id?: string
-  user_price?: number
+  start_date: datetime
+  end_date: datetime
+  exchanges?: string[]
+  statuses?: string[]
 
-orderbook_order:
-type: object
-properties:
-  price: number
-  size: number
-
-price:
-type: object
-properties:
-	type: string
-	price: number
-	time: number
-  
-orderbook:
-type: object
-properties:
-  asks: orderbook_order[]
-  bids: orderbook_order[]
-  currency_to: string
-  currency_in: string
-  average_spread: number
-  last_price?: price
-
-order_status:
-type: object
-properties: 
-  order_status: boolean
-  execution_size: number
-  execution_message: string
-
-exchange_credentials:
-type: object
-properties:
-  exchange: string
-  username?: string
-  key: string
-  secret: string
-
-LoginStatus:
-type: object
-properties:
-  set_credentials_status: boolean
