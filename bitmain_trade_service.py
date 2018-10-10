@@ -8,6 +8,7 @@ from bitstamp_client_wrapper import BitstampClientWrapper
 from bitstamp_orderbook import BitstampOrderbook
 from kraken_orderbook import KrakenOrderbook
 from kraken_client_wrapper import KrakenClientWrapper
+from huobi_client_wrapper import HuobiClientWrapper
 from huobi_orderbook import HuobiOrderbook
 from orderbook_watchdog import OrderbookWatchdog
 from exchange_clients_manager import ExchangeClientManager
@@ -18,16 +19,13 @@ import re
 import sys
 import getopt
 import time
-import os
 
 app = Flask(__name__)
 
 
-client_dir = os.path.join(app.root_path, 'client')
-
 @app.route('/OrdersTracker')
 def send_orderbook_page():
-    return send_from_directory(client_dir, 'OrdersTracker.html')
+    return send_from_directory('','OrdersTracker.html')
 
 
 @app.route('/GetLanguageText/<locale>')
@@ -44,12 +42,12 @@ def get_language_text(locale):
 
 @app.route('/favicon.ico')
 def send_favicon():
-    return send_from_directory(client_dir, 'favicon.ico')
+    return send_from_directory('', 'favicon.ico')
 
 
 @app.route('/bundle.js')
 def send_bundle():
-    return send_from_directory(client_dir, 'bundle.js')
+    return send_from_directory('', 'bundle.js')
 
 
 @app.route('/Orderbook/<exchange>/<currency>')
@@ -315,11 +313,11 @@ if __name__ == '__main__':
     start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken', 'Huobi']
     open_log = True
     try:
-        opts, args = getopt.getopt(argv, "rdu:k:s:p:t:l:b:e:")
+        opts, args = getopt.getopt(argv, "ru:k:s:p:t:l:b:e:")
         for opt, arg in opts:
             if opt == '-r':
                 bitstamp_key = opt
-            if opt == '-d':
+            if opt == '-r':
                 bind_ip = "0.0.0.0"
             elif opt == "-u":
                 bitstamp_user = arg
@@ -408,19 +406,26 @@ if __name__ == '__main__':
         kraken_orderbook.start_orderbook()
         active_exchanges['Kraken'] = True
 
-    huobi_fees = {'take': 0.2, 'make': 0.2}
-    huobi_orderbook = HuobiOrderbook(['BTC-USD', 'BCH-USD'], huobi_fees)
+##############################################################
+##############################################################
+    huobi_fees = {'take' : 0.2, 'make' : 0.2}
+    huobi_currencies = {'BTC-USD':'btcusdt', 'BCH-USD': 'bchusdt','LTC-USD' :'ltcusdt'}
+    huobi_orderbook = HuobiOrderbook(['btcusdt', 'bchusdt','ltcusdt'], huobi_fees)
+    # huobi_currencies = {'btcusdt', 'bchusdt','ltcusdt'}
+    # huobi_orderbook = HuobiOrderbook(['btcusdt', 'bchusdt','ltcusdt'], huobi_fees)
     active_exchanges['Huobi'] = False
     if "Huobi" in start_exchanges:
-        kraken_orderbook.start_orderbook()
+        huobi_orderbook.start_orderbook()
         active_exchanges['Huobi'] = True
 
-
+##############################################################
+##############################################################
     print("Orderbooks started")
     unified_orderbook = UnifiedOrderbook({"Bitstamp": bitstamp_orderbook,
                                           "Bitfinex": bitfinex_orderbook,
                                           "GDAX": gdax_orderbook,
-                                          "Kraken": kraken_orderbook})
+                                          "Kraken": kraken_orderbook,
+                                          "Huobi": huobi_orderbook})
 
     orderbooks = {'Bitstamp': {'orderbook': bitstamp_orderbook, 'currencies_dict': bitstamp_currencies,
                                'creator': BitstampOrderbook, 'args': bitstamp_args,
@@ -431,6 +436,8 @@ if __name__ == '__main__':
                                'creator': BitfinexOrderbook, 'active': active_exchanges['Bitfinex'], 'fees': bitfinex_fees},
                   'Kraken': {'orderbook': kraken_orderbook, 'currencies_dict': bitstamp_currencies,
                              'creator': KrakenOrderbook, 'active': active_exchanges['Kraken'], 'fees': kraken_fees},
+                  'Huobi': {'orderbook': huobi_orderbook, 'currencies_dict': huobi_currencies,
+                             'creator': HuobiOrderbook, 'active': active_exchanges['Huobi'], 'fees': huobi_fees},
                   'Unified': {'orderbook': unified_orderbook, 'currencies_dict': bitstamp_currencies,
                               'creator': UnifiedOrderbook, 'active': True, 'fees': dict()}}
     watchdog = OrderbookWatchdog(orderbooks, frozen_orderbook_timeout_sec)
@@ -443,7 +450,10 @@ if __name__ == '__main__':
                                                                      'orderbook': orderbooks['Bitfinex']}},
                                                'Kraken': {'creator': KrakenClientWrapper,
                                                           'args': {'credentials': {},
-                                                                   'orderbook': orderbooks['Kraken']}}
+                                                                   'orderbook': orderbooks['Kraken']}},
+                                               'Huobi': {'creator': HuobiClientWrapper,
+                                                          'args': {'credentials': {},
+                                                                   'orderbook': orderbooks['Huobi']}}
                                                },
                                               "./Transactions.data",
                                               watchdog)
