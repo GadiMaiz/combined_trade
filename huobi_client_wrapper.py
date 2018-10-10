@@ -179,16 +179,3 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
     # def _cancel_active_limit_order(self):
     #     pass
 
-# def main():
-#     credentials = {'username': 'Gadi', 'key': '7847b22c-e4c5da4d-0a1eb56a-3f17a',
-#                    'secret': 'b161f961-260039a3-2b951cd1-79251'}
-#     huobiClient = HuobiClientWrapper(credentials, None, None, None)
-#     # result = huobiClient._get_balance_from_exchange()
-#     # result = huobiClient.buy_immediate_or_cancel(0.0001, 6400, 'btc', 'usdt')
-#     result = huobiClient.transactions(0)
-    
-#     print("Hello World!")
-
-
-# if __name__ == '__main__':
-#     main()
