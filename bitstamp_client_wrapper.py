@@ -62,9 +62,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
         result = {}
         if self._bitstamp_client is not None and self._signed_in_user != "":
             try:
-                print("Getting balance from Bitstamp")
                 bitstamp_account_balance = self._bitstamp_client.account_balance(False, False)
-                print("Balance arrived from Bitstamp:", bitstamp_account_balance)
                 fees = dict()
                 if 'btcusd_fee' in bitstamp_account_balance:
                     self._fee = float(bitstamp_account_balance['btcusd_fee'])
@@ -93,18 +91,21 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
 
     def _execute_immediate_or_cancel(self, exchange_method, size, price, crypto_type, cancel_not_done):
         self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type=<%s>", exchange_method, size, price, crypto_type)
-        execute_result = {'exchange': self.get_exchange_name(), 'order_status': False, 'executed_price_usd': price}
+        execute_result = {'exchange': self.get_exchange_name(), 'order_status': False, 'executed_price_usd': price,
+                          'status': 'Init'}
         try:
             if self._bitstamp_client is not None and self._signed_in_user != "":
                 limit_order_result = exchange_method(size, price, crypto_type)
                 self.log.info("Execution result: <%s>", execute_result)
+                print("Execution result:", execute_result, limit_order_result)
                 order_id = limit_order_result['id']
                 execute_result['id'] = int(order_id)
                 execute_result['executed_price_usd'] = price
                 order_status = self.order_status(order_id)
                 self.log.debug("order status <%s>", order_status)
+                print("order status:", order_status)
 
-                cancel_status = None
+                cancel_status = False
                 if order_status is not None and 'status' in order_status and order_status['status'] == 'Finished' and \
                         len(order_status['transactions']) > 0:
                     execute_result['status'] = 'Finished'
@@ -114,20 +115,17 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                     execute_result['status'] = 'Finished'
                     execute_result['order_status'] = True
                 elif cancel_not_done:
-                    self.log.debug("Cancelling order")
+                    self.log.debug("Cancelling order <%d>", order_id)
                     if order_status is not None:
-                        try:
-                            cancel_status = self._cancel_order(order_id)
-                            if cancel_status:
+                        cancel_status = self._cancel_order(order_id)
+                        if cancel_status:
                                 execute_result['status'] = 'Cancelled'
-                                self.log.info("Order cancelled: <%s>", cancel_status)
-                        except Exception as e:
-                            self.log.debug("Exception while cancelling order: <%s>", str(e))
+                                self.log.info("Order <%d> cancelled", order_id)
 
-                if cancel_status is None and not cancel_not_done:
+                if not cancel_status and not cancel_not_done:
                     execute_result['status'] = 'Open'
                     execute_result['order_status'] = True
-                elif cancel_status is None:
+                elif not cancel_status:
                     execute_result['status'] = 'Finished'
                     try:
                         found_transaction = False
@@ -146,7 +144,6 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
 
         except Exception as e:
             self.log.error("%s %s", str(type(exchange_method)), str(e))
-            print("Error:", e)
             execute_result['status'] = 'Error'
         return execute_result
 
@@ -218,7 +215,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
             if curr_transaction['order_id'] == order_id:
                 results['executed_size'] += abs(float(curr_transaction[(crypto_type.lower())]))
                 results['transactions'].append(curr_transaction)
-        print("update from transactions result:", results)
+                self.log.debug("update from transactions result: <%s>", results)
         return results
 
     def create_order_tracker(self, order, orderbook, order_info, crypto_type):

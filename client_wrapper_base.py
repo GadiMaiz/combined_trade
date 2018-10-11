@@ -122,7 +122,7 @@ class ClientWrapperBase:
             else:
                 if duration_sec == 0:
                     order_sent = self.send_immediate_order(action_type, size_coin, crypto_type, price_fiat, fiat_type,
-                                                           False, 0, False)
+                                                           False, 0, False, -1)
                     self._order_complete(False, True)
                 else:
                     actions_dict = {'timed_sell': 'sell', 'timed_buy': 'buy', 'sell_limit': 'sell_limit',
@@ -230,7 +230,7 @@ class ClientWrapperBase:
                       'crypto_type': crypto_type,
                       'balance': self.account_balance()}
         self.log.debug("order info before execution: <%s>", order_info)
-        self._db_interface.write_order_to_db(order_info)
+        parent_trade_id = self._db_interface.write_order_to_db(order_info)
         self._reserved_crypto_type = crypto_type
         if action_type == 'sell':
             self._reserved_crypto = size_coin
@@ -301,10 +301,10 @@ class ClientWrapperBase:
                             random_value = random.random()
                             self.log.debug("executed so far: <%f> elapsed time: <%f>, required time: <%f>, spread_ratio: "
                                            "<%f>, required size: <%f>, execution factor: <%f> random value: "
-                                           "<%f> actual rate <%f>, required rate <%f>",
+                                           "<%f> actual rate <%f>, required rate <%f>, parent order id <%d>",
                                            self._timed_order_done_size, self._timed_order_elapsed_time, duration_sec,
                                            spread_ratio, size_coin, execution_factor, random_value, actual_execution_rate,
-                                           required_execution_rate)
+                                           required_execution_rate, parent_trade_id)
 
                             if execution_factor > random_value:
                                 relative_order = True
@@ -317,7 +317,7 @@ class ClientWrapperBase:
 
                                 sent_order = timed_order_executer.get_client_for_order().send_immediate_order(
                                     action_type, curr_order_size, crypto_type, price_fiat, fiat_type, relative_order,
-                                    max_order_size, True)
+                                    max_order_size, True, parent_trade_id)
                                 if sent_order is not None and sent_order['execution_size'] > 0:
                                     self._timed_order_done_size += sent_order['execution_size']
                                     sleep_time += random.uniform(self.EXECUTED_ORDER_MIN_DELAY_SEC,
@@ -344,8 +344,8 @@ class ClientWrapperBase:
         self.log.info("Timed action finished")
 
     def send_immediate_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, relative_size,
-                             max_order_size, is_timed_order):
-        print("send_immediate", type(self), action_type, size_coin, crypto_type, price_fiat)
+                             max_order_size, is_timed_order, parent_trade_order_id):
+        print("send_immediate", type(self), action_type, size_coin, crypto_type, price_fiat, parent_trade_order_id)
         sent_order = None
         execution_message = ''
         order_timestamp = datetime.datetime.utcnow()
@@ -353,7 +353,7 @@ class ClientWrapperBase:
         order_time = "%s.%02d" % (dt, int(micro) / 1000)
         order_info = {'exchange': self.get_exchange_name(), 'action_type': action_type, 'price_fiat': price_fiat,
                       'order_time': order_time, 'timed_order': self.TIMED_ORDERS_DICT[is_timed_order],
-                      'status': "Init", 'crypto_type': crypto_type}
+                      'status': "Init", 'crypto_type': crypto_type, 'parent_trade_order_id': parent_trade_order_id}
         print("Immediate order:", order_info)
         #try:
         execute_size_coin = size_coin
@@ -432,6 +432,7 @@ class ClientWrapperBase:
         if sent_order is not None:
             order_id = sent_order.get("id")
             order_info['exchange_id'] = order_id
+            print("Sent order:", sent_order)
             order_info['status'] = sent_order['status']
             order_info['price_fiat'] = sent_order['executed_price_usd']
             order_status = sent_order['order_status']
@@ -440,13 +441,14 @@ class ClientWrapperBase:
         if order_info['status'] == 'Finished':
             done_size = execute_size_coin
         self.log.info("Order done, size is <%f>", done_size)
+        trade_order_id = -1
         if order_info is not None and done_size > 0:
             self._balance_changed = True
 
             order_info['balance'] = self.account_balance()
-            self._db_interface.write_order_to_db(order_info)
+            trade_order_id = self._db_interface.write_order_to_db(order_info)
         return {'execution_size': done_size, 'execution_message': execution_message,
-                'order_status': order_status}
+                'order_status': order_status, 'trade_order_id': trade_order_id}
 
     @staticmethod
     def _get_relative_size(order_size, min_factor, max_factor):
@@ -528,7 +530,8 @@ class ClientWrapperBase:
                       'balance': self.account_balance()}
         self.log.info("order info before execution: <%s>", order_info)
         print("order info before execution: <{}>".format(order_info))
-        self._db_interface.write_order_to_db(order_info)
+        parent_trade_order_id = self._db_interface.write_order_to_db(order_info)
+        order_info['parent_trade_order_id'] = parent_trade_order_id
         self._reserved_crypto_type = crypto_type
         """if action_type == 'sell':
             self._reserved_crypto = size_coin
@@ -619,7 +622,8 @@ class ClientWrapperBase:
                     already_written_to_db = True
 
                 if not already_written_to_db:
-                    self._db_interface.write_order_to_db(tracked_order)
+                    trade_order_id = self._db_interface.write_order_to_db(tracked_order)
+                    tracked_order['trade_order_id'] = trade_order_id
                 active_order_tracker.unregister_order()
                 active_order = None
                 active_order_tracker = None
@@ -672,7 +676,8 @@ class ClientWrapperBase:
                         tracked_order['ask'] = current_price_and_spread['ask']['price']
                         tracked_order['bid'] = current_price_and_spread['bid']['price']
                         print("Make order info:", tracked_order)
-                        self._db_interface.write_order_to_db(tracked_order)
+                        trade_order_id = self._db_interface.write_order_to_db(tracked_order)
+                        tracked_order['trade_order_id'] = trade_order_id
                         active_order_tracker = self.create_order_tracker(active_order, self._orderbook, tracked_order,
                                                                          crypto_type)
                     elif active_order and active_order['status'] == 'Error':

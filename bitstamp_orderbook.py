@@ -38,7 +38,7 @@ class BitstampOrderbook(OrderbookBase):
         if self._bitstamp_wss_listener:
             orders = self._bitstamp_wss_listener.get_current_partial_book(asset_pair_dict[asset_pair], book_size)
         else:
-            orders = None
+            orders = {'asks': [], 'bids': []}
         return orders
 
     def is_orderbook_thread_alive(self):

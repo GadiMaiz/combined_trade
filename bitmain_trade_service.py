@@ -417,8 +417,6 @@ if __name__ == '__main__':
     huobi_fees = {'take' : 0.2, 'make' : 0.2}
     huobi_currencies = {'BTC-USD':'btcusdt', 'BCH-USD': 'bchusdt','LTC-USD' :'ltcusdt'}
     huobi_orderbook = HuobiOrderbook(['BTC-USD', 'BCH-USD'], huobi_fees)
-    # huobi_currencies = {'btcusdt', 'bchusdt','ltcusdt'}
-    # huobi_orderbook = HuobiOrderbook(['btcusdt', 'bchusdt','ltcusdt'], huobi_fees)
     active_exchanges['Huobi'] = False
     if "Huobi" in start_exchanges:
         huobi_orderbook.start_orderbook()

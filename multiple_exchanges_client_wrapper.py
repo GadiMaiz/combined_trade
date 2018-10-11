@@ -46,7 +46,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         return self._last_balance
 
     def send_immediate_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, relative_size,
-                             max_order_size, is_timed_order):
+                             max_order_size, is_timed_order, parent_trade_order_id):
         remaining_size = size_coin
         remaining_execute_attempts = MultipleExchangesClientWrapper.MAXIMUM_ORDER_ATTEMPTS
         orderbook_type = ""
@@ -89,7 +89,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                                                    exchanges_to_execute[exchange],
                                                                    crypto_type, price_fiat,
                                                                    fiat_type, relative_size, max_order_size,
-                                                                   is_timed_order)
+                                                                   is_timed_order, parent_trade_order_id)
                 self.log.debug("Sent order to exchange <%s>: <%s>", exchange, sent_order)
                 if sent_order['execution_message'] != '':
                     execution_messages.append(sent_order['execution_message'])
