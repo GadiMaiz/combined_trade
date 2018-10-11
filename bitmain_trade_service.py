@@ -19,6 +19,7 @@ import sys
 import getopt
 import time
 import os
+import json
 
 app = Flask(__name__)
 
@@ -291,13 +292,13 @@ def get_active_orderbooks(currency):
     #print(str(time.time()) + " end get_active_orderbooks")
     return str(result)
 
-def create_rotating_log(log_level):
-    logging.basicConfig(filename='bitmain_trade_service.log', level=log_level,
+def create_rotating_log(log_file, log_level):
+    logging.basicConfig(filename=log_file, level=log_level,
                         format='%(asctime)s %(levelname)s %(message)s %(filename)s(%(lineno)d) %(funcName)s %(threadName)s %(thread)d')
     logger = logging.getLogger(__name__)
     
     # add a rotating handler
-    handler = RotatingFileHandler('bitmain_trade_service.log', maxBytes=20000000, backupCount=5)
+    handler = RotatingFileHandler(log_file, maxBytes=20000000, backupCount=5)
     logger.addHandler(handler)
 
 if __name__ == '__main__':
@@ -312,19 +313,24 @@ if __name__ == '__main__':
     bitstamp_key = None
     start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken', 'Huobi']
     open_log = True
+    if 'EXCHANGES_CREDENTIALS' in os.environ:
+        exchanges_credentials = os.environ['EXCHANGES_CREDENTIALS']
+
     try:
-        opts, args = getopt.getopt(argv, "rdu:k:s:p:t:l:b:e:")
+        opts, args = getopt.getopt(argv, "rdc:p:t:l:b:e:")
         for opt, arg in opts:
             if opt == '-r':
                 bitstamp_key = opt
-            if opt == '-d':
+            elif opt == '-d':
                 bind_ip = "0.0.0.0"
-            elif opt == "-u":
-                bitstamp_user = arg
-            elif opt == "-k":
-                bitstamp_api_key = arg
-            elif opt == "-s":
-                bitstamp_secret = arg
+            elif opt == '-c':
+                exchanges_credentials = arg
+            # elif opt == "-u":
+            #     bitstamp_user = arg
+            # elif opt == "-k":
+            #     bitstamp_api_key = arg
+            # elif opt == "-s":
+            #     bitstamp_secret = arg
             elif opt == "-t":
                 frozen_orderbook_timeout_sec = arg
             elif opt == "-e":
@@ -349,7 +355,12 @@ if __name__ == '__main__':
         print("Parameters error:", e, "parameters:", argv)
 
     if open_log:
-        create_rotating_log(log_level)
+        log_file = os.path.join(app.root_path, 'logs', 'bitmain_trade_service.log')
+        create_rotating_log(log_file, log_level)
+    
+    # print('exchanges_credentials: ', exchanges_credentials)
+    exchanges_credentials = json.loads(exchanges_credentials)
+    # print('exchanges_credentials (JSON): ', exchanges_credentials)
 
     log = logging.getLogger(__name__)
     #log.addHandler(handler)
@@ -357,8 +368,10 @@ if __name__ == '__main__':
     log.debug("args: %s", str(argv))
 
     bitstamp_credentials = None
-    if bitstamp_user != '' and bitstamp_api_key != '' and bitstamp_secret != '':
-        bitstamp_credentials = {'username': bitstamp_user, 'key': bitstamp_api_key, 'secret': bitstamp_secret}
+    if 'Bitstamp' in exchanges_credentials:
+        bitstamp_credentials = exchanges_credentials['Bitstamp']
+        # if bitstamp_user != '' and bitstamp_api_key != '' and bitstamp_secret != '':
+        #     bitstamp_credentials = {'username': bitstamp_user, 'key': bitstamp_api_key, 'secret': bitstamp_secret}
 
     # log = logging.getLogger('werkzeug')
     # log.setLevel(log_level)
@@ -391,7 +404,7 @@ if __name__ == '__main__':
         active_exchanges['Bitfinex'] = True
         print("Bitfinex started")
 
-    gdax_currencies = {'BTC-USD' : 'BTC-USD', 'BCH-USD': 'BCH-USD'}
+    gdax_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD'}
     gdax_fees = {'take': 0.3, 'make': 0}
     gdax_orderbook = GdaxOrderbook([gdax_currencies['BTC-USD'], gdax_currencies['BCH-USD']], gdax_fees)
 
@@ -407,7 +420,7 @@ if __name__ == '__main__':
         kraken_orderbook.start_orderbook()
         active_exchanges['Kraken'] = True
 
-    huobi_currencies = {'BTC-USD' : 'btcusdt', 'BCH-USD': 'bchusdt'}
+    huobi_currencies = {'BTC-USD': 'btcusdt', 'BCH-USD': 'bchusdt'}
     huobi_fees = {'take': 0.2, 'make': 0.2}
     huobi_orderbook = HuobiOrderbook(['BTC-USD', 'BCH-USD'], huobi_fees)
 
@@ -452,9 +465,8 @@ if __name__ == '__main__':
                                               "./Transactions.data",
                                               watchdog)
     #app.run(host= '0.0.0.0', ssl_context='adhoc')
-    print(active_exchanges) 
+    print(active_exchanges)
     print(huobi_orderbook._get_orderbook_from_exchange('BTC-USD', 3))
     print(huobi_orderbook._get_orderbook_from_exchange('BCH-USD', 3))
 
     app.run(host=bind_ip, port=listener_port)
-    
