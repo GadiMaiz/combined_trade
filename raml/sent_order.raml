@@ -3,21 +3,23 @@
 type: object
 displayName: SentOrder
 properties: 
-  action_type: string
+  actionType: string
   ask: number
   bid: number
-  crypto_available: number
-  crypto_size: number
-  crypto_type: string
+  currencyToAvailable: number
+  size: number
+  currencyTo: string
+  currencyIn: string
   exchange: string
-  exchange_order_id?: string
-  external_order_id?: string
-  trade_order_id: string
-  parent_order_id?: string
-  child_orders?: SentOrder[]
-  user_id?: string
-  order_time: datetime
-  price_fiat: number
+  exchangeOrderId?: string
+  externalOrderId?: string
+  tradeOrderId: string
+  parentOrderId?: string
+  childOrders?: SentOrder[]
+  userId?: string
+  orderTime: datetime
+  price: number
   status: string
-  timed_order: number
-  usd_balance: number
+  timedOrder: boolean
+  currencyInAvailable: number
+  userQuotePrice?: number
