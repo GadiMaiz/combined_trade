@@ -702,6 +702,12 @@ class ClientWrapperBase:
     def get_exchange_name(self):
         return ""
 
+    def sell_market(self, execute_size_coin, currency_type1, currency_type2):
+        return {}
+
+    def buy_market(self, execute_size_coin, currency_type1, currency_type2):
+        return {}
+
     def buy_immediate_or_cancel(self, execute_size_coin, price_fiat, crypto_type):
         return {}
 
