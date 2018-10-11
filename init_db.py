@@ -17,7 +17,8 @@ def create_connection(db_file):
 def create_table(conn):
     conn.execute("CREATE TABLE sent_orders(exchange text, action_type text, crypto_size real, "
                  "price real, exchange_id text, status text, order_time text, timed_order number, crypto_type text, "
-                 "balance_usd number, balance_crypto number, ask real, bid real)")
+                 "balance_usd number, balance_crypto number, ask real, bid real, parent_trade_order_id real, "
+                 "trade_order_id real)")
 
 if __name__ == '__main__':
     conn = create_connection("./Transactions.data")
@@ -25,7 +26,7 @@ if __name__ == '__main__':
     create_table(conn)
     #conn.execute("UPDATE sent_orders set exchange_id = 0 where exchange_id = 'None'")
     conn.commit()
-    rows = conn.execute("SELECT * FROM sent_orders")
+    rows = conn.execute("SELECT rowid, * FROM sent_orders")
     for row in rows:
         print (row[5])
 
