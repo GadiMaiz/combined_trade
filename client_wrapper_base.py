@@ -148,7 +148,8 @@ class ClientWrapperBase:
         result, refuse_reason = ClientWrapperBase.verify_order_params(size_coin, price_fiat, duration_sec)
         if result:
             action_types_dict = {'sell': 'sell', 'timed_sell': 'sell', 'sell_limit': 'sell',
-                                 'buy': 'buy', 'timed_buy': 'buy', 'buy_limit': 'buy'}
+                                 'buy': 'buy', 'timed_buy': 'buy', 'buy_limit': 'buy',
+                                 'buy_market':'buy_market', 'sell_market':'sell_market' }
             fee_type_dict = {'buy': 'take', 'buy_limit': 'make', 'timed_buy': 'take'}
             if action_type not in action_types_dict:
                 result = False
@@ -362,7 +363,7 @@ class ClientWrapperBase:
             price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(crypto_type + "-USD")
         try:
             self._client_mutex.acquire()
-            if action_type == 'buy' or action_type == 'buy_limit':
+            if action_type == 'buy' or action_type == 'buy_limit' or action_type == 'buy_market':
                 if relative_size:
                     if price_and_spread['ask']['price'] > price_fiat:
                         self.log.info("price is too high: <%f> maximum price: <%f>",price_and_spread['ask'], price_fiat)
@@ -389,8 +390,10 @@ class ClientWrapperBase:
                     elif action_type == 'buy_limit':
                         sent_order = self.buy_limit(execute_size_coin, price_fiat,
                                                     self.CRYPTO_CURRENCIES_DICT[crypto_type])
+                    elif action_type == 'buy_market':
+                        sent_order = self.buy_market(price_fiat, fiat_type, crypto_type)                                                     
                     self.log.debug("sent order: <%s>", str(sent_order))
-            elif action_type == 'sell' or action_type == 'sell_limit':
+            elif action_type == 'sell' or action_type == 'sell_limit' or action_type == 'sell_market':
                 if relative_size:
                     if price_and_spread['bid']['price'] < price_fiat:
                         execute_size_coin = 0
@@ -416,6 +419,8 @@ class ClientWrapperBase:
                         print("Sell limit {} for {}".format(execute_size_coin, price_fiat))
                         sent_order = self.sell_limit(execute_size_coin, price_fiat,
                                                      self.CRYPTO_CURRENCIES_DICT[crypto_type])
+                    elif action_type == 'sell_market':
+                        sent_order = self.sell_market(price_fiat, fiat_type, crypto_type) 
                     self.log.debug("sent order: <%s>", str(sent_order))
             if execute_size_coin > 0:
                 self.log.debug("Order sent in size <%f> for action <%s>", execute_size_coin, action_type)
@@ -427,7 +432,6 @@ class ClientWrapperBase:
             execute_size_coin = 0
         finally:
             self._client_mutex.release()
-
         order_status = False
         if sent_order is not None:
             order_id = sent_order.get("id")

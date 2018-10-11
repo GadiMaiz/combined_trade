@@ -140,14 +140,14 @@ def send_order():
     request_params = json.loads(request.data)
     #print("Sending order in web service")
     result = dict()
-    result['order_status'] = str('Invalid parameters')
-    if request_params['fiat_type'] in ['USD'] and request_params['crypto_type'] in ['BTC', 'BCH']:
-        order_status = exchanges_manager.send_order(request_params['exchanges'], request_params['action_type'],
-                                                    float(request_params['size_coin']), request_params['crypto_type'],
-                                                    float(request_params['price_fiat']), request_params['fiat_type'],
-                                                    int(request_params['duration_sec']),
-                                                    float(request_params['max_order_size']))
-        result = order_status
+    # result['order_status'] = str('Invalid parameters')
+    # if request_params['fiat_type'] in ['USD'] and request_params['crypto_type'] in ['BTC', 'BCH']:
+    order_status = exchanges_manager.send_order(request_params['exchanges'], request_params['action_type'],
+                                                float(request_params['size_coin']), request_params['crypto_type'],
+                                                float(request_params['price_fiat']), request_params['fiat_type'],
+                                                int(request_params['duration_sec']),
+                                                float(request_params['max_order_size']))
+    result = order_status
     #print(result)
     result['order_status'] = str(result['order_status'])
     log.info("command sent")

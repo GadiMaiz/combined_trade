@@ -79,10 +79,8 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
                             balances[element['currency'] + '_trade'] = float(element['balance'])
                         else:
                             balances[element['currency']] = float(element['balance'])
-                
                 for currency in self._supportedCurrency:
                     result[currency.upper()] = {"amount":  balances[currency + '_trade'] + balances[currency], "available": balances[currency + '_trade']}  
-                        
             except Exception as e:
                 self.log.error("%s", str(e))
         return result
@@ -194,21 +192,5 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
 
     # def _cancel_active_limit_order(self):
     #     pass
-
-
-def main():
-    credentials = {'username': 'Gadi', 'key': '7847b22c-e4c5da4d-0a1eb56a-3f17a',
-                   'secret': 'b161f961-260039a3-2b951cd1-79251'}
-    huobiClient = HuobiClientWrapper(credentials, None, None, None)
-    # result = huobiClient.buy_immediate_or_cancel(0.0001, 6400, 'btc', 'usdt')
-    result = huobiClient.buy_market(0.001, 'bch', 'btc')
-    result = huobiClient._get_balance_from_exchange()
-    result = huobiClient.transactions(0, 'bchbtc')
-    
-    print("Hello World!")
-
-
-if __name__ == '__main__':
-    main()
 
 
