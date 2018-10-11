@@ -313,6 +313,7 @@ if __name__ == '__main__':
     bitstamp_key = None
     start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken', 'Huobi']
     open_log = True
+    exchanges_credentials = None
     if 'EXCHANGES_CREDENTIALS' in os.environ:
         exchanges_credentials = os.environ['EXCHANGES_CREDENTIALS']
 
@@ -359,7 +360,8 @@ if __name__ == '__main__':
         create_rotating_log(log_file, log_level)
     
     # print('exchanges_credentials: ', exchanges_credentials)
-    exchanges_credentials = json.loads(exchanges_credentials)
+    if not exchanges_credentials is None and not exchanges_credentials is '':
+        exchanges_credentials = json.loads(exchanges_credentials)
     # print('exchanges_credentials (JSON): ', exchanges_credentials)
 
     log = logging.getLogger(__name__)
@@ -368,7 +370,7 @@ if __name__ == '__main__':
     log.debug("args: %s", str(argv))
 
     bitstamp_credentials = None
-    if 'Bitstamp' in exchanges_credentials:
+    if not exchanges_credentials is None and 'Bitstamp' in exchanges_credentials:
         bitstamp_credentials = exchanges_credentials['Bitstamp']
         # if bitstamp_user != '' and bitstamp_api_key != '' and bitstamp_secret != '':
         #     bitstamp_credentials = {'username': bitstamp_user, 'key': bitstamp_api_key, 'secret': bitstamp_secret}

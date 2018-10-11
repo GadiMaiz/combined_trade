@@ -27,7 +27,7 @@ ENV DEFAULT_EXCHANGES='Kraken/Huobi'
 ENV LOG_LEVEL='info'
 ENV SERVER_PORT=5000
 
-# exchanges credentials in JSON format, e.g.: EXCHANGES_CREDENTIALS="{""Kraken"": {""apiKey"": ""432rfsdfsf"", ""secret"": ""fsdfasdfsda""}, ""Bitstamp"": {""userId"": ""fsafsdaf"", ""apiKey"": ""432rfsdfsf"", ""secret"": ""fsdfasdfsda""}}"
+# exchanges credentials in JSON format, e.g.: EXCHANGES_CREDENTIALS="{""Kraken"": {""apiKey"": ""432rfsdfsf"", ""secret"": ""fsdfasdfsda""}, ""Bitstamp"": {""username"": ""fsafsdaf"", ""key"": ""432rfsdfsf"", ""secret"": ""fsdfasdfsda""}}"
 ENV EXCHANGES_CREDENTIALS=''
 
 # expose web server default port
