@@ -291,15 +291,13 @@ def get_active_orderbooks(currency):
     #print(str(time.time()) + " end get_active_orderbooks")
     return str(result)
 
-def create_rotating_log(path):
+def create_rotating_log(log_level):
+    logging.basicConfig(filename='bitmain_trade_service.log', level=log_level,
+                        format='%(asctime)s %(levelname)s %(message)s %(filename)s(%(lineno)d) %(funcName)s %(threadName)s %(thread)d')
+    logger = logging.getLogger(__name__)
     
-    # Creates a rotating log
-    
-    logger = logging.getLogger("Rotating Log")
-
     # add a rotating handler
-    handler = RotatingFileHandler(path, maxBytes=20000000,
-                                  backupCount=5)
+    handler = RotatingFileHandler('bitmain_trade_service.log', maxBytes=20000000, backupCount=5)
     logger.addHandler(handler)
 
 if __name__ == '__main__':
@@ -351,25 +349,26 @@ if __name__ == '__main__':
         print("Parameters error:", e, "parameters:", argv)
 
     if open_log:
-        logging.basicConfig(filename='bitmain_trade_service.log', level=log_level,
-                            format='%(asctime)s %(processName)s %(process)d %(threadName)s %(thread)d %(levelname)s %(filename)s(%(lineno)d) %(funcName)s %(message)s')
-    #handler = RotatingFileHandler('bitmain_trade_service.log', maxBytes=20000000,
-    #                              backupCount=5)
+        create_rotating_log(log_level)
+
     log = logging.getLogger(__name__)
     #log.addHandler(handler)
-    log.error("=== Starting ===")
-    log.info("args: %s", str(argv))
+    log.info("=== Starting ===")
+    log.debug("args: %s", str(argv))
 
     bitstamp_credentials = None
     if bitstamp_user != '' and bitstamp_api_key != '' and bitstamp_secret != '':
         bitstamp_credentials = {'username': bitstamp_user, 'key': bitstamp_api_key, 'secret': bitstamp_secret}
 
-    log = logging.getLogger('werkzeug')
-    log.setLevel(log_level)
+    # log = logging.getLogger('werkzeug')
+    # log.setLevel(log_level)
 
     print("Connecting to orderbooks")
     bitstamp_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD'}
-    bitstamp_args = {'log_level': log_level}
+    bitstamp_inner_logger = logging.ERROR
+    if log_level is logging.DEBUG:
+        bitstamp_inner_logger = logging.DEBUG
+    bitstamp_args = {'log_level': bitstamp_inner_logger}
     if bitstamp_key is not None:
         bitstamp_args['key'] = bitstamp_key
     bitstamp_fees = {'take': 0.25, 'make': 0.25}

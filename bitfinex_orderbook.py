@@ -41,7 +41,7 @@ class BitfinexOrderbook(OrderbookBase):
         self._running = False
 
     def _manage_orderbook(self):
-        log.info("running manage orderbook thread")
+        log.debug("running manage orderbook thread")
         orderbook_init = { 'BTCUSD': False, 'BCHUSD': False}
         while self._running:
             try:
