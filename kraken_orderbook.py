@@ -30,7 +30,6 @@ class KrakenOrderbook(OrderbookBase):
             kraken_pair = KrakenOrderbook.KRAKEN_PAIRS_DICT[asset_pair]
 
         curr_time = time.time()
-
         orders = None
         self._orderbook_mutex.acquire()
         try:
