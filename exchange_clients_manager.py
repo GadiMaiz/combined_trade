@@ -84,9 +84,9 @@ class ExchangeClientManager():
     def get_exchange_transactions(self, exchange, limit):
         return self._clients[exchange]['client'].transactions(limit)
 
-    def send_order(self, exchanges, action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec,
-                   max_order_size):
-        print("send_order:", exchanges, action_type, size_coin, crypto_type, price_fiat)
+    def send_order(self, exchanges, action_type, currency_to_size, currency_to_type, currency_from_size, currency_from_type, duration_sec,
+                   max_order_size,  externalOrderId = None, userQuotePrice = None , userId = None):
+        print("send_order:", exchanges, action_type, currency_to_size, currency_to_type, currency_from_size)
         active_exchanges = self._watchdog.get_active_exchanges()
         order_exchanges = []
         for exchange in exchanges:
@@ -96,8 +96,8 @@ class ExchangeClientManager():
         if len(order_exchanges) == 1 and order_exchanges[0] in self._clients:
             #if duration_sec > 0:
             print("Sending order to", order_exchanges[0])
-            result = self._clients[order_exchanges[0]]['client'].send_order(action_type, size_coin, crypto_type,
-                                                                            price_fiat, fiat_type, duration_sec,
+            result = self._clients[order_exchanges[0]]['client'].send_order(action_type, currency_to_size, currency_to_type,
+                                                                            currency_from_size, currency_from_type, duration_sec,
                                                                             max_order_size, True)
         else:
             valid_exchanges = True
@@ -121,7 +121,7 @@ class ExchangeClientManager():
                                                                  self)
                 self._multiple_clients[self._sent_orders_multiple_exchanges_identifier] = multiple_client
                 self._sent_orders_multiple_exchanges_identifier = self._sent_orders_multiple_exchanges_identifier + 1
-                result = multiple_client.send_order(action_type, size_coin, crypto_type, price_fiat, fiat_type,
+                result = multiple_client.send_order(action_type, currency_to_size, currency_to_type, currency_from_size, currency_from_type,
                                                     duration_sec,  max_order_size, True)
         return result
 

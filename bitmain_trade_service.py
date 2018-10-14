@@ -141,12 +141,42 @@ def send_order():
     #print("Sending order in web service")
     result = dict()
     # result['order_status'] = str('Invalid parameters')
-    # if request_params['fiat_type'] in ['USD'] and request_params['crypto_type'] in ['BTC', 'BCH']:
-    order_status = exchanges_manager.send_order(request_params['exchanges'], request_params['action_type'],
-                                                float(request_params['size_coin']), request_params['crypto_type'],
-                                                float(request_params['price_fiat']), request_params['fiat_type'],
-                                                int(request_params['duration_sec']),
-                                                float(request_params['max_order_size']))
+
+    ####################################################
+    if request_params['actionType'] is not None: 
+        actionType = None
+        price = None
+        if 'price' in request_params:
+            price = request_params['price']
+            actionType =  request_params['actionType'] + '_limit'
+        else:
+            price = 0
+            actionType =  request_params['actionType'] + '_market'
+
+        externalOrderId = request_params["externalOrderId"]        if 'externalOrderId' in request_params       else None
+        userQuotePrice = float(request_params["userQuotePrice"])   if 'userQuotePrice'  in request_params       else None
+        userId = request_params["userId"]                          if "userId"  in request_params               else None
+        maxOrderSize = float(request_params["maxOrderSize"])       if "maxOrderSize" in request_params          else None
+        durationSec = int(request_params['durationSec'])           if "durationSec" in request_params           else None
+
+        order_status = exchanges_manager.send_order(request_params['exchanges'],
+                                                    actionType,
+                                                    float(request_params['size'])
+                                                    ,request_params['currencyTo'],
+                                                    price,
+                                                    request_params['currencyFrom'],
+                                                    durationSec,
+                                                    maxOrderSize,
+                                                    externalOrderId,
+                                                    userQuotePrice,
+                                                    userId)
+    ####################################################
+    else:
+        order_status = exchanges_manager.send_order(request_params['exchanges'], request_params['action_type'],
+                                                    float(request_params['size_coin']), request_params['crypto_type'],
+                                                    float(request_params['price_fiat']), request_params['fiat_type'],
+                                                    int(request_params['duration_sec']),
+                                                    float(request_params['max_order_size']))
     result = order_status
     #print(result)
     result['order_status'] = str(result['order_status'])

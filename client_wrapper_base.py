@@ -189,7 +189,7 @@ class ClientWrapperBase:
             if result:
                 refuse_reason = "Invalid price"
                 price_fiat = float(price_fiat)
-                if float(price_fiat) <= 0:
+                if float(price_fiat) < 0:
                     result = False
 
             if result:
@@ -391,7 +391,7 @@ class ClientWrapperBase:
                         sent_order = self.buy_limit(execute_size_coin, price_fiat,
                                                     self.CRYPTO_CURRENCIES_DICT[crypto_type])
                     elif action_type == 'buy_market':
-                        sent_order = self.buy_market(price_fiat, fiat_type, crypto_type)                                                     
+                        sent_order = self.buy_market(execute_size_coin, fiat_type, crypto_type)                                                     
                     self.log.debug("sent order: <%s>", str(sent_order))
             elif action_type == 'sell' or action_type == 'sell_limit' or action_type == 'sell_market':
                 if relative_size:
@@ -420,7 +420,7 @@ class ClientWrapperBase:
                         sent_order = self.sell_limit(execute_size_coin, price_fiat,
                                                      self.CRYPTO_CURRENCIES_DICT[crypto_type])
                     elif action_type == 'sell_market':
-                        sent_order = self.sell_market(price_fiat, fiat_type, crypto_type) 
+                        sent_order = self.sell_market(execute_size_coin, fiat_type, crypto_type) 
                     self.log.debug("sent order: <%s>", str(sent_order))
             if execute_size_coin > 0:
                 self.log.debug("Order sent in size <%f> for action <%s>", execute_size_coin, action_type)
