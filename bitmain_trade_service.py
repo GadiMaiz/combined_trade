@@ -8,6 +8,7 @@ from bitstamp_client_wrapper import BitstampClientWrapper
 from bitstamp_orderbook import BitstampOrderbook
 from kraken_orderbook import KrakenOrderbook
 from kraken_client_wrapper import KrakenClientWrapper
+from huobi_client_wrapper import HuobiClientWrapper
 from huobi_orderbook import HuobiOrderbook
 from huobi_client_wrapper import HuobiClientWrapper
 from orderbook_watchdog import OrderbookWatchdog
@@ -24,12 +25,11 @@ import json
 
 app = Flask(__name__)
 
-
 client_dir = os.path.join(app.root_path, 'client')
 
 @app.route('/OrdersTracker')
 def send_orderbook_page():
-    return send_from_directory(client_dir, 'OrdersTracker.html')
+    return send_from_directory(client_dir,'OrdersTracker.html')
 
 
 @app.route('/GetLanguageText/<locale>')
@@ -148,14 +148,44 @@ def send_order():
     request_params = json.loads(request.data)
     #print("Sending order in web service")
     result = dict()
-    result['order_status'] = str('Invalid parameters')
-    if request_params['fiat_type'] in ['USD'] and request_params['crypto_type'] in ['BTC', 'BCH']:
+    # result['order_status'] = str('Invalid parameters')
+
+    ####################################################
+    if request_params['actionType'] is not None: 
+        actionType = None
+        price = None
+        if 'price' in request_params:
+            price = request_params['price']
+            actionType =  request_params['actionType'] + '_limit'
+        else:
+            price = 0
+            actionType =  request_params['actionType'] + '_market'
+
+        externalOrderId = request_params["externalOrderId"]        if 'externalOrderId' in request_params       else None
+        userQuotePrice = float(request_params["userQuotePrice"])   if 'userQuotePrice'  in request_params       else None
+        userId = request_params["userId"]                          if "userId"  in request_params               else None
+        maxOrderSize = float(request_params["maxOrderSize"])       if "maxOrderSize" in request_params          else None
+        durationSec = int(request_params['durationSec'])           if "durationSec" in request_params           else None
+
+        order_status = exchanges_manager.send_order(request_params['exchanges'],
+                                                    actionType,
+                                                    float(request_params['size'])
+                                                    ,request_params['currencyTo'],
+                                                    price,
+                                                    request_params['currencyFrom'],
+                                                    durationSec,
+                                                    maxOrderSize,
+                                                    externalOrderId,
+                                                    userQuotePrice,
+                                                    userId)
+    ####################################################
+    else:
         order_status = exchanges_manager.send_order(request_params['exchanges'], request_params['action_type'],
                                                     float(request_params['size_coin']), request_params['crypto_type'],
                                                     float(request_params['price_fiat']), request_params['fiat_type'],
                                                     int(request_params['duration_sec']),
                                                     float(request_params['max_order_size']))
-        result = order_status
+    result = order_status
     #print(result)
     result['order_status'] = str(result['order_status'])
     log.info("command sent")
@@ -229,6 +259,9 @@ def set_client_credentials():
                                'secret': request_params['secret']}
                 orderbooks[exchange]['fees'].update(fees)
                 orderbooks[exchange]['orderbook'].set_fees(orderbooks[exchange]['fees'])
+            else:
+                print("ERROR: account id, key or secret contain forbidden characters")     
+             
         result['set_credentials_status'] = str(exchanges_manager.set_exchange_credentials(exchange, credentials))
     except Exception as ex:
         log.error("Failed to set client credentials, parameter error: {}".format(ex))
@@ -460,7 +493,8 @@ if __name__ == '__main__':
         huobi_orderbook.start_orderbook()
         active_exchanges['Huobi'] = True
 
-
+##############################################################
+##############################################################
     print("Orderbooks started")
     unified_orderbook = UnifiedOrderbook({"Bitstamp": bitstamp_orderbook,
                                           "Bitfinex": bitfinex_orderbook,
@@ -500,7 +534,5 @@ if __name__ == '__main__':
                                               watchdog)
     #app.run(host= '0.0.0.0', ssl_context='adhoc')
     print(active_exchanges)
-    print(huobi_orderbook._get_orderbook_from_exchange('BTC-USD', 3))
-    print(huobi_orderbook._get_orderbook_from_exchange('BCH-USD', 3))
 
     app.run(host=bind_ip, port=listener_port)

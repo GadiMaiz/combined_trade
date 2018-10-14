@@ -7,6 +7,7 @@ import huobi  # TODO - this dependency came from pip install huobi , maybe it sh
 
 
 class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
+    HUOBI_CURRENCIES_DICT = {'BTC': 'btc', 'USD': 'usdt', 'BCH' : 'bch', "LTC" : 'ltc'}
     def __init__(self, credentials, orderbook, db_interface, clients_manager, supportedCurrencies = {'btc','usdt','bch','ltc'}):
         super().__init__(orderbook, db_interface, clients_manager)
         self.log = logging.getLogger(__name__)
@@ -79,10 +80,8 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
                             balances[element['currency'] + '_trade'] = float(element['balance'])
                         else:
                             balances[element['currency']] = float(element['balance'])
-                
                 for currency in self._supportedCurrency:
-                    result[currency] = {"amount":  balances[currency + '_trade'] + balances[currency], "available": balances[currency + '_trade']}  
-                        
+                    result[currency.upper()] = {"amount":  balances[currency + '_trade'] + balances[currency], "available": balances[currency + '_trade']}  
             except Exception as e:
                 self.log.error("%s", str(e))
         return result
@@ -90,12 +89,12 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
     def get_exchange_name(self):
         return "Huobi"
 
-    def buy_immediate_or_cancel(self, execute_size_coin, price_fiat, currency_type1, currency_type2 = "usdt"):
+    def buy_immediate_or_cancel(self, execute_size_coin, price, currency_type1, currency_type2 = "usdt"):
         # return self._execute_exchange_order('buy-ioc', execute_size_coin, price_fiat, currency_type1, currency_type2)
         return self._execute_exchange_order('buy-ioc', execute_size_coin, price_fiat, currency_type1, currency_type2)
         
 
-    def sell_immediate_or_cancel(self, execute_size_coin, price_fiat, currency_type1, currency_type2 = "usdt"):
+    def sell_immediate_or_cancel(self, execute_size_coin, price, currency_type1, currency_type2 = "usdt"):
         return self._execute_exchange_order('sell-ioc', execute_size_coin, price_fiat, currency_type1, currency_type2)
 
 
@@ -110,12 +109,21 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
             execute_result['order_status'] = True
             return execute_result
         try:
-            exchange_result = self._huobi_client.place(account_id=str(account_id), amount=str(size), price=str(price),  symbol=currency_type1 + currency_type2, type=action_type)
+            if price != None:
+                exchange_result = self._huobi_client.place(account_id=str(account_id), amount=str(size), price=str(price),  symbol=currency_type1 + currency_type2, type=action_type)
+            else :
+                exchange_result = self._huobi_client.place(account_id=str(account_id), amount=str(size),  symbol=currency_type1 + currency_type2, type=action_type)
+
+
         
             orderStatus = self.order_status(exchange_result.data['data'])
             execute_result = {'exchange': self.get_exchange_name(),
                                 'id': int(exchange_result.data['data']),
                                 'executed_price_usd': orderStatus.data['data']['price'],
+                                'currency1' : currency_type1,
+                                'currency' : currency_type1,                                
+                                'currency1_amount' : orderStatus.data['data']['field-cash-amount'],
+                                'currency2_amount' : orderStatus.data['data']['field-amount'],                                
                                 'order_status': False}
             
             if orderStatus.data['data']['state'] == 'canceled':
@@ -139,7 +147,7 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
                 self.log.error("%s", str(e))
         return result
 
-    def transactions(self, transactions_limit, currencyPair = 'btcusdt'):
+    def transactions(self, transactions_limit, currencyPair = 'ethbtc'):
         states = "pre-submitted,submitted,partial-filled,partial-canceled,filled,canceled"
         try:
             if self._huobi_client is not None and self._signed_in_user != "":
@@ -152,11 +160,18 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
         return transactions
 
     def minimum_order_size(self, asset_pair):
-        minimum_sizes = {'BTC-USD': 0.0001, 'BCH-USD': 0.001, 'LTC-USD' : 0.001}
+        minimum_sizes = {'BCH-BTC': 0.001, 'LTC-BTC' : 0.0001}
         return minimum_sizes[asset_pair]
 
     def is_client_initialized(self):
         return self._is_client_init
+
+
+    def sell_market(self, execute_size_coin, currency_type1, currency_type2 = "usdt"):
+        return self._execute_exchange_order('sell-market', execute_size_coin, None, currency_type1, currency_type2)      
+
+    def buy_market(self, execute_size_coin, currency_type1, currency_type2 = "usdt"):
+        return self._execute_exchange_order('buy-market', execute_size_coin, None, currency_type1, currency_type2)      
 
     # def _order_complete(self, is_timed_order, report_status):
     #     if self._clients_manager:
@@ -179,16 +194,4 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
     # def _cancel_active_limit_order(self):
     #     pass
 
-# def main():
-#     credentials = {'username': 'Gadi', 'key': '7847b22c-e4c5da4d-0a1eb56a-3f17a',
-#                    'secret': 'b161f961-260039a3-2b951cd1-79251'}
-#     huobiClient = HuobiClientWrapper(credentials, None, None, None)
-#     # result = huobiClient._get_balance_from_exchange()
-#     # result = huobiClient.buy_immediate_or_cancel(0.0001, 6400, 'btc', 'usdt')
-#     result = huobiClient.transactions(0)
-    
-#     print("Hello World!")
 
-
-# if __name__ == '__main__':
-#     main()
