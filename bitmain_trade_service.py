@@ -9,6 +9,7 @@ from bitstamp_orderbook import BitstampOrderbook
 from kraken_orderbook import KrakenOrderbook
 from kraken_client_wrapper import KrakenClientWrapper
 from huobi_orderbook import HuobiOrderbook
+from huobi_client_wrapper import HuobiClientWrapper
 from orderbook_watchdog import OrderbookWatchdog
 from exchange_clients_manager import ExchangeClientManager
 import logging
@@ -214,7 +215,7 @@ def set_client_credentials():
                 'secret' in request_params:
             # Make sure that the username is a number
             user_reg = re.compile('^[0-9\.]+$')
-            key_reg = re.compile('^[0-9a-zA-Z=+\./]+$')
+            key_reg = re.compile('^[0-9a-zA-Z=+\./\-]+$')
             if user_reg.match(request_params['username']) and key_reg.match(request_params['key']) and \
                     key_reg.match(request_params['secret']):
                 credentials = {'username': request_params['username'],
@@ -223,7 +224,8 @@ def set_client_credentials():
                 orderbooks[exchange]['fees'].update(fees)
                 orderbooks[exchange]['orderbook'].set_fees(orderbooks[exchange]['fees'])
         result['set_credentials_status'] = str(exchanges_manager.set_exchange_credentials(exchange, credentials))
-    except Exception as e:
+    except Exception as ex:
+        log.error("Failed to set client credentials, parameter error: {}".format(ex))
         result['set_credentials_status'] = 'False'
 
     return str(result)
@@ -362,31 +364,40 @@ if __name__ == '__main__':
         log_file = os.path.join(log_dir, 'bitmain_trade_service.log')
         create_rotating_log(log_file, log_level)
 
-    print('exchanges_credentials: ', exchanges_credentials)
-    if not exchanges_credentials is None and not exchanges_credentials is '':
-        exchanges_credentials = json.loads(exchanges_credentials)
-    print('exchanges_credentials (JSON): ', exchanges_credentials)
-
     log = logging.getLogger(__name__)
     #log.addHandler(handler)
     log.info("=== Starting ===")
     log.debug("args: %s", str(argv))
 
+    # log = logging.getLogger('werkzeug')
+    # log.setLevel(log_level)
+
     bitstamp_credentials = None
     huobi_credentials = None
     kraken_credentials = None
     bitfinex_credentials = None
-    if not exchanges_credentials is None and 'Bitstamp' in exchanges_credentials:
-        bitstamp_credentials = exchanges_credentials['Bitstamp']
-    if not exchanges_credentials is None and 'Huobi' in exchanges_credentials:
-        huobi_credentials = exchanges_credentials['Huobi']
-    if not exchanges_credentials is None and 'Kraken' in exchanges_credentials:
-        kraken_credentials = exchanges_credentials['Kraken']
-        # if bitstamp_user != '' and bitstamp_api_key != '' and bitstamp_secret != '':
-        #     bitstamp_credentials = {'username': bitstamp_user, 'key': bitstamp_api_key, 'secret': bitstamp_secret}
+    gdax_credentials = None
 
-    # log = logging.getLogger('werkzeug')
-    # log.setLevel(log_level)
+    # try to read and parse exchanges_credentials (set either from commad line -c option or as environment variable):
+    try:
+
+        # print('exchanges_credentials: ', exchanges_credentials)
+        if not exchanges_credentials is None and not exchanges_credentials is '':
+            exchanges_credentials = json.loads(exchanges_credentials)
+        # print('exchanges_credentials (JSON): ', exchanges_credentials)
+
+        if not exchanges_credentials is None and 'Bitstamp' in exchanges_credentials:
+            bitstamp_credentials = exchanges_credentials['Bitstamp']
+        if not exchanges_credentials is None and 'Huobi' in exchanges_credentials:
+            huobi_credentials = exchanges_credentials['Huobi']
+        if not exchanges_credentials is None and 'Kraken' in exchanges_credentials:
+            kraken_credentials = exchanges_credentials['Kraken']
+        if not exchanges_credentials is None and 'Bitfinex' in exchanges_credentials:
+            bitfinex_credentials = exchanges_credentials['Bitfinex']
+        if not exchanges_credentials is None and 'GDAX' in exchanges_credentials:
+            gdax_credentials = exchanges_credentials['GDAX']
+    except Exception as ex:
+        log.error("Failed to parse exchange credentials, parameter error: {}".format(ex))
 
     print("Connecting to orderbooks")
     bitstamp_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD'}
@@ -470,11 +481,14 @@ if __name__ == '__main__':
                                                             'args': {'credentials': bitstamp_credentials,
                                                                      'orderbook': orderbooks['Bitstamp']}},
                                                'Bitfinex': {'creator': BitfinexClientWrapper,
-                                                            'args': {'credentials': {},
+                                                            'args': {'credentials': bitfinex_credentials,
                                                                      'orderbook': orderbooks['Bitfinex']}},
                                                'Kraken': {'creator': KrakenClientWrapper,
-                                                          'args': {'credentials': {},
-                                                                   'orderbook': orderbooks['Kraken']}}
+                                                          'args': {'credentials': kraken_credentials,
+                                                                   'orderbook': orderbooks['Kraken']}},
+                                               'Huobi': {'creator': HuobiClientWrapper,
+                                                          'args': {'credentials': huobi_credentials,
+                                                                   'orderbook': orderbooks['Huobi']}}
                                                },
                                               "./Transactions.data",
                                               watchdog)
