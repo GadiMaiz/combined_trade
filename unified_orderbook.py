@@ -40,7 +40,6 @@ class UnifiedOrderbook:
             self._log.info(client_orderbooks)
             for curr_orderbook in client_orderbooks:
                 for curr_keyset in order_keys:
-                    self._log.info(curr_keyset)
                     best_orders[curr_keyset[1]] = curr_keyset[0](size, best_orders[curr_keyset[1]] +
                                                                  curr_orderbook[curr_keyset[1]],
                                                                  key=operator.itemgetter(price_sort))
