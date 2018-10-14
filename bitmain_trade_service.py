@@ -98,6 +98,12 @@ def get_all_accounts_balance_force():
     return str(account_balances)
 
 
+@app.route('/Exchange/<exchange>/accountBalance')
+def get_exchange_balance(exchange):
+    account_balance = exchanges_manager.exchange_balance(exchange, False)
+    return str(account_balance)
+
+
 @app.route('/Transactions/<exchange>')
 def get_bitstamp_transactions(exchange):
     #print(str(time.time()) + " start get_bitstamp_transactions")

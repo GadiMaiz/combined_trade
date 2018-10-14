@@ -23,8 +23,8 @@ def create_table(conn):
 
 if __name__ == '__main__':
     conn = create_connection("./Transactions.data")
-    #conn.execute("DROP TABLE sent_orders")
-    #create_table(conn)
+    conn.execute("DROP TABLE sent_orders")
+    create_table(conn)
     #conn.execute("UPDATE sent_orders set exchange_id = 0 where exchange_id = 'None'")
     conn.commit()
     rows = conn.execute("SELECT rowid, * FROM sent_orders")

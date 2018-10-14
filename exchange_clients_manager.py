@@ -27,11 +27,12 @@ class ExchangeClientManager():
         result['exchange'] = exchange
         return result
 
-    def exchange_balance(self, exchange):
+    def exchange_balance(self, exchange, extended_info=True):
         result = dict()
         if exchange in self._clients:
-            result = self._clients[exchange]['client'].account_balance()
-        result['exchange'] = exchange
+            result = self._clients[exchange]['client'].account_balance(extended_info=extended_info)
+        if extended_info:
+            result['exchange'] = exchange
         return result
 
     def get_all_account_balances(self, force_exchange):

@@ -68,7 +68,7 @@ class ClientWrapperBase:
     def set_balance_changed(self):
         self._balance_changed = True
 
-    def account_balance(self, reconnect=True):
+    def account_balance(self, reconnect=True, extended_info=True):
         total_usd_value = 0
         if not self._is_client_init:
             self._last_balance.pop('balances', None)
@@ -82,7 +82,7 @@ class ClientWrapperBase:
                     for balance in self._last_balance['balances']:
                         if balance == "USD":
                             total_usd_value += self._last_balance['balances'][balance]['available']
-                        else:
+                        elif 'price' in self._last_balance['balances'][balance]:
                             self._last_balance['balances'][balance]['price'] = self._get_pair_price(balance)
                             total_usd_value += self._last_balance['balances'][balance]['price'] * \
                                                self._last_balance['balances'][balance]['available']
@@ -107,7 +107,13 @@ class ClientWrapperBase:
         self._last_balance['reserved_crypto_type'] = self._reserved_crypto_type
         self._last_balance['server_usd_reserved'] = self._reserved_usd
         self._last_balance['fees'] = self._orderbook['fees']
-        return self._last_balance
+        result = self._last_balance
+        if not extended_info:
+            result = dict()
+            for balance in self._last_balance['balances']:
+                result[balance] = {'amount': self._last_balance['balances'][balance]['amount'],
+                                   'available': self._last_balance['balances'][balance]['available']}
+        return result
 
     def send_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec, max_order_size,
                    report_status):
