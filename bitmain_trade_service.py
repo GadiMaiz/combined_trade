@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory, request
+from flask import Flask, send_from_directory, request, jsonify
 from bitfinex_orderbook import BitfinexOrderbook
 from orderbook_base import OrderbookFee
 from bitfinex_client_wrapper import BitfinexClientWrapper
@@ -227,6 +227,25 @@ def get_sent_orders_filtered():
     #print(str(time.time()) + " start get_sent_orders_filtered")
     return str(sent_orders)
 
+@app.route('/reports/sentOrders', methods=['POST'])
+def get_sent_orders_filtered():
+    #print(str(time.time()) + " start get_sent_orders_filtered")
+    sent_orders = []
+    request_filter = {}
+    orders_limit = 0
+    valid_parameters = False
+    try:
+        request_params = json.loads(request.data)
+        request_filter = request_params['filter']
+        orders_limit = int(request_params['limit'])
+        valid_parameters = True
+    except Exception as ex:
+        print("sentOrders parameters error: {}".format(ex))
+
+    if valid_parameters:
+        sent_orders = exchanges_manager.get_sent_orders(orders_limit, request_filter)
+    #print(str(time.time()) + " start get_sent_orders_filtered")
+    return jsonify(sent_orders)
 
 @app.route('/SetClientCredentials', methods=['POST'])
 def set_client_credentials():
