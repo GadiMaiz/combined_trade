@@ -356,9 +356,12 @@ if __name__ == '__main__':
         print("Parameters error:", e, "parameters:", argv)
 
     if open_log:
-        log_file = os.path.join(app.root_path, 'logs', 'bitmain_trade_service.log')
+        log_dir = os.path.join(app.root_path, 'logs')
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        log_file = os.path.join(log_dir, 'bitmain_trade_service.log')
         create_rotating_log(log_file, log_level)
-    
+
     # print('exchanges_credentials: ', exchanges_credentials)
     if not exchanges_credentials is None and not exchanges_credentials is '':
         exchanges_credentials = json.loads(exchanges_credentials)
