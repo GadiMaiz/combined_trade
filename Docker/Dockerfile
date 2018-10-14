@@ -31,7 +31,7 @@ ENV SERVER_PORT=5000
 ENV EXCHANGES_CREDENTIALS=''
 
 # expose web server default port
-# EXPOSE 5000
+EXPOSE 5000
 
 # configure volumes
 VOLUME ["/usr/src/app/logs"]
