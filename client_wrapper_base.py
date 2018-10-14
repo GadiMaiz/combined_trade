@@ -156,24 +156,25 @@ class ClientWrapperBase:
                                                                                    action_types_dict.values())
             else:
                 check_action_type = action_types_dict[action_type]
-                balance_before_order = self.account_balance()
-                print("balance_before_order", balance_before_order)
-                if result and check_action_type == 'sell' and size_coin > \
-                        balance_before_order['balances'][crypto_type]['available']:
-                    refuse_reason = "Available balance " + \
-                                    str(balance_before_order['balances'][crypto_type]['available']) + \
-                                    crypto_type + " is less than required size " + str(size_coin) + crypto_type
-                    result = False
-                elif result and check_action_type == 'buy' and (
-                        price_fiat * size_coin * (1 + 0.01 * self._orderbook['orderbook'].get_fees(
-                        )[fee_type_dict[action_type]])) > \
-                        float(balance_before_order['balances'][fiat_type]['available']):
-                    refuse_reason = "Available balance " + str(
-                        balance_before_order['balances'][fiat_type]['available']) + \
-                        "USD is less than required balance " + \
-                        str(price_fiat * size_coin * (1 + 0.01 * self._orderbook['orderbook'].get_fees(
-                        )[fee_type_dict[action_type]]))
-                    result = False
+                if price_fiat:
+                    balance_before_order = self.account_balance()
+                    print("balance_before_order", balance_before_order)
+                    if result and check_action_type == 'sell' and size_coin > \
+                            balance_before_order['balances'][crypto_type]['available']:
+                        refuse_reason = "Available balance " + \
+                                        str(balance_before_order['balances'][crypto_type]['available']) + \
+                                        crypto_type + " is less than required size " + str(size_coin) + crypto_type
+                        result = False
+                    elif result and check_action_type == 'buy' and (
+                            price_fiat * size_coin * (1 + 0.01 * self._orderbook['orderbook'].get_fees(
+                            )[fee_type_dict[action_type]])) > \
+                            float(balance_before_order['balances'][fiat_type]['available']):
+                        refuse_reason = "Available balance " + str(
+                            balance_before_order['balances'][fiat_type]['available']) + \
+                            "USD is less than required balance " + \
+                            str(price_fiat * size_coin * (1 + 0.01 * self._orderbook['orderbook'].get_fees(
+                            )[fee_type_dict[action_type]]))
+                        result = False
         return {'can_send_order': result, 'reason': refuse_reason}
 
     @staticmethod
@@ -185,7 +186,7 @@ class ClientWrapperBase:
             if float(size_coin) <= 0:
                 result = False
 
-            if result:
+            if result and price_fiat:
                 refuse_reason = "Invalid price"
                 price_fiat = float(price_fiat)
                 if float(price_fiat) <= 0:

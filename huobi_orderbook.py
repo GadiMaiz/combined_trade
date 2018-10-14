@@ -7,8 +7,10 @@ import json
 import logging
 
 class HuobiOrderbook(OrderbookBase):
-    pairs_dict = {'BTC-USD': 'btcusdt', 'BCH-USD': 'bchusdt'}
-    inverse_pairs = {'btcusdt': 'BTC-USD', 'bchusdt': 'BCH-USD'}
+    pairs_dict = {'BTC-USD': 'btcusdt', 'BCH-USD': 'bchusdt', 'BCH-BTC': 'bchbtc', 'LTC-BTC': 'ltcbtc',
+                  'ETH-BTC': 'ethbtc'}
+    inverse_pairs = {'btcusdt': 'BTC-USD', 'bchusdt': 'BCH-USD', 'bchbtc': 'BCH-BTC', 'ltcbtc': 'LTC-BTC',
+                     'ethbtc': 'ETH-BTC'}
 
     def __init__(self, asset_pairs, fees, **kwargs):
         super().__init__(asset_pairs, fees)
@@ -24,12 +26,12 @@ class HuobiOrderbook(OrderbookBase):
             try:
                 self._listener_ws = create_connection("wss://api.huobipro.com/ws")
                 break
-            except:
-                print('connect ws error,retry...') 
+            except Exception as e:
+                self.log.error('connect ws error: <%s>, retry...', e)
                 time.sleep(5)
         self.log.debug('successfully connected to ws')
         for asset_pair in self._asset_pairs:
-            if asset_pair in HuobiOrderbook.pairs_dict.keys():
+            if asset_pair in HuobiOrderbook.pairs_dict:
                 pair = HuobiOrderbook.pairs_dict.get(asset_pair)
                 self._listener_ws.send("""{"sub": "market.""" + pair + """.depth.step0", "id": "id10"}""")
                 self.log.debug("Listening to pair: <%s>", pair)

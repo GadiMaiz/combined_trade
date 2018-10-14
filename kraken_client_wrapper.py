@@ -55,7 +55,7 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
         return self._kraken_client is None
 
     def _get_balance_from_exchange(self):
-        kraken_symbols_dict = {'ZUSD': 'USD', 'XXBT': 'BTC'}
+        kraken_symbols_dict = {'ZUSD': 'USD', 'XXBT': 'BTC', 'ZEUR': 'EUR'}
         result = {}
         if self._kraken_client is not None and self._signed_in_user != "":
             try:

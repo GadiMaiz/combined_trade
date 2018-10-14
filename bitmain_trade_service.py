@@ -402,7 +402,8 @@ if __name__ == '__main__':
         active_exchanges['GDAX'] = True
 
     kraken_fees = {'take': 0.26, 'make': 0.16}
-    kraken_orderbook = KrakenOrderbook(['BTC-USD', 'BCH-USD'], kraken_fees)
+    kraken_orderbook = KrakenOrderbook(['BTC-USD', 'BCH-USD', 'BTC-EUR', 'BCH-EUR', 'LTC-EUR', 'BCH-BTC', 'LTC-BTC'],
+                                       kraken_fees)
     active_exchanges['Kraken'] = False
     if "Kraken" in start_exchanges:
         kraken_orderbook.start_orderbook()
@@ -410,7 +411,7 @@ if __name__ == '__main__':
 
     huobi_currencies = {'BTC-USD' : 'btcusdt', 'BCH-USD': 'bchusdt'}
     huobi_fees = {'take': 0.2, 'make': 0.2}
-    huobi_orderbook = HuobiOrderbook(['BTC-USD', 'BCH-USD'], huobi_fees)
+    huobi_orderbook = HuobiOrderbook(['BTC-USD', 'BCH-USD', 'BCH-BTC', 'LTC-BTC'], huobi_fees)
 
     active_exchanges['Huobi'] = False
     if "Huobi" in start_exchanges:
