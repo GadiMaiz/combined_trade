@@ -423,9 +423,10 @@ if __name__ == '__main__':
         kraken_orderbook.start_orderbook()
         active_exchanges['Kraken'] = True
 
-    huobi_currencies = {'BTC-USD': 'btcusdt', 'BCH-USD': 'bchusdt'}
+    #huobi_currencies = {'BTC-USD': 'btcusdt', 'BCH-USD': 'bchusdt'}
+    huobi_listen_pairs = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD', 'BCH-BTC': 'BCH-BTC', 'LTC-BTC': 'LTC-BTC'}
     huobi_fees = {'take': 0.2, 'make': 0.2}
-    huobi_orderbook = HuobiOrderbook(['BTC-USD', 'BCH-USD', 'BCH-BTC', 'LTC-BTC'], huobi_fees)
+    huobi_orderbook = HuobiOrderbook(huobi_listen_pairs.values(), huobi_fees)
 
     active_exchanges['Huobi'] = False
     if "Huobi" in start_exchanges:
@@ -449,7 +450,7 @@ if __name__ == '__main__':
                                'creator': BitfinexOrderbook, 'active': active_exchanges['Bitfinex'], 'fees': bitfinex_fees},
                   'Kraken': {'orderbook': kraken_orderbook, 'currencies_dict': bitstamp_currencies,
                              'creator': KrakenOrderbook, 'active': active_exchanges['Kraken'], 'fees': kraken_fees},
-                  'Huobi': {'orderbook': huobi_orderbook, 'currencies_dict': huobi_currencies,
+                  'Huobi': {'orderbook': huobi_orderbook, 'currencies_dict': huobi_listen_pairs,
                             'creator': HuobiOrderbook, 'active': active_exchanges['Huobi'], 'fees': huobi_fees},
                   'Unified': {'orderbook': unified_orderbook, 'currencies_dict': bitstamp_currencies,
                               'creator': UnifiedOrderbook, 'active': True, 'fees': dict()}}
