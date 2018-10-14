@@ -62,10 +62,10 @@ class OrderbookBase:
         self._stop()
 
     def _start(self):
-        print("start")
+        self._log.debug("start")
 
     def _stop(self):
-        print("stop")
+        self._log.debug("stop")
 
     def _get_orderbook_from_exchange(self, asset_pair, size):
         result = {'asks': [],

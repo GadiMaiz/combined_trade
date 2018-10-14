@@ -59,7 +59,7 @@ types:
         200:
           body:
             application/json:
-              example: { "USD": { "price": 1, "amount": 1600, "available": 1500 }, "BTC": { "price": 6500, "amount": 0.7, "available": 0.5 } }
+              example: { "USD": { "amount": 1600, "available": 1500 }, "BTC": { "amount": 0.7, "available": 0.5 } }
   
   /start:
     post:
@@ -95,7 +95,7 @@ types:
             "actionType": "buy",
             "size": 0.1,
             "currencyTo": "BTC",
-            "currencyIn": "EUR",
+            "currencyFrom": "EUR",
             "externalOrderId": "asdf23asd",
             "userId": "sd432g",
             "userQuotePrice": 6500
@@ -139,8 +139,8 @@ types:
                     "orderTime": 2018-10-10 10:05:13.384,
                     "timedOrder": false,
                     "currencyTo": "BTC",
-                    "currencyIn": "EUR",
-                    "currencyInAvailable": 3522.28410189,
+                    "currencyFrom": "EUR",
+                    "currencyFromAvailable": 3522.28410189,
                     "currencyToAvailable": 0.10772093,
                     "ask": 0.0,
                     "bid": 0.0,

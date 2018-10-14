@@ -34,9 +34,9 @@ class BitstampOrderbook(OrderbookBase):
             self._listener_thread.join()
 
     def _get_orderbook_from_exchange(self, asset_pair, book_size):
-        asset_pair_dict = {'BTC-USD': 'BTC', 'BCH-USD': 'BCH', 'BTC': 'BTC', 'BCH': 'BCH'}
+        #asset_pair_dict = {'BTC-USD': 'BTC', 'BCH-USD': 'BCH', 'BTC': 'BTC', 'BCH': 'BCH'}
         if self._bitstamp_wss_listener:
-            orders = self._bitstamp_wss_listener.get_current_partial_book(asset_pair_dict[asset_pair], book_size)
+            orders = self._bitstamp_wss_listener.get_current_partial_book(asset_pair, book_size)
         else:
             orders = {'asks': [], 'bids': []}
         return orders

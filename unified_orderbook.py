@@ -2,6 +2,7 @@ import heapq
 import operator
 from threading import Thread, Lock
 from orderbook_base import OrderbookFee
+import logging
 
 
 class UnifiedOrderbook:
@@ -9,6 +10,7 @@ class UnifiedOrderbook:
         self._orderbooks = orderbooks
         self._is_thread_orderbook = False
         self._orders_mutex = Lock()
+        self._log = logging.getLogger(__name__)
 
     def set_orderbook(self, exchange, orderbook):
         try:
@@ -25,13 +27,17 @@ class UnifiedOrderbook:
         try:
             self._orders_mutex.acquire()
             for curr_orderbook in self._orderbooks:
-                client_orderbooks.append(self._orderbooks[curr_orderbook].get_current_partial_book(
-                    symbol, size, include_fees_in_price))
+                orders = self._orderbooks[curr_orderbook].get_current_partial_book(
+                    symbol, size, include_fees_in_price)
+                self._log.info("orderbook: %s, orders: %s", curr_orderbook, orders)
+                client_orderbooks.append(orders)
+
             best_orders = {'asks': [], 'bids': []}
             price_sort = 'price'
             order_keys = [[heapq.nsmallest, 'asks'], [heapq.nlargest, 'bids']]
             if include_fees_in_price != OrderbookFee.NO_FEE:
                 price_sort = 'price_with_fee'
+            self._log.info(client_orderbooks)
             for curr_orderbook in client_orderbooks:
                 for curr_keyset in order_keys:
                     best_orders[curr_keyset[1]] = curr_keyset[0](size, best_orders[curr_keyset[1]] +

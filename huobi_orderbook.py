@@ -7,13 +7,15 @@ import json
 import logging
 
 class HuobiOrderbook(OrderbookBase):
-    pairs_dict = {'BTC-USD': 'btcusdt', 'BCH-USD': 'bchusdt'}
-    inverse_pairs = {'btcusdt': 'BTC-USD', 'bchusdt': 'BCH-USD'}
+    pairs_dict = {'BTC-USD': 'btcusdt', 'BCH-USD': 'bchusdt', 'BCH-BTC': 'bchbtc', 'LTC-BTC': 'ltcbtc',
+                  'ETH-BTC': 'ethbtc'}
+    inverse_pairs = {'btcusdt': 'BTC-USD', 'bchusdt': 'BCH-USD', 'bchbtc': 'BCH-BTC', 'ltcbtc': 'LTC-BTC',
+                     'ethbtc': 'ETH-BTC'}
 
     def __init__(self, asset_pairs, fees, **kwargs):
         super().__init__(asset_pairs, fees)
         self.log = logging.getLogger(__name__)
-        self._listener_threads = []
+        self._listener_thread = None
         self._listener_ws = None
         self._is_running = False
         self._current_orderbook = {}
@@ -24,31 +26,31 @@ class HuobiOrderbook(OrderbookBase):
             try:
                 self._listener_ws = create_connection("wss://api.huobipro.com/ws")
                 break
-            except:
-                print('connect ws error,retry...') 
+            except Exception as e:
+                self.log.error('connect ws error: <%s>, retry...', e)
                 time.sleep(5)
         self.log.debug('successfully connected to ws')
         for asset_pair in self._asset_pairs:
-            if asset_pair in HuobiOrderbook.pairs_dict.keys():
+            if asset_pair in HuobiOrderbook.pairs_dict:
                 pair = HuobiOrderbook.pairs_dict.get(asset_pair)
                 self._listener_ws.send("""{"sub": "market.""" + pair + """.depth.step0", "id": "id10"}""")
                 self.log.debug("Listening to pair: <%s>", pair)
 
-        self._listener_threads.append(Thread(target=self.handle_data, daemon=True, name='Listen to Huobi queue'))
-        self._listener_threads[len(self._listener_threads) - 1].start()
+        self._listener_thread = Thread(target=self.handle_data, daemon=True, name='Listen to Huobi queue')
+        self._listener_thread.start()
 
     def _stop(self):
         self.log.info('Stop Huobi excange')
         self._is_running = False
-        for listener_thread in self._listener_threads:
-            listener_thread.stop()
+        if self._listener_thread is not None and self._listener_thread.is_alive:
+            self._listener_thread.join()
 
     def handle_data(self):
         self._is_running = True
         while(self._is_running):
             compressData = self._listener_ws.recv()
             if len(compressData) == 0:
-                self.log.info("Restarting connectionto Huobi")
+                self.log.info("Restarting connection to Huobi")
                 self._listener_ws = create_connection("wss://api.huobipro.com/ws")
                 for asset_pair in self._asset_pairs:
                     if asset_pair in HuobiOrderbook.pairs_dict.keys():
@@ -58,10 +60,10 @@ class HuobiOrderbook(OrderbookBase):
             else:
                 result = gzip.decompress(compressData).decode('utf-8')
                 message = json.loads(result)
-                if 'pong' in message:
-                    ts=result[8:21]
-                    pong='{"pong":'+ts+'}'
-                    self._listener_ws.send(pong)
+                if 'ping' in message:
+                    ts = message['ping']
+                    pong = {'pong': ts}
+                    self._listener_ws.send(str(pong))
                 else:
                     if 'ch' in message:
                         asset_pair = self.inverse_pairs[message['ch'].split('.')[1]]

@@ -10,6 +10,7 @@ from kraken_orderbook import KrakenOrderbook
 from kraken_client_wrapper import KrakenClientWrapper
 from huobi_client_wrapper import HuobiClientWrapper
 from huobi_orderbook import HuobiOrderbook
+from huobi_client_wrapper import HuobiClientWrapper
 from orderbook_watchdog import OrderbookWatchdog
 from exchange_clients_manager import ExchangeClientManager
 import logging
@@ -20,6 +21,7 @@ import sys
 import getopt
 import time
 import os
+import json
 
 app = Flask(__name__)
 
@@ -61,7 +63,7 @@ def get_orderbook_str(exchange, currency):
 
 
 def get_orderbook(exchange, currency):
-    #print(str(time.time()) + " start get_orderbook")
+    #print(str(time.time()) + " start get_orderbook", exchange, currency)
     result = {'asks': [], 'bids': [], 'average_spread': 0, 'currency': currency}
     if exchange in orderbooks and orderbooks[exchange]:
         request_orders = orderbooks[exchange]
@@ -255,8 +257,8 @@ def set_client_credentials():
                 print("ERROR: account id, key or secret contain forbidden characters")     
              
         result['set_credentials_status'] = str(exchanges_manager.set_exchange_credentials(exchange, credentials))
-    except Exception as e:
-        print("Exception caught  e = " + str(e))
+    except Exception as ex:
+        log.error("Failed to set client credentials, parameter error: {}".format(ex))
         result['set_credentials_status'] = 'False'
 
     return str(result)
@@ -325,15 +327,13 @@ def get_active_orderbooks(currency):
     #print(str(time.time()) + " end get_active_orderbooks")
     return str(result)
 
-def create_rotating_log(path):
+def create_rotating_log(log_file, log_level):
+    logging.basicConfig(filename=log_file, level=log_level,
+                        format='%(asctime)s %(levelname)s %(message)s %(filename)s(%(lineno)d) %(funcName)s %(threadName)s %(thread)d')
+    logger = logging.getLogger(__name__)
     
-    # Creates a rotating log
-    
-    logger = logging.getLogger("Rotating Log")
-
     # add a rotating handler
-    handler = RotatingFileHandler(path, maxBytes=20000000,
-                                  backupCount=5)
+    handler = RotatingFileHandler(log_file, maxBytes=20000000, backupCount=5)
     logger.addHandler(handler)
 
 if __name__ == '__main__':
@@ -348,19 +348,25 @@ if __name__ == '__main__':
     bitstamp_key = None
     start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken', 'Huobi']
     open_log = True
+    exchanges_credentials = None
+    if 'EXCHANGES_CREDENTIALS' in os.environ:
+        exchanges_credentials = os.environ['EXCHANGES_CREDENTIALS']
+
     try:
-        opts, args = getopt.getopt(argv, "rdu:k:s:p:t:l:b:e:")
+        opts, args = getopt.getopt(argv, "rdc:p:t:l:b:e:")
         for opt, arg in opts:
             if opt == '-r':
                 bitstamp_key = opt
-            if opt == '-d':
+            elif opt == '-d':
                 bind_ip = "0.0.0.0"
-            elif opt == "-u":
-                bitstamp_user = arg
-            elif opt == "-k":
-                bitstamp_api_key = arg
-            elif opt == "-s":
-                bitstamp_secret = arg
+            elif opt == '-c':
+                exchanges_credentials = arg
+            # elif opt == "-u":
+            #     bitstamp_user = arg
+            # elif opt == "-k":
+            #     bitstamp_api_key = arg
+            # elif opt == "-s":
+            #     bitstamp_secret = arg
             elif opt == "-t":
                 frozen_orderbook_timeout_sec = arg
             elif opt == "-e":
@@ -385,25 +391,53 @@ if __name__ == '__main__':
         print("Parameters error:", e, "parameters:", argv)
 
     if open_log:
-        logging.basicConfig(filename='bitmain_trade_service.log', level=log_level,
-                            format='%(asctime)s %(processName)s %(process)d %(threadName)s %(thread)d %(levelname)s %(filename)s(%(lineno)d) %(funcName)s %(message)s')
-    #handler = RotatingFileHandler('bitmain_trade_service.log', maxBytes=20000000,
-    #                              backupCount=5)
+        log_dir = os.path.join(app.root_path, 'logs')
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        log_file = os.path.join(log_dir, 'bitmain_trade_service.log')
+        create_rotating_log(log_file, log_level)
+
     log = logging.getLogger(__name__)
     #log.addHandler(handler)
-    log.error("=== Starting ===")
-    log.info("args: %s", str(argv))
+    log.info("=== Starting ===")
+    log.debug("args: %s", str(argv))
+
+    # log = logging.getLogger('werkzeug')
+    # log.setLevel(log_level)
 
     bitstamp_credentials = None
-    if bitstamp_user != '' and bitstamp_api_key != '' and bitstamp_secret != '':
-        bitstamp_credentials = {'username': bitstamp_user, 'key': bitstamp_api_key, 'secret': bitstamp_secret}
+    huobi_credentials = None
+    kraken_credentials = None
+    bitfinex_credentials = None
+    gdax_credentials = None
 
-    log = logging.getLogger('werkzeug')
-    log.setLevel(log_level)
+    # try to read and parse exchanges_credentials (set either from commad line -c option or as environment variable):
+    try:
+
+        # print('exchanges_credentials: ', exchanges_credentials)
+        if not exchanges_credentials is None and not exchanges_credentials is '':
+            exchanges_credentials = json.loads(exchanges_credentials)
+        # print('exchanges_credentials (JSON): ', exchanges_credentials)
+
+        if not exchanges_credentials is None and 'Bitstamp' in exchanges_credentials:
+            bitstamp_credentials = exchanges_credentials['Bitstamp']
+        if not exchanges_credentials is None and 'Huobi' in exchanges_credentials:
+            huobi_credentials = exchanges_credentials['Huobi']
+        if not exchanges_credentials is None and 'Kraken' in exchanges_credentials:
+            kraken_credentials = exchanges_credentials['Kraken']
+        if not exchanges_credentials is None and 'Bitfinex' in exchanges_credentials:
+            bitfinex_credentials = exchanges_credentials['Bitfinex']
+        if not exchanges_credentials is None and 'GDAX' in exchanges_credentials:
+            gdax_credentials = exchanges_credentials['GDAX']
+    except Exception as ex:
+        log.error("Failed to parse exchange credentials, parameter error: {}".format(ex))
 
     print("Connecting to orderbooks")
     bitstamp_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD'}
-    bitstamp_args = {'log_level': log_level}
+    bitstamp_inner_logger = logging.ERROR
+    if log_level is logging.DEBUG:
+        bitstamp_inner_logger = logging.DEBUG
+    bitstamp_args = {'log_level': bitstamp_inner_logger}
     if bitstamp_key is not None:
         bitstamp_args['key'] = bitstamp_key
     bitstamp_fees = {'take': 0.25, 'make': 0.25}
@@ -426,7 +460,7 @@ if __name__ == '__main__':
         active_exchanges['Bitfinex'] = True
         print("Bitfinex started")
 
-    gdax_currencies = {'BTC-USD' : 'BTC-USD', 'BCH-USD': 'BCH-USD'}
+    gdax_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD'}
     gdax_fees = {'take': 0.3, 'make': 0}
     gdax_orderbook = GdaxOrderbook([gdax_currencies['BTC-USD'], gdax_currencies['BCH-USD']], gdax_fees)
 
@@ -436,17 +470,18 @@ if __name__ == '__main__':
         active_exchanges['GDAX'] = True
 
     kraken_fees = {'take': 0.26, 'make': 0.16}
-    kraken_orderbook = KrakenOrderbook(['BTC-USD', 'BCH-USD'], kraken_fees)
+    kraken_orderbook = KrakenOrderbook(['BTC-USD', 'BCH-USD', 'BTC-EUR', 'BCH-EUR', 'LTC-EUR', 'BCH-BTC', 'LTC-BTC'],
+                                       kraken_fees)
     active_exchanges['Kraken'] = False
     if "Kraken" in start_exchanges:
         kraken_orderbook.start_orderbook()
         active_exchanges['Kraken'] = True
 
-##############################################################
-##############################################################
-    huobi_fees = {'take' : 0.2, 'make' : 0.2}
-    huobi_currencies = {'BTC-USD':'btcusdt', 'BCH-USD': 'bchusdt','LTC-USD' :'ltcusdt'}
-    huobi_orderbook = HuobiOrderbook(['BTC-USD', 'BCH-USD'], huobi_fees)
+    #huobi_currencies = {'BTC-USD': 'btcusdt', 'BCH-USD': 'bchusdt'}
+    huobi_listen_pairs = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD', 'BCH-BTC': 'BCH-BTC', 'LTC-BTC': 'LTC-BTC'}
+    huobi_fees = {'take': 0.2, 'make': 0.2}
+    huobi_orderbook = HuobiOrderbook(huobi_listen_pairs.values(), huobi_fees)
+
     active_exchanges['Huobi'] = False
     if "Huobi" in start_exchanges:
         huobi_orderbook.start_orderbook()
@@ -470,8 +505,8 @@ if __name__ == '__main__':
                                'creator': BitfinexOrderbook, 'active': active_exchanges['Bitfinex'], 'fees': bitfinex_fees},
                   'Kraken': {'orderbook': kraken_orderbook, 'currencies_dict': bitstamp_currencies,
                              'creator': KrakenOrderbook, 'active': active_exchanges['Kraken'], 'fees': kraken_fees},
-                  'Huobi': {'orderbook': huobi_orderbook, 'currencies_dict': huobi_currencies,
-                             'creator': HuobiOrderbook, 'active': active_exchanges['Huobi'], 'fees': huobi_fees},
+                  'Huobi': {'orderbook': huobi_orderbook, 'currencies_dict': huobi_listen_pairs,
+                            'creator': HuobiOrderbook, 'active': active_exchanges['Huobi'], 'fees': huobi_fees},
                   'Unified': {'orderbook': unified_orderbook, 'currencies_dict': bitstamp_currencies,
                               'creator': UnifiedOrderbook, 'active': True, 'fees': dict()}}
     watchdog = OrderbookWatchdog(orderbooks, frozen_orderbook_timeout_sec)
@@ -480,21 +515,18 @@ if __name__ == '__main__':
                                                             'args': {'credentials': bitstamp_credentials,
                                                                      'orderbook': orderbooks['Bitstamp']}},
                                                'Bitfinex': {'creator': BitfinexClientWrapper,
-                                                            'args': {'credentials': {},
+                                                            'args': {'credentials': bitfinex_credentials,
                                                                      'orderbook': orderbooks['Bitfinex']}},
                                                'Kraken': {'creator': KrakenClientWrapper,
-                                                          'args': {'credentials': {},
+                                                          'args': {'credentials': kraken_credentials,
                                                                    'orderbook': orderbooks['Kraken']}},
                                                'Huobi': {'creator': HuobiClientWrapper,
-                                                          'args': {'credentials': {},
+                                                          'args': {'credentials': huobi_credentials,
                                                                    'orderbook': orderbooks['Huobi']}}
                                                },
                                               "./Transactions.data",
                                               watchdog)
     #app.run(host= '0.0.0.0', ssl_context='adhoc')
-    # print(active_exchanges) 
-    # print(huobi_orderbook._get_orderbook_from_exchange('BTC-USD', 3))
-    # print(huobi_orderbook._get_orderbook_from_exchange('BCH-USD', 3))
+    print(active_exchanges)
 
     app.run(host=bind_ip, port=listener_port)
-    

@@ -12,8 +12,8 @@ properties:
     items: !include orderbook_order.raml
     required: false
   currencyTo: string
-  currencyIn: string
+  currencyFrom: string
   averageSpread: number
   lastPrice:
-    actionType: !include price.raml
+    type: !include price.raml
     required: false
