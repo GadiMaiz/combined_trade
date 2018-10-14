@@ -31,7 +31,7 @@ class OrderbookWatchdog():
             self._watchdog_thread.join()
 
     def _monitor_orderbooks(self):
-        log.info("Watchdog thread started")
+        log.debug("Watchdog thread started")
         compare_orderbooks = {}
         empty_orderbook = {}
         for curr_orderbook_dict in self._orderbooks_dict:

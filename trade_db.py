@@ -49,7 +49,7 @@ class TradeDB:
                                                         order_info['ask'], order_info['bid'], parent_trade_order_id,
                                                         trade_order_id)
                 print(insert_str)
-                self.log.info(insert_str)
+                self.log.debug(insert_str)
                 cur = conn.cursor()
                 cur.execute(insert_str)
                 conn.commit()

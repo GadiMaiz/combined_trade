@@ -80,7 +80,7 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
         return "Bitfinex"
 
     def _execute_exchange_order(self, action_type, size, price, crypto_type, exchange_instruction):
-        self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type=<%s>, exchange_instruction=<%s>", action_type, size,
+        self.log.info("Executing <%s>, size=<%f>, price=<%f>, type=<%s>, exchange_instruction=<%s>", action_type, size,
                        price, crypto_type, exchange_instruction)
         print("Executing <{}>, size=<{}>, price=<{}>, type=<{}>".format(action_type, size, price, crypto_type,
                                                                         exchange_instruction))

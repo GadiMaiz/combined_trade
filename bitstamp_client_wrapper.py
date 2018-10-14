@@ -161,7 +161,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
             try:
                 order_status = self._bitstamp_client.order_status(order_id)
             except Exception as e:
-                self.log.info("can't get order status: %s", str(e))
+                self.log.error("can't get order status: %s", str(e))
         return order_status
 
     def _cancel_order(self, order_id):
