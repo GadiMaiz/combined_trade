@@ -62,7 +62,7 @@ def get_orderbook_str(exchange, currency):
 
 
 def get_orderbook(exchange, currency):
-    #print(str(time.time()) + " start get_orderbook")
+    #print(str(time.time()) + " start get_orderbook", exchange, currency)
     result = {'asks': [], 'bids': [], 'average_spread': 0, 'currency': currency}
     if exchange in orderbooks and orderbooks[exchange]:
         request_orders = orderbooks[exchange]
