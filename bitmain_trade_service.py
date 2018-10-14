@@ -362,10 +362,10 @@ if __name__ == '__main__':
         log_file = os.path.join(log_dir, 'bitmain_trade_service.log')
         create_rotating_log(log_file, log_level)
 
-    # print('exchanges_credentials: ', exchanges_credentials)
+    print('exchanges_credentials: ', exchanges_credentials)
     if not exchanges_credentials is None and not exchanges_credentials is '':
         exchanges_credentials = json.loads(exchanges_credentials)
-    # print('exchanges_credentials (JSON): ', exchanges_credentials)
+    print('exchanges_credentials (JSON): ', exchanges_credentials)
 
     log = logging.getLogger(__name__)
     #log.addHandler(handler)
@@ -373,8 +373,15 @@ if __name__ == '__main__':
     log.debug("args: %s", str(argv))
 
     bitstamp_credentials = None
+    huobi_credentials = None
+    kraken_credentials = None
+    bitfinex_credentials = None
     if not exchanges_credentials is None and 'Bitstamp' in exchanges_credentials:
         bitstamp_credentials = exchanges_credentials['Bitstamp']
+    if not exchanges_credentials is None and 'Huobi' in exchanges_credentials:
+        huobi_credentials = exchanges_credentials['Huobi']
+    if not exchanges_credentials is None and 'Kraken' in exchanges_credentials:
+        kraken_credentials = exchanges_credentials['Kraken']
         # if bitstamp_user != '' and bitstamp_api_key != '' and bitstamp_secret != '':
         #     bitstamp_credentials = {'username': bitstamp_user, 'key': bitstamp_api_key, 'secret': bitstamp_secret}
 

@@ -4,7 +4,7 @@
 
 source venv/bin/activate
 echo
-echo "Starting Smat-Trader..."
+echo "Starting Smart-Trader..."
 
 echo
 echo "log level was set to: ${LOG_LEVEL}"
