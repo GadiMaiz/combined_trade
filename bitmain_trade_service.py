@@ -62,6 +62,37 @@ def get_orderbook_str(exchange, currency):
     return result
 
 
+@app.route('/Exchange/<exchange>/orderbook/<currency_to>/<currency_from>')
+def get_exchange_orderbook(exchange, currency_to, currency_from):
+    asset_pair = currency_to + "-" + currency_from
+    orders = get_orderbook(exchange, asset_pair)
+    order_types = ['asks', 'bids']
+    for order_type in order_types:
+        if order_type in orders:
+            for curr_order in orders[order_type]:
+                if 'source' in curr_order:
+                    del curr_order['source']
+    if 'rate' in orders:
+        del orders['rate']
+    if 'currency' in orders:
+        del orders['currency']
+    orders['currencyTo'] = currency_to
+    orders['currencyFrom'] = currency_from
+    if 'average_spread' in orders:
+        average_spread = orders['average_spread']
+        del orders['average_spread']
+        orders['averageSpread'] = average_spread
+    if 'last_price' in orders:
+        last_price = orders['last_price']
+        del orders['last_price']
+        if 'type' in last_price:
+            action_type = last_price['type']
+            del last_price['type']
+            last_price['actionType'] = action_type
+        orders['lastPrice'] = last_price
+    return str(orders)
+
+
 def get_orderbook(exchange, currency):
     #print(str(time.time()) + " start get_orderbook", exchange, currency)
     result = {'asks': [], 'bids': [], 'average_spread': 0, 'currency': currency}
