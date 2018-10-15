@@ -105,7 +105,6 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
                     execute_result['order_status'] = True
                 #print(execute_result)
         except Exception as e:
-            print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX -->action_type = " + action_type + " e = " + e)
             self.log.error("action_type = %s, e =  %s", action_type, e)
             execute_result['status'] = 'Error'
             execute_result['order_status'] = True

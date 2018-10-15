@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory, request, jsonify
+from flask import Flask, send_from_directory, request
 from bitfinex_orderbook import BitfinexOrderbook
 from orderbook_base import OrderbookFee
 from bitfinex_client_wrapper import BitfinexClientWrapper
@@ -13,7 +13,6 @@ from huobi_orderbook import HuobiOrderbook
 from huobi_client_wrapper import HuobiClientWrapper
 from orderbook_watchdog import OrderbookWatchdog
 from exchange_clients_manager import ExchangeClientManager
-from sent_orders_type import SentOrdersType
 import logging
 from logging.handlers import RotatingFileHandler
 import json
@@ -63,37 +62,6 @@ def get_orderbook_str(exchange, currency):
     return result
 
 
-@app.route('/exchange/<exchange>/orderbook/<currency_to>/<currency_from>')
-def get_exchange_orderbook(exchange, currency_to, currency_from):
-    asset_pair = currency_to + "-" + currency_from
-    orders = get_orderbook(exchange, asset_pair)
-    order_types = ['asks', 'bids']
-    for order_type in order_types:
-        if order_type in orders:
-            for curr_order in orders[order_type]:
-                if 'source' in curr_order:
-                    del curr_order['source']
-    if 'rate' in orders:
-        del orders['rate']
-    if 'currency' in orders:
-        del orders['currency']
-    orders['currencyTo'] = currency_to
-    orders['currencyFrom'] = currency_from
-    if 'average_spread' in orders:
-        average_spread = orders['average_spread']
-        del orders['average_spread']
-        orders['averageSpread'] = average_spread
-    if 'last_price' in orders:
-        last_price = orders['last_price']
-        del orders['last_price']
-        if 'type' in last_price:
-            action_type = last_price['type']
-            del last_price['type']
-            last_price['actionType'] = action_type
-        orders['lastPrice'] = last_price
-    return str(orders)
-
-
 def get_orderbook(exchange, currency):
     #print(str(time.time()) + " start get_orderbook", exchange, currency)
     result = {'asks': [], 'bids': [], 'average_spread': 0, 'currency': currency}
@@ -128,12 +96,6 @@ def get_all_accounts_balance():
 def get_all_accounts_balance_force():
     account_balances = exchanges_manager.get_all_account_balances(True)
     return str(account_balances)
-
-
-@app.route('/exchange/<exchange>/accountBalance')
-def get_exchange_balance(exchange):
-    account_balance = exchanges_manager.exchange_balance(exchange, False)
-    return str(account_balance)
 
 
 @app.route('/Transactions/<exchange>')
@@ -234,9 +196,9 @@ def get_sent_orders():
 
     if orders_limit is None:
         orders_limit = 0
-    sent_orders = exchanges_manager.get_sent_orders(SentOrdersType.FLAT, orders_limit)
+    sent_orders = exchanges_manager.get_sent_orders(orders_limit)
     #print(str(time.time()) + " end get_sent_orders")
-    return jsonify(sent_orders)
+    return str(sent_orders)
 
 
 @app.route('/GetSentOrdersFiltered', methods=['POST'])
@@ -255,102 +217,52 @@ def get_sent_orders_filtered():
         print("GetSentOrdersFiltered parameters error: {}".format(ex))
 
     if valid_parameters:
-        sent_orders = exchanges_manager.get_sent_orders(SentOrdersType.FLAT, orders_limit, request_filter)
+        sent_orders = exchanges_manager.get_sent_orders(orders_limit, request_filter)
     #print(str(time.time()) + " start get_sent_orders_filtered")
-    return jsonify(sent_orders)
+    return str(sent_orders)
 
-@app.route('/reports/sentOrders', methods=['POST'])
-def sent_orders():
-    #print(str(time.time()) + " start get_sent_orders_filtered")
-    sent_orders = []
-    request_filter = {}
-    orders_limit = 0
-    valid_parameters = False
-    try:
-        request_params = json.loads(request.data)
-        request_filter = request_params['filter']
-        orders_limit = int(request_params['limit'])
-        valid_parameters = True
-    except Exception as ex:
-        print("sentOrders parameters error: {}".format(ex))
-
-    if valid_parameters:
-        sent_orders = exchanges_manager.get_sent_orders(SentOrdersType.HIERARCHICAL, orders_limit, request_filter)
-    #print(str(time.time()) + " start get_sent_orders_filtered")
-    return jsonify(sent_orders)
 
 @app.route('/SetClientCredentials', methods=['POST'])
 def set_client_credentials():
-    result = {'set_credentials_status': 'False'}
+    result = {'set_credentials_status': 'True'}
     try:
-        request_params = json.loads(request.data) 
-        exchange = request_params['exchange']    
-        result['set_credentials_status'] = str(login_to_exchange(exchange, request_params))
+        request_params = json.loads(request.data)
+        exchange = request_params['exchange']
+        fees = dict()
+        try:
+            fee = float(request_params['taker_fee'])
+            if 0 <= fee < 100:
+                fees['take'] = fee
+        except ValueError as e:
+            pass
+        try:
+            fee = float(request_params['maker_fee'])
+            if 0 <= fee < 100:
+                fees['make'] = fee
+        except ValueError as e:
+            pass
+        if exchange in orderbooks and 'username' in request_params and 'key' in request_params and \
+                'secret' in request_params:
+            # Make sure that the username is a number
+            user_reg = re.compile('^[0-9\.]+$')
+            key_reg = re.compile('^[0-9a-zA-Z=+\./\-]+$')
+            if user_reg.match(request_params['username']) and key_reg.match(request_params['key']) and \
+                    key_reg.match(request_params['secret']):
+                credentials = {'username': request_params['username'],
+                               'key': request_params['key'],
+                               'secret': request_params['secret']}
+                orderbooks[exchange]['fees'].update(fees)
+                orderbooks[exchange]['orderbook'].set_fees(orderbooks[exchange]['fees'])
+            else:
+                print("ERROR: account id, key or secret contain forbidden characters")     
+             
+        result['set_credentials_status'] = str(exchanges_manager.set_exchange_credentials(exchange, credentials))
     except Exception as ex:
         log.error("Failed to set client credentials, parameter error: {}".format(ex))
         result['set_credentials_status'] = 'False'
 
     return str(result)
 
-@app.route('/exchange/<exchange>/login', methods=['POST'])
-def exchange_login(exchange):
-    result = {'loginStatus': False}
-    try:
-        request_params = json.loads(request.data)     
-        result['loginStatus'] = login_to_exchange(exchange, request_params)
-    except Exception as ex:
-        log.error("Failed to login to exchange '{}': {}".format(exchange, ex))
-        result['loginStatus'] = False
-
-    return jsonify(result)
-
-def login_to_exchange(exchange, params):
-    try:
-        fees = dict()
-
-        if 'taker_fee' in params:
-            try:
-                fee = float(params['taker_fee'])
-                if 0 <= fee < 100:
-                    fees['take'] = fee
-            except ValueError as e:
-                pass
-
-        if 'maker_fee' in params:     
-            try:
-                fee = float(params['maker_fee'])
-                if 0 <= fee < 100:
-                    fees['make'] = fee
-            except ValueError as e:
-                pass
-
-        if exchange in orderbooks and 'username' in params and 'key' in params and \
-                'secret' in params:
-            # Make sure that the username is a number
-            user_reg = re.compile('^[0-9\.]+$')
-            key_reg = re.compile('^[0-9a-zA-Z=+\./\-]+$')
-            if user_reg.match(params['username']) and key_reg.match(params['key']) and \
-                    key_reg.match(params['secret']):
-                credentials = {'username': params['username'],
-                               'key': params['key'],
-                               'secret': params['secret']}
-                orderbooks[exchange]['fees'].update(fees)
-                orderbooks[exchange]['orderbook'].set_fees(orderbooks[exchange]['fees'])
-                return exchanges_manager.set_exchange_credentials(exchange, credentials)
-            else:
-                print("ERROR: account id, key or secret contain forbidden characters")
-                return False     
-             
-    except Exception as ex:
-        log.error("Failed to login to exchange: '{}': {}".format(exchange, ex))
-        return False
-
-@app.route('/exchange/<exchange>/logout', methods=['POST'])
-def exchange_logout(exchange):
-    result = {'loginStatus': 'False'}
-    if exchange in orderbooks:
-        result['loginStatus'] = str(exchanges_manager.logout_from_exchange(exchange))
-    return jsonify(result)
 
 @app.route('/Logout/<exchange>')
 def logout(exchange):
@@ -389,15 +301,6 @@ def start_orderbook(exchange):
         result["start_result"] = "True"
     return str(result)
 
-@app.route('/exchange/<exchange>/start', methods=['POST'])
-def exchange_start(exchange):
-    result = {"status": "stopped",
-              "exchange": exchange}
-    if exchange in orderbooks:
-        watchdog.start_orderbook(exchange)
-        result["status"] = "started"
-    return jsonify(result)
-
 @app.route('/StopOrderbook/<exchange>')
 def stop_orderbook(exchange):
     result = {"stop_result": "False",
@@ -407,16 +310,6 @@ def stop_orderbook(exchange):
         result["stop_result"] = "True"
         logout(exchange)
     return str(result)
-
-@app.route('/exchange/<exchange>/stop', methods=['POST'])
-def exchange_stop(exchange):
-    result = {"status": "started",
-              "exchange": exchange}
-    if exchange in orderbooks:
-        watchdog.stop_orderbook(exchange)
-        result["status"] = "stopped"
-        logout(exchange)
-    return jsonify(result)
 
 @app.route('/ActiveExchanges')
 def get_active_exchanges():
@@ -440,7 +333,7 @@ def create_rotating_log(log_file, log_level):
     logger = logging.getLogger(__name__)
     
     # add a rotating handler
-    handler = RotatingFileHandler(log_file, maxBytes=(1024 * 512), backupCount=5)
+    handler = RotatingFileHandler(log_file, maxBytes=20000000, backupCount=5)
     logger.addHandler(handler)
 
 if __name__ == '__main__':
