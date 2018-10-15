@@ -171,12 +171,12 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
 
         c_from = self.currencies_dict[currency_from]
         c_to = self.currencies_dict[currency_to]
-        return self._execute_exchange_order('sell-market', execute_size_coin, None, c_to, c_from)
+        return self._execute_exchange_order('sell-market', execute_size_coin, None, c_from, c_to)
 
     def buy_market(self, execute_size_coin, currency_from, currency_to = "usdt"):
         c_from = self.currencies_dict[currency_from]
         c_to = self.currencies_dict[currency_to]
-        return self._execute_exchange_order('buy-market', execute_size_coin, None, c_to, c_from)
+        return self._execute_exchange_order('buy-market', execute_size_coin, None, c_from, c_to)
         # return self._execute_exchange_order('buy-market', execute_size_coin, None,self.currencies_dict[currency_from], self._supportedCurrencies[currency_to])
 
     # def _order_complete(self, is_timed_order, report_status):
