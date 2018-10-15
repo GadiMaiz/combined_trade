@@ -15,7 +15,7 @@ def create_connection(db_file):
 
 
 def create_table(conn):
-    conn.execute("CREATE TABLE sent_orders(exchange text, action_type text, crypto_size real, "
+    conn.execute("CREATE TABLE sent_orders(exchange text, action_type text, size real, "
                  "price real, exchange_order_id text, status text, order_time text, timed_order number, "
                  "currency_to text, balance_currency_from number, balance_currency_to number, ask real, bid real, "
                  "parent_trade_order_id real, trade_order_id real, user_id text, external_order_id text,"

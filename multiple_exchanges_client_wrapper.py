@@ -45,8 +45,9 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         self._last_balance['fees'] = self._orderbook['orderbook'].get_fees()
         return self._last_balance
 
-    def send_immediate_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, relative_size,
-                             max_order_size, is_timed_order, parent_trade_order_id):
+    def send_immediate_order(self, action_type, size_coin, currency_to, price, currency_from, relative_size,
+                             max_order_size, is_timed_order, parent_trade_order_id, external_order_id, user_quote_price,
+                             user_id):
         remaining_size = size_coin
         remaining_execute_attempts = MultipleExchangesClientWrapper.MAXIMUM_ORDER_ATTEMPTS
         orderbook_type = ""
@@ -63,14 +64,14 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         total_execution_size = 0
         if orderbook_type != "":
             open_orders = self._orderbook['orderbook'].get_unified_orderbook\
-                (crypto_type + "-USD", MultipleExchangesClientWrapper.ORDERBOOK_COMMANDS_FOR_ORDER,
+                (currency_to + "-" + currency_from, MultipleExchangesClientWrapper.ORDERBOOK_COMMANDS_FOR_ORDER,
                  OrderbookFee.TAKER_FEE)[orderbook_type]
             order_executed = False
             for curr_open_order in open_orders:
                 exchange = curr_open_order['source']
                 self.log.debug("Gathering order: type=<%s>, exchange=<%s> remaining_size=<%f>, order_size=<%f>, "
                                "price=<%f>, order_price=<%f>, remaining_attemprs=<%f>", action_type, exchange,
-                               remaining_size, curr_open_order['size'], price_fiat, curr_open_order['price'],
+                               remaining_size, curr_open_order['size'], price, curr_open_order['price'],
                                remaining_execute_attempts)
                 execute_size = min(remaining_size, curr_open_order['size'])
                 if exchange not in exchanges_to_execute:
@@ -87,8 +88,8 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                 client_for_order = self._clients[exchange]
                 sent_order = client_for_order.send_immediate_order(action_type,
                                                                    exchanges_to_execute[exchange],
-                                                                   crypto_type, price_fiat,
-                                                                   fiat_type, relative_size, max_order_size,
+                                                                   currency_to, price,
+                                                                   currency_from, relative_size, max_order_size,
                                                                    is_timed_order, parent_trade_order_id)
                 self.log.debug("Sent order to exchange <%s>: <%s>", exchange, sent_order)
                 if sent_order['execution_message'] != '':
@@ -113,11 +114,11 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                 break
         return are_clients_init
 
-    def send_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec, max_order_size,
-                   report_status):
+    def send_order(self, action_type, size_coin, currency_to, price, currency_from, duration_sec, max_order_size,
+                   report_status, external_order_id, user_quote_price, user_id):
         self._watchdog.register_orderbook(self._sent_order_identifier, self._orderbook['orderbook'])
-        return super().send_order(action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec,
-                                  max_order_size, report_status)
+        return super().send_order(action_type, size_coin, currency_to, price, currency_from, duration_sec,
+                                  max_order_size, report_status, external_order_id, user_quote_price, user_id)
 
     def _order_complete(self, is_timed_order, report_status):
         self._watchdog.unregister_orderbook(self._sent_order_identifier)
@@ -149,27 +150,28 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                           asset_pair)
         return executer
 
-    def _execute_timed_make_order_in_thread(self, action_type, size_coin, crypto_type, price_fiat, fiat_type,
+    def _execute_timed_make_order_in_thread(self, action_type, size_coin, currency_from, currency_to, price,
                                             duration_sec, max_order_size, max_relative_spread_factor,
                                             relative_to_best_order_ratio, report_status):
         self.log.debug("executing timed make order")
         order_timestamp = datetime.datetime.utcnow()
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
         order_time = "%s.%02d" % (dt, int(micro) / 1000)
-        order_info = {'exchange': self.get_exchange_name(), 'action_type': action_type, 'crypto_size': size_coin,
-                      'price_fiat' : price_fiat, 'exchange_id': 0, 'order_time' : order_time,
-                      'timed_order': self.TIMED_ORDERS_DICT[True], 'status': "Timed Order", 'crypto_type': crypto_type,
+        order_info = {'exchange': self.get_exchange_name(), 'action_type': action_type, 'size': size_coin,
+                      'price' : price, 'exchange_id': 0, 'order_time' : order_time,
+                      'timed_order': self.TIMED_ORDERS_DICT[True], 'status': "Timed Order", 'currency_to': currency_to,
+                      'currency_from': currency_from,
                       'balance': self.account_balance()}
         self.log.info("order info before execution: <%s>", order_info)
         self._db_interface.write_order_to_db(order_info)
         self._reserved_crypto_type = crypto_type
         self._timed_order_action = action_type
-        self._timed_order_price_fiat = price_fiat
+        self._timed_order_price = price
         start_timestamp = datetime.datetime.utcnow()
         self._timed_order_start_time = time.time()#start_timestamp.strftime('%Y-%m-%d %H:%M:%S')
         self._timed_order_execution_start_time = ''
         self._timed_order_required_size = size_coin
-        asset_pair = crypto_type + "-" + fiat_type
+        asset_pair = currency_from + "-" + currency_to
         self._timed_order_done_size = 0
         self._timed_order_elapsed_time = 0
         self._timed_order_duration_sec = duration_sec
@@ -238,8 +240,8 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                     if 'balances' in client_balance and 'USD' in client_balance['balances']:
                         client_usd_balance = client_balance['balances']['USD']['available']
                     client_crypto_balance = 0
-                    if 'balances' in client_balance and crypto_type.upper() in client_balance['balances']:
-                        client_crypto_balance = client_balance['balances'][crypto_type.upper()]['available']
+                    if 'balances' in client_balance and currency_to.upper() in client_balance['balances']:
+                        client_crypto_balance = client_balance['balances'][currency_to.upper()]['available']
                     client_prices[exchange] = {'client': client_for_order,
                                                'price': client_price_usd * sort_factor,
                                                'exchange': exchange,
@@ -317,11 +319,11 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                     balance_for_order = remaining_size
                     exchange_size = float(Decimal(balance_for_order / num_of_exchanges).quantize(Decimal('1e-4')))
                     for client_index in range(num_of_exchanges):
-                        if exchange_size <= balance_sorted_clients[client_index]['usd_balance'] / price_fiat:
+                        if exchange_size <= balance_sorted_clients[client_index]['usd_balance'] / price:
                             balance_sorted_clients[client_index]['execute_size'] = exchange_size
                         else:
                             size_for_client = float(Decimal(
-                                balance_sorted_clients[client_index]['usd_balance'] / price_fiat).quantize(
+                                balance_sorted_clients[client_index]['usd_balance'] / price).quantize(
                                 Decimal('1e-4')))
                             balance_sorted_clients[client_index]['execute_size'] = size_for_client
                         print("Going to execute {} in exchange {}".format(
@@ -344,10 +346,10 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                     best_price = abs(price_sorted_clients[0]['price'])
                     if action_type == 'sell_limit':
                         best_price += limit_price_difference
-                        best_price = max(best_price, price_fiat)
+                        best_price = max(best_price, price)
                     elif action_type == 'buy_limit':
                         best_price -= limit_price_difference
-                        best_price = min(best_price, price_fiat)
+                        best_price = min(best_price, price)
                     print("Going to execute in {} exchanges".format(num_of_exchanges))
                     for exchange_index in range(num_of_exchanges):
                         print("Executing <{}> in exchange <{}> for <{}> USD".format(price_sorted_clients[exchange_index]
@@ -357,8 +359,8 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                                                                     best_price))
                         price_sorted_clients[exchange_index]['client'].send_order(action_type,
                                                                                   price_sorted_clients[exchange_index]
-                                                                                  ['execute_size'], crypto_type,
-                                                                                  best_price, fiat_type, duration_sec,
+                                                                                  ['execute_size'], currency_from,
+                                                                                  currency_to, best_price, duration_sec,
                                                                                   max_order_size, False)
 
             if self.is_timed_order_running():

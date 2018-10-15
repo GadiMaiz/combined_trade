@@ -1,11 +1,12 @@
 class OrderTracker:
-    def __init__(self, order, orderbook, client_wrapper, order_info, crypto_type):
+    def __init__(self, order, orderbook, client_wrapper, order_info, currency_from, currency_to):
         self._order = order
         self._orderbook = orderbook
         self._client_wrapper = client_wrapper
         self._order_info = order_info
         self._listening = True
-        self._crypto_type = crypto_type
+        self._currency_from = currency_from
+        self._currency_to = currency_to
         self._initial_size = client_wrapper.get_timed_order_status()['timed_order_done_size']
         orderbook['orderbook'].listen_for_order(order["id"], self)
 
@@ -30,8 +31,8 @@ class OrderTracker:
 
 
 class BitfinexOrderTracker(OrderTracker):
-    def __init__(self, order, orderbook, client_wrapper, order_info, crypto_type):
-        super().__init__(order, orderbook, client_wrapper, order_info, crypto_type)
+    def __init__(self, order, orderbook, client_wrapper, order_info, currency_from, currency_to):
+        super().__init__(order, orderbook, client_wrapper, order_info, currency_from, currency_to)
 
     def update_order_from_exchange(self):
         order_status = self._client_wrapper.order_status(self._order['id'])
@@ -45,8 +46,8 @@ class BitfinexOrderTracker(OrderTracker):
 
 
 class KrakenOrderTracker(OrderTracker):
-    def __init__(self, order, orderbook, client_wrapper, order_info, crypto_type):
-        super().__init__(order, orderbook, client_wrapper, order_info, crypto_type)
+    def __init__(self, order, orderbook, client_wrapper, order_info, currency_from, currency_to):
+        super().__init__(order, orderbook, client_wrapper, order_info, currency_from, currency_to)
 
     def update_order_from_exchange(self):
         order_status = self._client_wrapper.order_status(self._order['id'])
@@ -58,12 +59,13 @@ class KrakenOrderTracker(OrderTracker):
 
 
 class BitstampOrderTracker(OrderTracker):
-    def __init__(self, order, orderbook, client_wrapper, order_info, crypto_type):
-        super().__init__(order, orderbook, client_wrapper, order_info, crypto_type)
+    def __init__(self, order, orderbook, client_wrapper, order_info, currency_from, currency_to):
+        super().__init__(order, orderbook, client_wrapper, order_info, currency_from, currency_to)
 
     def update_order_from_transactions(self):
         order_transactions = self._client_wrapper.get_order_status_from_transactions(self._order['id'],
-                                                                                     self._crypto_type)
+                                                                                     self._currency_from,
+                                                                                     self._currency_to)
         self._client_wrapper.set_order_executed_size(order_transactions['executed_size'] + self._initial_size)
         self._order['executed_size'] = order_transactions['executed_size']
         self._order['updated_from_transactions'] = True
