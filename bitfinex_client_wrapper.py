@@ -79,17 +79,20 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
     def get_exchange_name(self):
         return "Bitfinex"
 
-    def _execute_exchange_order(self, action_type, size, price, crypto_type, exchange_instruction):
+    def _execute_exchange_order(self, action_type, size, price, currency_to, exchange_instruction, currency_from = 'USD'):
         self.log.info("Executing <%s>, size=<%f>, price=<%f>, type=<%s>, exchange_instruction=<%s>", action_type, size,
-                       price, crypto_type, exchange_instruction)
-        print("Executing <{}>, size=<{}>, price=<{}>, type=<{}>".format(action_type, size, price, crypto_type,
+                       price, currency_to, exchange_instruction)
+        print("Executing <{}>, size=<{}>, price=<{}>, type=<{}>".format(action_type, size, price, currency_to,
                                                                         exchange_instruction))
         execute_result = {'order_status': False}
         try:
             if self._bitfinex_client is not None and self._signed_in_user != "":
                 exchange_result = self._bitfinex_client.place_order(str(size), str(price), action_type,
-                                                                    exchange_instruction, crypto_type.lower() + "usd")
-                exchange_status = self.order_status(exchange_result['id'])
+                                                                    exchange_instruction, currency_to.lower() + currency_from.lower())
+                if 'id' in exchange_result:
+                    exchange_status = self.order_status(exchange_result['id'])
+                else:
+                    raise Exception (exchange_result)                                                    
                 #print("Bitfinex status:", exchange_status)
                 execute_result = {'exchange': self.get_exchange_name(),
                                   'id': int(exchange_result['id']),
@@ -102,7 +105,8 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
                     execute_result['order_status'] = True
                 #print(execute_result)
         except Exception as e:
-            self.log.error("%s %s", action_type, e)
+            print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX -->action_type = " + action_type + " e = " + e)
+            self.log.error("action_type = %s, e =  %s", action_type, e)
             execute_result['status'] = 'Error'
             execute_result['order_status'] = True
         return execute_result
@@ -162,3 +166,10 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
             except Exception as e:
                 self.log.error("Cancel exception: %s", str(e))
         return cancel_status
+
+
+    def sell_market(self, execute_size_coin, currency_from , currency_to):
+        return self._execute_exchange_order("sell", execute_size_coin, 0.01, currency_to, "market", currency_from)    
+
+    def buy_market(self, execute_size_coin, currency_from, currency_to):
+        return self._execute_exchange_order("buy", execute_size_coin, 0.01, currency_to, "market", currency_from)

@@ -32,7 +32,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
 
             if len(username) != 0 and len(username) != 0 and len(username) != 0:
                 self._bitstamp_client = bitstamp.client.Trading(username=username, key=key, secret=secret)
-                self._bitstamp_client.account_balance()
+                self._bitstamp_client.account_balance("","")
                 self._signed_in_user = username
                 self._api_key = key
                 self._secret = secret
@@ -89,13 +89,17 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
     def get_exchange_name(self):
         return "Bitstamp"
 
-    def _execute_immediate_or_cancel(self, exchange_method, size, price, crypto_type, cancel_not_done):
-        self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type=<%s>", exchange_method, size, price, crypto_type)
+    def _execute_immediate_or_cancel(self, exchange_method, size, price, currency_to, cancel_not_done, currency_from = 'usd'):
+        self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type=<%s>", exchange_method, size, price, currency_to)
         execute_result = {'exchange': self.get_exchange_name(), 'order_status': False, 'executed_price_usd': price,
                           'status': 'Init'}
         try:
             if self._bitstamp_client is not None and self._signed_in_user != "":
-                limit_order_result = exchange_method(size, price, crypto_type)
+                if price is None:
+                    limit_order_result = exchange_method(size, currency_from.lower(), currency_to.lower())
+                else:
+                    limit_order_result = exchange_method(size, price, currency_to.lower(), currency_from.lower())
+                        
                 self.log.info("Execution result: <%s>", execute_result)
                 print("Execution result:", execute_result, limit_order_result)
                 order_id = limit_order_result['id']
@@ -147,13 +151,13 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
             execute_result['status'] = 'Error'
         return execute_result
 
-    def buy_immediate_or_cancel(self, execute_size_coin, price_fiat, crypto_type):
+    def buy_immediate_or_cancel(self, execute_size_coin, price_fiat, currency_to):
         return self._execute_immediate_or_cancel(self._bitstamp_client.buy_limit_order, execute_size_coin, price_fiat,
-                                                 crypto_type, True)
+                                                 currency_to, True)
 
-    def sell_immediate_or_cancel(self, execute_size_coin, price_fiat, crypto_type):
+    def sell_immediate_or_cancel(self, execute_size_coin, price_fiat, currency_to):
         return self._execute_immediate_or_cancel(self._bitstamp_client.sell_limit_order, execute_size_coin, price_fiat,
-                                                 crypto_type, True)
+                                                 currency_to, True)
 
     def order_status(self, order_id):
         order_status = None
@@ -225,3 +229,10 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
         if self._bitstamp_client is None and self._signed_in_user != "":
             print("Reconnect required")
             self.set_credentials({'username': self._signed_in_user, 'key': self._api_key, 'secret': self._secret})
+
+
+    def sell_market(self, size, currency_type1, currency_type2):
+        return self._execute_immediate_or_cancel(self._bitstamp_client.sell_market_order, size, None, currency_type1, False, currency_type2)        
+
+    def buy_market(self, size, currency_type1, currency_type2):
+        return self._execute_immediate_or_cancel(self._bitstamp_client.buy_market_order, size, None, currency_type1, False, currency_type2)     

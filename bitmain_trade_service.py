@@ -145,7 +145,7 @@ def send_order():
     # result['order_status'] = str('Invalid parameters')
 
     ####################################################
-    if request_params['actionType'] is not None: 
+    if 'actionType' in request_params: 
         actionType = None
         price = None
         if 'price' in request_params:
