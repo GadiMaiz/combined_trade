@@ -13,6 +13,7 @@ from huobi_orderbook import HuobiOrderbook
 from huobi_client_wrapper import HuobiClientWrapper
 from orderbook_watchdog import OrderbookWatchdog
 from exchange_clients_manager import ExchangeClientManager
+from sent_orders_type import SentOrdersType
 import logging
 from logging.handlers import RotatingFileHandler
 import json
@@ -233,9 +234,9 @@ def get_sent_orders():
 
     if orders_limit is None:
         orders_limit = 0
-    sent_orders = exchanges_manager.get_sent_orders(orders_limit)
+    sent_orders = exchanges_manager.get_sent_orders(SentOrdersType.FLAT, orders_limit)
     #print(str(time.time()) + " end get_sent_orders")
-    return str(sent_orders)
+    return jsonify(sent_orders)
 
 
 @app.route('/GetSentOrdersFiltered', methods=['POST'])
@@ -254,12 +255,12 @@ def get_sent_orders_filtered():
         print("GetSentOrdersFiltered parameters error: {}".format(ex))
 
     if valid_parameters:
-        sent_orders = exchanges_manager.get_sent_orders(orders_limit, request_filter)
+        sent_orders = exchanges_manager.get_sent_orders(SentOrdersType.FLAT, orders_limit, request_filter)
     #print(str(time.time()) + " start get_sent_orders_filtered")
-    return str(sent_orders)
+    return jsonify(sent_orders)
 
 @app.route('/reports/sentOrders', methods=['POST'])
-def get_sent_orders_filtered():
+def sent_orders():
     #print(str(time.time()) + " start get_sent_orders_filtered")
     sent_orders = []
     request_filter = {}
@@ -274,7 +275,7 @@ def get_sent_orders_filtered():
         print("sentOrders parameters error: {}".format(ex))
 
     if valid_parameters:
-        sent_orders = exchanges_manager.get_sent_orders(orders_limit, request_filter)
+        sent_orders = exchanges_manager.get_sent_orders(SentOrdersType.HIERARCHICAL, orders_limit, request_filter)
     #print(str(time.time()) + " start get_sent_orders_filtered")
     return jsonify(sent_orders)
 

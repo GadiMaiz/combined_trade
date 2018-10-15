@@ -162,8 +162,8 @@ class ExchangeClientManager():
             result = timed_order_client.cancel_timed_order()
         return result
 
-    def get_sent_orders(self, limit, filter=None):
-        return self._db_interface.get_sent_orders(limit, filter)
+    def get_sent_orders(self, type, limit, filter=None):
+        return self._db_interface.get_sent_orders(type, limit, filter)
 
     def unregister_client(self, identifier):
         self._multiple_clients.pop(identifier, None)
