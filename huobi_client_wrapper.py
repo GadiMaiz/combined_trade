@@ -7,7 +7,6 @@ import huobi  # TODO - this dependency came from pip install huobi , maybe it sh
 
 
 class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
-    HUOBI_CURRENCIES_DICT = {'BTC': 'btc', 'USD': 'usdt', 'BCH' : 'bch', "LTC" : 'ltc'}
     def __init__(self, credentials, orderbook, db_interface, clients_manager, supportedCurrencies = {'btc','usdt','bch','ltc'}):
         super().__init__(orderbook, db_interface, clients_manager)
         self.log = logging.getLogger(__name__)
@@ -17,7 +16,8 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
         self._secret = ""
         self.set_credentials(credentials)
         self._fee = 0
-        self._supportedCurrency = supportedCurrencies 
+        self._supportedCurrencies = supportedCurrencies 
+        self.currencies_dict = {'BTC': 'btc','USD':'usdt', 'BCH' : 'bch', "LTC" : 'ltc'}
 
     def set_credentials(self, client_credentials, cancel_order=True):
         super().set_credentials(client_credentials)
@@ -75,12 +75,12 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
                 result = {}
                 balances = {}
                 for element in balanceList:
-                    if element['currency'] in  self._supportedCurrency:
+                    if element['currency'] in  self._supportedCurrencies or float(element['balance']) > 0 :
                         if element['type'] == 'trade':
                             balances[element['currency'] + '_trade'] = float(element['balance'])
                         else:
                             balances[element['currency']] = float(element['balance'])
-                for currency in self._supportedCurrency:
+                for currency in self._supportedCurrencies:
                     result[currency.upper()] = {"amount":  balances[currency + '_trade'] + balances[currency], "available": balances[currency + '_trade']}  
             except Exception as e:
                 self.log.error("%s", str(e))
@@ -168,10 +168,16 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
 
 
     def sell_market(self, execute_size_coin, currency_from, currency_to = "usdt"):
-        return self._execute_exchange_order('sell-market', execute_size_coin, None, currency_from, currency_to)
+
+        c_from = self.currencies_dict[currency_from]
+        c_to = self.currencies_dict[currency_to]
+        return self._execute_exchange_order('sell-market', execute_size_coin, None, c_to, c_from)
 
     def buy_market(self, execute_size_coin, currency_from, currency_to = "usdt"):
-        return self._execute_exchange_order('buy-market', execute_size_coin, None, currency_from, currency_to)
+        c_from = self.currencies_dict[currency_from]
+        c_to = self.currencies_dict[currency_to]
+        return self._execute_exchange_order('buy-market', execute_size_coin, None, c_to, c_from)
+        # return self._execute_exchange_order('buy-market', execute_size_coin, None,self.currencies_dict[currency_from], self._supportedCurrencies[currency_to])
 
     # def _order_complete(self, is_timed_order, report_status):
     #     if self._clients_manager:

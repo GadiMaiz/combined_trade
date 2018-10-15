@@ -85,7 +85,7 @@ class HuobiOrderbook(OrderbookBase):
                 result = {'asks': self._current_orderbook[asset_pair]['asks'][:size],
                           'bids': self._current_orderbook[asset_pair]['bids'][:size]}
             return result
-        except:
+        except Exception as e:
             return {'bids': [], 'asks': []}
 
 

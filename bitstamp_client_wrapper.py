@@ -83,6 +83,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                 self._orderbook['fees'].update(fees)
                 self._orderbook['orderbook'].set_fees(self._orderbook['fees'])"""
             except Exception as e:
+                print("Exception was thrown e = " + e)
                 self.log.error("%s", str(e))
         return result
 
