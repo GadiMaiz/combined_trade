@@ -89,8 +89,9 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
     def get_exchange_name(self):
         return "Bitstamp"
 
-    def _execute_immediate_or_cancel(self, exchange_method, size, price, currency_to, cancel_not_done, currency_from = 'usd'):
-        self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type=<%s>", exchange_method, size, price, currency_to)
+    def _execute_immediate_or_cancel(self, exchange_method, size, price, currency_from, currency_to, cancel_not_done):
+        self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type_from=<%s>, type_to=<%s> ", exchange_method, size,
+                       price, currency_from, currency_to)
         execute_result = {'exchange': self.get_exchange_name(), 'order_status': False, 'executed_price_usd': price,
                           'status': 'Init'}
         try:
@@ -151,13 +152,13 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
             execute_result['status'] = 'Error'
         return execute_result
 
-    def buy_immediate_or_cancel(self, execute_size_coin, price_fiat, currency_to):
-        return self._execute_immediate_or_cancel(self._bitstamp_client.buy_limit_order, execute_size_coin, price_fiat,
-                                                 currency_to, True)
+    def buy_immediate_or_cancel(self, execute_size_coin, price, currency_from, currency_to):
+        return self._execute_immediate_or_cancel(self._bitstamp_client.buy_limit_order, execute_size_coin, price,
+                                                 currency_from, currency_to, True)
 
-    def sell_immediate_or_cancel(self, execute_size_coin, price_fiat, currency_to):
-        return self._execute_immediate_or_cancel(self._bitstamp_client.sell_limit_order, execute_size_coin, price_fiat,
-                                                 currency_to, True)
+    def sell_immediate_or_cancel(self, execute_size_coin, price, currency_from, currency_to):
+        return self._execute_immediate_or_cancel(self._bitstamp_client.sell_limit_order, execute_size_coin, price,
+                                                 currency_from, currency_to, True)
 
     def order_status(self, order_id):
         order_status = None
@@ -193,20 +194,20 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
     def exchange_fee(self, crypto_type):
         return self._fee
 
-    def buy_limit(self, execute_size_coin, price_fiat, crypto_type):
+    def buy_limit(self, execute_size_coin, price, currency_from, currency_to):
         self.reconnect()
         if self._bitstamp_client is not None and self._signed_in_user != "":
             result = self._execute_immediate_or_cancel(self._bitstamp_client.buy_limit_order, execute_size_coin,
-                                                       price_fiat, crypto_type, False)
+                                                       price, currency_from, currency_to, False)
         else:
             result = {'exchange': self.get_exchange_name(), 'order_status': False, 'status': 'Error'}
         return result
 
-    def sell_limit(self, execute_size_coin, price_fiat, crypto_type):
+    def sell_limit(self, execute_size_coin, price, currency_from, currency_to):
         self.reconnect()
         if self._bitstamp_client is not None and self._signed_in_user != "":
             result = self._execute_immediate_or_cancel(self._bitstamp_client.sell_limit_order, execute_size_coin,
-                                                       price_fiat, crypto_type, False)
+                                                       price, currency_from, currency_to, False)
         else:
             result = {'exchange': self.get_exchange_name(), 'order_status': False, 'status': 'Error'}
         return result

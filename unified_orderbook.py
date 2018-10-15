@@ -29,7 +29,7 @@ class UnifiedOrderbook:
             for curr_orderbook in self._orderbooks:
                 orders = self._orderbooks[curr_orderbook].get_current_partial_book(
                     symbol, size, include_fees_in_price)
-                self._log.info("orderbook: %s, orders: %s", curr_orderbook, orders)
+                self._log.debug("orderbook: %s, orders: %s", curr_orderbook, orders)
                 client_orderbooks.append(orders)
 
             best_orders = {'asks': [], 'bids': []}
@@ -37,7 +37,7 @@ class UnifiedOrderbook:
             order_keys = [[heapq.nsmallest, 'asks'], [heapq.nlargest, 'bids']]
             if include_fees_in_price != OrderbookFee.NO_FEE:
                 price_sort = 'price_with_fee'
-            self._log.info(client_orderbooks)
+            self._log.debug(client_orderbooks)
             for curr_orderbook in client_orderbooks:
                 for curr_keyset in order_keys:
                     best_orders[curr_keyset[1]] = curr_keyset[0](size, best_orders[curr_keyset[1]] +

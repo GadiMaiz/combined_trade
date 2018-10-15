@@ -89,19 +89,19 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
     def get_exchange_name(self):
         return "Huobi"
 
-    def buy_immediate_or_cancel(self, execute_size_coin, price, currency_type1, currency_type2 = "usdt"):
+    def buy_immediate_or_cancel(self, execute_size_coin, price, currency_from, currency_to):
         # return self._execute_exchange_order('buy-ioc', execute_size_coin, price_fiat, currency_type1, currency_type2)
-        return self._execute_exchange_order('buy-ioc', execute_size_coin, price_fiat, currency_type1, currency_type2)
+        return self._execute_exchange_order('buy-ioc', execute_size_coin, price, currency_from, currency_to)
         
 
-    def sell_immediate_or_cancel(self, execute_size_coin, price, currency_type1, currency_type2 = "usdt"):
-        return self._execute_exchange_order('sell-ioc', execute_size_coin, price_fiat, currency_type1, currency_type2)
+    def sell_immediate_or_cancel(self, execute_size_coin, price, currency_from, currency_to):
+        return self._execute_exchange_order('sell-ioc', execute_size_coin, price, currency_from, currency_to)
 
 
 
-    def _execute_exchange_order(self, action_type, size, price, currency_type1, currency_type2): 
+    def _execute_exchange_order(self, action_type, size, price, currency_from, currency_to):
         account_id = self._huobi_client.accounts().data['data'][0]['id']
-        print("account ID = " + str(account_id))
+        self.log.debug("account ID = " + str(account_id))
         execute_result = { 'order_status': False}
         if account_id == None:
             print ('ERROR empty account Id') #TODO  error handling
@@ -110,9 +110,9 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
             return execute_result
         try:
             if price != None:
-                exchange_result = self._huobi_client.place(account_id=str(account_id), amount=str(size), price=str(price),  symbol=currency_type1 + currency_type2, type=action_type)
+                exchange_result = self._huobi_client.place(account_id=str(account_id), amount=str(size), price=str(price),  symbol=currency_to + currency_from, type=action_type)
             else :
-                exchange_result = self._huobi_client.place(account_id=str(account_id), amount=str(size),  symbol=currency_type1 + currency_type2, type=action_type)
+                exchange_result = self._huobi_client.place(account_id=str(account_id), amount=str(size),  symbol=currency_to + currency_from, type=action_type)
 
 
         
@@ -120,8 +120,8 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
             execute_result = {'exchange': self.get_exchange_name(),
                                 'id': int(exchange_result.data['data']),
                                 'executed_price_usd': orderStatus.data['data']['price'],
-                                'currency1' : currency_type1,
-                                'currency' : currency_type1,                                
+                                'currency_from' : currency_from,
+                                'currency_to' : currency_to,
                                 'currency1_amount' : orderStatus.data['data']['field-cash-amount'],
                                 'currency2_amount' : orderStatus.data['data']['field-amount'],                                
                                 'order_status': False}
@@ -160,18 +160,18 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
         return transactions
 
     def minimum_order_size(self, asset_pair):
-        minimum_sizes = {'BCH-BTC': 0.001, 'LTC-BTC' : 0.0001}
+        minimum_sizes = {'BCH-BTC': 0.001, 'LTC-BTC': 0.0001}
         return minimum_sizes[asset_pair]
 
     def is_client_initialized(self):
         return self._is_client_init
 
 
-    def sell_market(self, execute_size_coin, currency_type1, currency_type2 = "usdt"):
-        return self._execute_exchange_order('sell-market', execute_size_coin, None, currency_type1, currency_type2)      
+    def sell_market(self, execute_size_coin, currency_from, currency_to = "usdt"):
+        return self._execute_exchange_order('sell-market', execute_size_coin, None, currency_from, currency_to)
 
-    def buy_market(self, execute_size_coin, currency_type1, currency_type2 = "usdt"):
-        return self._execute_exchange_order('buy-market', execute_size_coin, None, currency_type1, currency_type2)      
+    def buy_market(self, execute_size_coin, currency_from, currency_to = "usdt"):
+        return self._execute_exchange_order('buy-market', execute_size_coin, None, currency_from, currency_to)
 
     # def _order_complete(self, is_timed_order, report_status):
     #     if self._clients_manager:

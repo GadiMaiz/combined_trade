@@ -55,7 +55,7 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
         return self._kraken_client is None
 
     def _get_balance_from_exchange(self):
-        kraken_symbols_dict = {'ZUSD': 'USD', 'XXBT': 'BTC', 'ZEUR': 'EUR'}
+        kraken_symbols_dict = {'ZUSD': 'USD', 'XXBT': 'BTC', 'ZEUR': 'EUR', 'XLTC': 'LTC', 'XETH': 'ETH'}
         result = {}
         if self._kraken_client is not None and self._signed_in_user != "":
             try:
@@ -76,21 +76,18 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
     def get_exchange_name(self):
         return "Kraken"
 
-    def _execute_exchange_order(self, action, cancel, size, price=None, crypto_type='BTC', currency_type = "USD"):
-        self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type=<%s>, cancel=<%s>", action, size,
-                       price, crypto_type, cancel)
-        print("Executing <{}>, size=<{}>, price=<{}>, type=<{}>, cancel=<{}>".format(action, size, price,
-                                                                                     crypto_type,
-                                                                                     cancel))
-
+    def _execute_exchange_order(self, action, cancel, size, currency_from, currency_to, price=None):
+        self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type_from=<%s>, type_to=<%s>, cancel=<%s>".format(
+            action, size,  price, currency_from, currency_to, cancel))
 
         action_type_parsed = action.split('_')
         buy_or_sell = action_type_parsed[0]
         action_type = action_type_parsed[1]
-        asset_pair = crypto_type.upper() +  "-" + currency_type.upper()
+        asset_pair = currency_to.upper() + "-" + currency_from.upper()
         kraken_pair = asset_pair
         if kraken_pair in KrakenOrderbook.KRAKEN_PAIRS_DICT:
             kraken_pair = KrakenOrderbook.KRAKEN_PAIRS_DICT[asset_pair]
+            self.log.debug("Trading in kraken pair: <%s>", kraken_pair)
         execute_result = {'exchange': self.get_exchange_name(),
                           'order_status': False,
                           'executed_price_usd': price}
@@ -100,24 +97,24 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
                                                                      action_type, price, None, size)
                 execute_result['id'] = exchange_order['txid'][0]
                 if not cancel:
-                    print("Not cancelling order {}".format(execute_result['id']))
+                    self.log.debug("Not cancelling order <%s>", execute_result['id'])
                     exchange_order_status = self.order_status(execute_result['id'])
                     if execute_result['id'] not in exchange_order_status:
                         # We don't know the price so we set the limit price as a speculation
-                        print("Price not in status", exchange_order_status)
+                        self.log.debug("Price not in status <%s>", exchange_order_status)
                         execute_result['executed_price_usd'] = price
                     else:
-                        print("Price in status", exchange_order_status)
+                        self.log.debug("Price in status <%s>", exchange_order_status)
                         execute_result['executed_price_usd'] = \
                             float(exchange_order_status[execute_result['id']]['price'])
                     if exchange_order_status[execute_result['id']]['status'] == 'open':
-                        print("Status is open")
+                        self.log.debug("Status is open")
                         execute_result['status'] = "Open"
                     elif exchange_order_status[execute_result['id']]['status'] == 'closed':
-                        print("Status is closed, finishing order")
+                        self.log.debug("Status is closed, finishing order")
                         execute_result['status'] = "Finished"
                     else:
-                        print("Unknown order status:", exchange_order_status)
+                        self.log.debug("Unknown order status: <%s>", exchange_order_status)
                         execute_result['status'] = "Error"
                 else:
                     if self._cancel_order(execute_result['id']):
@@ -126,7 +123,7 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
                         self.log.debug("Can't cancel order <%s>, order done", execute_result['id'])
                         execute_result['order_status'] = True
                         execute_result['status'] = 'Finished'
-                        print("Order finished")
+                        self.log.debug("Order finished")
                         exchange_order_status = self.order_status(execute_result['id'])
                         if execute_result['id'] not in exchange_order_status:
                             # We don't know the price so we set the limit price as a speculation
@@ -134,26 +131,27 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
                         else:
                             execute_result['executed_price_usd'] = \
                                 float(exchange_order_status[execute_result['id']]['price'])
-                print("Kraken done")
+                self.log.debug("Kraken done")
 
         except Exception as e:
-            self.log.error("%s %s", action_type, e)
-            print("kraken error:", e)
+            self.log.error("%s %s %s", action_type, kraken_pair, e)
             execute_result['status'] = 'Error'
             execute_result['order_status'] = False
         return execute_result
 
-    def buy_immediate_or_cancel(self, execute_size_coin, price_fiat, crypto_type):
-        return self._execute_exchange_order("buy_limit", True, execute_size_coin, price_fiat, crypto_type)
+    def buy_immediate_or_cancel(self, execute_size_coin, price, currency_from, currency_to):
+        return self._execute_exchange_order("buy_limit", True, execute_size_coin, currency_from, currency_to, price)
 
-    def sell_immediate_or_cancel(self, execute_size_coin, price_fiat, crypto_type):
-        return self._execute_exchange_order("sell_limit", True, execute_size_coin, price_fiat, crypto_type)
+    def sell_immediate_or_cancel(self, execute_size_coin, price, currency_from, currency_to):
+        return self._execute_exchange_order("sell_limit", True, execute_size_coin, currency_from, currency_to, price)
 
-    def sell_market(self, execute_size_coin, currency_type1, currency_type2):
-        return self._execute_exchange_order(action="sell_market", cancel=False, size=execute_size_coin, currency_type=currency_type1, crypto_type=currency_type2)
+    def sell_market(self, execute_size_coin, currency_from, currency_to):
+        return self._execute_exchange_order(action="sell_market", cancel=True, size=execute_size_coin,
+                                            currency_from=currency_from, currency_to=currency_to)
 
-    def buy_market(self, execute_size_coin, currency_type1, currency_type2):
-        return self._execute_exchange_order(action="buy_market", cancel=False, size=execute_size_coin, currency_type=currency_type1, crypto_type=currency_type2) 
+    def buy_market(self, execute_size_coin, currency_from, currency_to):
+        return self._execute_exchange_order(action="buy_market", cancel=True, size=execute_size_coin,
+                                            currency_from=currency_from, currency_to=currency_to)
 
     def order_status(self, order_id):
         result = {}
@@ -177,15 +175,11 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
     def exchange_fee(self, crypto_type):
         return 0.2
 
-    def minimum_order_size(self, asset_pair):
-        minimum_sizes = {'BTC-USD': 0.002, 'BCH-USD': 0.02}
-        return minimum_sizes[asset_pair]
+    def buy_limit(self, execute_size_coin, price, crypto_type, currency_from, currency_to):
+        return self._execute_exchange_order("buy_limit", False, execute_size_coin, currency_from, currency_to, price)
 
-    def buy_limit(self, execute_size_coin, price_fiat, crypto_type):
-        return self._execute_exchange_order("buy_limit", False, execute_size_coin, price_fiat, crypto_type)
-
-    def sell_limit(self, execute_size_coin, price_fiat, crypto_type):
-        return self._execute_exchange_order("sell_limit", False, execute_size_coin, price_fiat, crypto_type)
+    def sell_limit(self, execute_size_coin, price, crypto_type, currency_from, currency_to):
+        return self._execute_exchange_order("sell_limit", False, execute_size_coin, currency_from, currency_to, price)
 
     def create_order_tracker(self, order, orderbook, order_info, crypto_type):
         return KrakenOrderTracker(order, orderbook, self, order_info, crypto_type)

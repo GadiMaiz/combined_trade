@@ -145,33 +145,33 @@ def send_order():
     # result['order_status'] = str('Invalid parameters')
 
     ####################################################
-    if 'actionType' in request_params: 
-        actionType = None
+    if 'actionType' in request_params:
+        action_type = None
         price = None
         if 'price' in request_params:
             price = request_params['price']
-            actionType =  request_params['actionType'] + '_limit'
+            action_type =  request_params['actionType'] + '_limit'
         else:
             price = 0
-            actionType =  request_params['actionType'] + '_market'
+            action_type =  request_params['actionType'] + '_market'
 
-        externalOrderId = request_params["externalOrderId"]        if 'externalOrderId' in request_params       else None
-        userQuotePrice = float(request_params["userQuotePrice"])   if 'userQuotePrice'  in request_params       else None
-        userId = request_params["userId"]                          if "userId"  in request_params               else None
-        maxOrderSize = float(request_params["maxOrderSize"])       if "maxOrderSize" in request_params          else None
-        durationSec = int(request_params['durationSec'])           if "durationSec" in request_params           else None
+        external_order_id = request_params["externalOrderId"]        if 'externalOrderId' in request_params else ''
+        user_quote_price = float(request_params["userQuotePrice"])   if 'userQuotePrice'  in request_params else 0
+        user_id = request_params["userId"]                           if "userId"  in request_params else ''
+        max_order_size = float(request_params["maxOrderSize"])       if "maxOrderSize" in request_params else None
+        duration_sec = int(request_params['durationSec'])            if "durationSec" in request_params else None
 
         order_status = exchanges_manager.send_order(request_params['exchanges'],
-                                                    actionType,
-                                                    float(request_params['size'])
-                                                    ,request_params['currencyTo'],
+                                                    action_type,
+                                                    float(request_params['size']),
+                                                    request_params['currencyTo'],
                                                     price,
                                                     request_params['currencyFrom'],
-                                                    durationSec,
-                                                    maxOrderSize,
-                                                    externalOrderId,
-                                                    userQuotePrice,
-                                                    userId)
+                                                    duration_sec,
+                                                    max_order_size,
+                                                    external_order_id,
+                                                    user_quote_price,
+                                                    user_id)
     ####################################################
     else:
         order_status = exchanges_manager.send_order(request_params['exchanges'], request_params['action_type'],

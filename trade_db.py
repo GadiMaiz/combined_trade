@@ -30,8 +30,8 @@ class TradeDB:
                     order_info['ask'] = 0
                     order_info['bid'] = 0
                 if 'balance' not in order_info or 'balances' not in order_info['balance']:
-                    order_info['balance'] = {'balances': {'USD': {'available': 0},
-                                                          order_info['crypto_type']: {'available': 0}}}
+                    order_info['balance'] = {'balances': {order_info['currency_from']: {'available': 0},
+                                                          order_info['currency_to']: {'available': 0}}}
                 trade_order_id = -1
                 if 'trade_order_id' in order_info:
                     trade_order_id = order_info['trade_order_id']
@@ -39,16 +39,14 @@ class TradeDB:
                 if 'parent_trade_order_id' in order_info:
                     parent_trade_order_id = order_info['parent_trade_order_id']
                 insert_str = "INSERT INTO sent_orders VALUES('{}', '{}', {}, {}, '{}', '{}', '{}', {}, '{}', {}, {}" \
-                             ", {}, {}, {}, {}, {}, {}, 0, {})".format(order_info['exchange'], order_info['action_type'],
-                                                                       order_info['crypto_size'],
-                                                                       order_info['price_fiat'], order_info['exchange_id'],
-                                                                       order_info['status'],
-                                                                       order_info['order_time'], order_info['timed_order'],
-                                                                       order_info['crypto_type'],
-                                                                       order_info['balance']['balances']['USD']['available'],
-                                                                       order_info['balance']['balances'][order_info['crypto_type']]['available'],
-                                                                       order_info['ask'], order_info['bid'], parent_trade_order_id,
-                                                                       trade_order_id, "''", "''", 0, "''")
+                             ", {}, {}, {}, {}, '{}', '{}', {}, '{}')".format(
+                    order_info['exchange'], order_info['action_type'], order_info['size'],
+                    order_info['price'], order_info['exchange_id'], order_info['status'], order_info['order_time'],
+                    order_info['timed_order'], order_info['currency_to'],
+                    order_info['balance']['balances'][order_info['currency_from']]['available'],
+                    order_info['balance']['balances'][order_info['currency_to']]['available'],
+                    order_info['ask'], order_info['bid'], parent_trade_order_id, trade_order_id, order_info['user_id'],
+                    order_info['external_order_id'], order_info['user_quote_price'], order_info['currency_from'])
                 print(insert_str)
                 self.log.debug(insert_str)
                 cur = conn.cursor()
