@@ -221,7 +221,7 @@ def send_order():
     #print(result)
     result['order_status'] = str(result['order_status'])
     log.info("command sent")
-    return str(result)
+    return jsonify(result)
 
 
 @app.route('/GetSentOrders', methods=['GET'])
