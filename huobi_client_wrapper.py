@@ -70,7 +70,7 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
                 print("Getting balance from Huobi")
                 account_id = self._huobi_client.accounts().data['data'][0]['id']
                 bitstamp_account_balance = self._huobi_client.balance(account_id=account_id)
-                print("Balance arrived from Bitstamp:", bitstamp_account_balance)
+                print("Balance arrived from Huobi:", bitstamp_account_balance)
                 balanceList = bitstamp_account_balance.data['data']['list']
                 result = {}
                 balances = {}

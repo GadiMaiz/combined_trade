@@ -99,7 +99,7 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
                     execute_result['status'] = 'Finished'
                     execute_result['order_status'] = True
         except Exception as e:
-            self.log.error("%s %s", action_type, e)
+            self.log.error("action_type = %s, e =  %s", action_type, e)
             execute_result['status'] = 'Error'
             execute_result['order_status'] = True
         return execute_result
@@ -159,3 +159,10 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
             except Exception as e:
                 self.log.error("Cancel exception: %s", str(e))
         return cancel_status
+
+
+    def sell_market(self, execute_size_coin, currency_from , currency_to):
+        return self._execute_exchange_order("sell", execute_size_coin, 0.01, currency_to, "market", currency_from)    
+
+    def buy_market(self, execute_size_coin, currency_from, currency_to):
+        return self._execute_exchange_order("buy", execute_size_coin, 0.01, currency_to, "market", currency_from)
