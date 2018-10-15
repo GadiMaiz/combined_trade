@@ -192,9 +192,7 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
                 self.log.debug("Cancel status: <%s>", cancel_status)
                 print("Cancel status:", cancel_status)
             except Exception as e:
-                self.log.error("Cancel exception: %s", str(e))
-                print("Kraken cancel error:", e, cancel_status)
-                print ("Cancel exception: <{}>".format(e))
+                self.log.debug("Cancel exception: %s", str(e))
         return cancel_status
 
     def exchange_accuracy(self):
