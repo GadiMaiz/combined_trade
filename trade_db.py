@@ -1,3 +1,4 @@
+from sent_orders_type import SentOrdersType
 import sqlite3
 import logging
 import re
@@ -60,7 +61,7 @@ class TradeDB:
 
             return return_order_id
 
-    def get_sent_orders(self, orders_limit, filter):
+    def get_sent_orders(self, type, orders_limit, filter):
         conn = self.create_db_connection(self._db_file)
         limit_clause = ''
         if orders_limit > 0:
@@ -133,29 +134,72 @@ class TradeDB:
         query = "SELECT * FROM (SELECT rowid, * FROM sent_orders ORDER BY datetime(order_time) DESC) " + where_clause + \
                 limit_clause
         sent_orders = conn.execute(query)
-        all_orders = []
-        for curr_order in sent_orders:
-            exchange_id = curr_order[5]
-            if exchange_id is None:
-                exchange_id = ""
-            trade_order_id = curr_order[0]
-            if curr_order[15] != -1:
-                trade_order_id = curr_order[15]
-            order_dict = {'exchange': curr_order[1],
-                          'action_type': curr_order[2],
-                          'crypto_size': curr_order[3],
-                          'price_fiat': curr_order[4],
-                          'exchange_id': exchange_id,
-                          'status': curr_order[6],
-                          'order_time': curr_order[7],
-                          'timed_order': curr_order[8],
-                          'crypto_type': curr_order[9],
-                          'usd_balance': curr_order[10],
-                          'crypto_available': curr_order[11],
-                          'ask': curr_order[12],
-                          'bid': curr_order[13],
-                          'parent_trade_order_id': curr_order[14],
-                          'trade_order_id': trade_order_id}
-            all_orders.append(order_dict)
+        data = sent_orders.fetchall()
+        all_orders = {}
+
+        # collect all parents orders
+        for curr_order in data:
+            if (curr_order[14] == -1 and type == SentOrdersType.HIERARCHICAL) or (type == SentOrdersType.FLAT):
+                trade_order_id = self.get_trade_order_id(curr_order)
+                order_dict = self.get_curr_order(curr_order, trade_order_id, type)
+                all_orders[trade_order_id] = order_dict
+        
+        # add child orders to parents orders
+        if type == SentOrdersType.HIERARCHICAL:
+            for curr_order in data:
+                if curr_order[14] != -1 and curr_order[14] in all_orders:
+                    trade_order_id = self.get_trade_order_id(curr_order)
+                    order_dict = self.get_curr_order(curr_order, trade_order_id, type)
+                    all_orders.get(curr_order[14]).get('childOrders').append(order_dict)
+        
         conn.close()
-        return all_orders
+        return list(all_orders.values())
+
+    def get_trade_order_id(self, curr_order):
+        trade_order_id = curr_order[0]
+        if curr_order[15] != -1:
+            trade_order_id = curr_order[15]
+        return trade_order_id
+
+    def get_curr_order(self, curr_order, trade_order_id, type):
+        exchange_id = curr_order[5]
+        if exchange_id is None:
+            exchange_id = ""
+        if type == SentOrdersType.FLAT:
+            order_dict = {'exchange': curr_order[1],
+                            'action_type': curr_order[2],
+                            'crypto_size': curr_order[3],
+                            'price_fiat': curr_order[4],
+                            'exchange_id': exchange_id,
+                            'status': curr_order[6],
+                            'order_time': curr_order[7],
+                            'timed_order': curr_order[8],
+                            'crypto_type': curr_order[9],
+                            'usd_balance': curr_order[10],
+                            'crypto_available': curr_order[11],
+                            'ask': curr_order[12],
+                            'bid': curr_order[13],
+                            'parent_trade_order_id': curr_order[14],
+                            'trade_order_id': trade_order_id}
+        else: 
+            order_dict = {'userId': curr_order[16],
+                        'exchange': curr_order[1],
+                        'exchangeOrderId': exchange_id,
+                        'externalOrderId': curr_order[17],
+                        'tradeOrderId': trade_order_id,
+                        'parentOrderId': curr_order[14],
+                        'actionType': curr_order[2],
+                        'currencyFrom': curr_order[19],
+                        'currencyFromAvailable': curr_order[10],
+                        'currencyTo': curr_order[9],
+                        'currencyToAvailable': curr_order[11],
+                        'size': curr_order[3],
+                        'price': curr_order[4],
+                        'status': curr_order[6],
+                        'orderTime': curr_order[7],
+                        'timedOrder': curr_order[8],
+                        'ask': curr_order[12],
+                        'bid': curr_order[13],
+                        'userQuotePrice': curr_order[18],
+                        'childOrders': []}
+        return order_dict

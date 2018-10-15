@@ -27,11 +27,12 @@ class ExchangeClientManager():
         result['exchange'] = exchange
         return result
 
-    def exchange_balance(self, exchange):
+    def exchange_balance(self, exchange, extended_info=True):
         result = dict()
         if exchange in self._clients:
-            result = self._clients[exchange]['client'].account_balance()
-        result['exchange'] = exchange
+            result = self._clients[exchange]['client'].account_balance(extended_info=extended_info)
+        if extended_info:
+            result['exchange'] = exchange
         return result
 
     def get_all_account_balances(self, force_exchange):
@@ -161,8 +162,8 @@ class ExchangeClientManager():
             result = timed_order_client.cancel_timed_order()
         return result
 
-    def get_sent_orders(self, limit, filter=None):
-        return self._db_interface.get_sent_orders(limit, filter)
+    def get_sent_orders(self, type, limit, filter=None):
+        return self._db_interface.get_sent_orders(type, limit, filter)
 
     def unregister_client(self, identifier):
         self._multiple_clients.pop(identifier, None)

@@ -25,7 +25,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         self._watchdog = watchdog
         self._sent_order_identifier = sent_order_identifier
 
-    def account_balance(self, reconnect=False):
+    def account_balance(self, reconnect=False, extended_info=True):
         self._last_balance = {'balances': dict()}
         for curr_client in self._clients:
             curr_account_balance = self._clients[curr_client].account_balance()
