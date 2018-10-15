@@ -63,7 +63,7 @@ def get_orderbook_str(exchange, currency):
     return result
 
 
-@app.route('/Exchange/<exchange>/orderbook/<currency_to>/<currency_from>')
+@app.route('/exchange/<exchange>/orderbook/<currency_to>/<currency_from>')
 def get_exchange_orderbook(exchange, currency_to, currency_from):
     asset_pair = currency_to + "-" + currency_from
     orders = get_orderbook(exchange, asset_pair)
@@ -130,7 +130,7 @@ def get_all_accounts_balance_force():
     return str(account_balances)
 
 
-@app.route('/Exchange/<exchange>/accountBalance')
+@app.route('/exchange/<exchange>/accountBalance')
 def get_exchange_balance(exchange):
     account_balance = exchanges_manager.exchange_balance(exchange, False)
     return str(account_balance)
@@ -281,45 +281,76 @@ def sent_orders():
 
 @app.route('/SetClientCredentials', methods=['POST'])
 def set_client_credentials():
-    result = {'set_credentials_status': 'True'}
+    result = {'set_credentials_status': 'False'}
     try:
-        request_params = json.loads(request.data)
-        exchange = request_params['exchange']
-        fees = dict()
-        try:
-            fee = float(request_params['taker_fee'])
-            if 0 <= fee < 100:
-                fees['take'] = fee
-        except ValueError as e:
-            pass
-        try:
-            fee = float(request_params['maker_fee'])
-            if 0 <= fee < 100:
-                fees['make'] = fee
-        except ValueError as e:
-            pass
-        if exchange in orderbooks and 'username' in request_params and 'key' in request_params and \
-                'secret' in request_params:
-            # Make sure that the username is a number
-            user_reg = re.compile('^[0-9\.]+$')
-            key_reg = re.compile('^[0-9a-zA-Z=+\./\-]+$')
-            if user_reg.match(request_params['username']) and key_reg.match(request_params['key']) and \
-                    key_reg.match(request_params['secret']):
-                credentials = {'username': request_params['username'],
-                               'key': request_params['key'],
-                               'secret': request_params['secret']}
-                orderbooks[exchange]['fees'].update(fees)
-                orderbooks[exchange]['orderbook'].set_fees(orderbooks[exchange]['fees'])
-            else:
-                print("ERROR: account id, key or secret contain forbidden characters")     
-             
-        result['set_credentials_status'] = str(exchanges_manager.set_exchange_credentials(exchange, credentials))
+        request_params = json.loads(request.data) 
+        exchange = request_params['exchange']    
+        result['set_credentials_status'] = str(login_to_exchange(exchange, request_params))
     except Exception as ex:
         log.error("Failed to set client credentials, parameter error: {}".format(ex))
         result['set_credentials_status'] = 'False'
 
     return str(result)
 
+@app.route('/exchange/<exchange>/login', methods=['POST'])
+def exchange_login(exchange):
+    result = {'loginStatus': False}
+    try:
+        request_params = json.loads(request.data)     
+        result['loginStatus'] = login_to_exchange(exchange, request_params)
+    except Exception as ex:
+        log.error("Failed to login to exchange '{}': {}".format(exchange, ex))
+        result['loginStatus'] = False
+
+    return jsonify(result)
+
+def login_to_exchange(exchange, params):
+    try:
+        fees = dict()
+
+        if 'taker_fee' in params:
+            try:
+                fee = float(params['taker_fee'])
+                if 0 <= fee < 100:
+                    fees['take'] = fee
+            except ValueError as e:
+                pass
+
+        if 'maker_fee' in params:     
+            try:
+                fee = float(params['maker_fee'])
+                if 0 <= fee < 100:
+                    fees['make'] = fee
+            except ValueError as e:
+                pass
+
+        if exchange in orderbooks and 'username' in params and 'key' in params and \
+                'secret' in params:
+            # Make sure that the username is a number
+            user_reg = re.compile('^[0-9\.]+$')
+            key_reg = re.compile('^[0-9a-zA-Z=+\./\-]+$')
+            if user_reg.match(params['username']) and key_reg.match(params['key']) and \
+                    key_reg.match(params['secret']):
+                credentials = {'username': params['username'],
+                               'key': params['key'],
+                               'secret': params['secret']}
+                orderbooks[exchange]['fees'].update(fees)
+                orderbooks[exchange]['orderbook'].set_fees(orderbooks[exchange]['fees'])
+                return exchanges_manager.set_exchange_credentials(exchange, credentials)
+            else:
+                print("ERROR: account id, key or secret contain forbidden characters")
+                return False     
+             
+    except Exception as ex:
+        log.error("Failed to login to exchange: '{}': {}".format(exchange, ex))
+        return False
+
+@app.route('/exchange/<exchange>/logout', methods=['POST'])
+def exchange_logout(exchange):
+    result = {'loginStatus': 'False'}
+    if exchange in orderbooks:
+        result['loginStatus'] = str(exchanges_manager.logout_from_exchange(exchange))
+    return jsonify(result)
 
 @app.route('/Logout/<exchange>')
 def logout(exchange):
@@ -358,6 +389,15 @@ def start_orderbook(exchange):
         result["start_result"] = "True"
     return str(result)
 
+@app.route('/exchange/<exchange>/start', methods=['POST'])
+def exchange_start(exchange):
+    result = {"status": "stopped",
+              "exchange": exchange}
+    if exchange in orderbooks:
+        watchdog.start_orderbook(exchange)
+        result["status"] = "started"
+    return jsonify(result)
+
 @app.route('/StopOrderbook/<exchange>')
 def stop_orderbook(exchange):
     result = {"stop_result": "False",
@@ -367,6 +407,16 @@ def stop_orderbook(exchange):
         result["stop_result"] = "True"
         logout(exchange)
     return str(result)
+
+@app.route('/exchange/<exchange>/stop', methods=['POST'])
+def exchange_stop(exchange):
+    result = {"status": "started",
+              "exchange": exchange}
+    if exchange in orderbooks:
+        watchdog.stop_orderbook(exchange)
+        result["status"] = "stopped"
+        logout(exchange)
+    return jsonify(result)
 
 @app.route('/ActiveExchanges')
 def get_active_exchanges():
@@ -390,7 +440,7 @@ def create_rotating_log(log_file, log_level):
     logger = logging.getLogger(__name__)
     
     # add a rotating handler
-    handler = RotatingFileHandler(log_file, maxBytes=20000000, backupCount=5)
+    handler = RotatingFileHandler(log_file, maxBytes=(1024 * 512), backupCount=5)
     logger.addHandler(handler)
 
 if __name__ == '__main__':
