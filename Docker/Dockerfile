@@ -34,6 +34,6 @@ ENV EXCHANGES_CREDENTIALS=''
 EXPOSE 5000
 
 # configure volumes
-VOLUME ["/usr/src/app/logs"]
+VOLUME ["/usr/src/app/logs", "/usr/src/app/data"]
 
 ENTRYPOINT ["bash", "-c", "./Docker/bootstrap.sh"]
