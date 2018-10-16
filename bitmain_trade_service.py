@@ -16,19 +16,20 @@ from exchange_clients_manager import ExchangeClientManager
 from sent_orders_type import SentOrdersType
 import logging
 from logging.handlers import RotatingFileHandler
-import json
 import re
 import sys
 import getopt
 import time
 import os
 import json
+import init_db
 
 log = None
 
 app = Flask(__name__)
 
 client_dir = os.path.join(app.root_path, 'client')
+VALID_PAIRS = ['BTC-USD', 'BCH-USD', 'BTC-EUR', 'BCH-EUR', 'LTC-EUR', 'BCH-BTC', 'LTC-BTC']
 
 @app.route('/OrdersTracker')
 def send_orderbook_page():
@@ -198,20 +199,24 @@ def send_order():
         external_order_id = request_params["externalOrderId"]        if 'externalOrderId' in request_params else ''
         user_quote_price = float(request_params["userQuotePrice"])   if 'userQuotePrice'  in request_params else 0
         user_id = request_params["userId"]                           if "userId"  in request_params else ''
-        max_order_size = float(request_params["maxOrderSize"])       if "maxOrderSize" in request_params else None
-        duration_sec = int(request_params['durationSec'])            if "durationSec" in request_params else None
-
-        order_status = exchanges_manager.send_order(request_params['exchanges'],
-                                                    action_type,
-                                                    float(request_params['size']),
-                                                    request_params['currencyTo'],
-                                                    price,
-                                                    request_params['currencyFrom'],
-                                                    duration_sec,
-                                                    max_order_size,
-                                                    external_order_id,
-                                                    user_quote_price,
-                                                    user_id)
+        max_order_size = float(request_params["maxOrderSize"])       if "maxOrderSize" in request_params else 0
+        duration_sec = int(request_params['durationSec'])            if "durationSec" in request_params else 0
+        asset_pair = request_params['assetPair']
+        if asset_pair in VALID_PAIRS:
+            asset_pair_split = asset_pair.split('-')
+            currency_to = asset_pair_split[0]
+            currency_from = asset_pair_split[1]
+            order_status = exchanges_manager.send_order(request_params['exchanges'],
+                                                        action_type,
+                                                        float(request_params['size']),
+                                                        currency_to,
+                                                        price,
+                                                        currency_from,
+                                                        duration_sec,
+                                                        max_order_size,
+                                                        external_order_id,
+                                                        user_quote_price,
+                                                        user_id)
     ####################################################
     else:
         order_status = exchanges_manager.send_order(request_params['exchanges'], request_params['action_type'],
@@ -296,15 +301,19 @@ def set_client_credentials():
 
 @app.route('/exchange/<exchange>/login', methods=['POST'])
 def exchange_login(exchange):
-    result = {'loginStatus': False}
+    result = {'status': "logged out", 'exchange' : exchange}
     try:
-        request_params = json.loads(request.data)     
-        result['loginStatus'] = login_to_exchange(exchange, request_params)
+        request_params = json.loads(request.data) 
+        if login_to_exchange(exchange, request_params) == True:
+            result['status'] = 'logged in'
+            result['exchange'] = exchange
+
+                 
     except Exception as ex:
         log.error("Failed to login to exchange '{}': {}".format(exchange, ex))
-        result['loginStatus'] = False
 
     return jsonify(result)
+
 
 def login_to_exchange(exchange, params):
     try:
@@ -349,9 +358,11 @@ def login_to_exchange(exchange, params):
 
 @app.route('/exchange/<exchange>/logout', methods=['POST'])
 def exchange_logout(exchange):
-    result = {'loginStatus': 'False'}
+    result = {"status" : "logged in", "exchange" : exchange}
     if exchange in orderbooks:
-        result['loginStatus'] = str(exchanges_manager.logout_from_exchange(exchange))
+        if exchanges_manager.logout_from_exchange(exchange) == True:
+            result['status'] = "logged out"
+            result['exchange'] = exchange
     return jsonify(result)
 
 @app.route('/Logout/<exchange>')
@@ -439,11 +450,13 @@ def get_active_orderbooks(currency):
 def create_rotating_log(log_file, log_level):
     global log
     global app
-    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s %(filename)s(%(lineno)d) %(funcName)s %(threadName)s %(thread)d')
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(filename)s(%(lineno)d) %(funcName)s %(threadName)s'
+                               ' %(thread)d %(message)s')
     log = logging.getLogger('smart-trader')
     log.setLevel(log_level)
 
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s %(filename)s(%(lineno)d) %(funcName)s %(threadName)s %(thread)d')
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(filename)s(%(lineno)d) %(funcName)s %(threadName)s'
+                               ' %(thread)d %(message)s')
 
     # add a rotating handler
     handler = RotatingFileHandler(log_file, mode='a+', maxBytes=1024*180, backupCount=5)
@@ -530,7 +543,9 @@ if __name__ == '__main__':
 
     # log = logging.getLogger('werkzeug')
     # log.setLevel(log_level)
-
+    data_dir = "./data"
+    db_filename = "Transactions.data"
+    init_db.init_db(data_dir, db_filename)
     bitstamp_credentials = None
     huobi_credentials = None
     kraken_credentials = None
@@ -558,7 +573,7 @@ if __name__ == '__main__':
     except Exception as ex:
         log.error("Failed to parse exchange credentials, parameter error: {}".format(ex))
 
-    print("Connecting to orderbooks")
+    log.debug("Connecting to orderbooks")
     bitstamp_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD'}
     bitstamp_inner_logger = logging.ERROR
     if log_level is logging.DEBUG:
@@ -574,7 +589,7 @@ if __name__ == '__main__':
     if "Bitstamp" in start_exchanges:
         bitstamp_orderbook.start_orderbook()
         active_exchanges['Bitstamp'] = True
-        print("Bitstamp started")
+        log.debug("Bitstamp started")
 
     bitfinex_currencies = {'BTC-USD': 'BTCUSD', 'BCH-USD': 'BCHUSD'}
     bitfinex_fees = {'take': 0.1, 'make': 0.2}
@@ -584,7 +599,7 @@ if __name__ == '__main__':
     if "Bitfinex" in start_exchanges:
         bitfinex_orderbook.start_orderbook()
         active_exchanges['Bitfinex'] = True
-        print("Bitfinex started")
+        log.debug("Bitfinex started")
 
     gdax_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD'}
     gdax_fees = {'take': 0.3, 'make': 0}
@@ -596,7 +611,7 @@ if __name__ == '__main__':
         active_exchanges['GDAX'] = True
 
     kraken_fees = {'take': 0.26, 'make': 0.16}
-    kraken_orderbook = KrakenOrderbook(['BTC-USD', 'BCH-USD', 'BTC-EUR', 'BCH-EUR', 'LTC-EUR', 'BCH-BTC', 'LTC-BTC'],
+    kraken_orderbook = KrakenOrderbook(VALID_PAIRS,
                                        kraken_fees)
     active_exchanges['Kraken'] = False
     if "Kraken" in start_exchanges:
@@ -615,7 +630,7 @@ if __name__ == '__main__':
 
 ##############################################################
 ##############################################################
-    print("Orderbooks started")
+    log.debug("Orderbooks started")
     unified_orderbook = UnifiedOrderbook({"Bitstamp": bitstamp_orderbook,
                                           "Bitfinex": bitfinex_orderbook,
                                           "GDAX": gdax_orderbook,
@@ -650,9 +665,9 @@ if __name__ == '__main__':
                                                           'args': {'credentials': huobi_credentials,
                                                                    'orderbook': orderbooks['Huobi']}}
                                                },
-                                              "./Transactions.data",
+                                              os.path.join(data_dir, db_filename),
                                               watchdog)
     #app.run(host= '0.0.0.0', ssl_context='adhoc')
-    print(active_exchanges)
+    log.info("Active exchanges: <%s>", active_exchanges)
 
     app.run(host=bind_ip, port=listener_port)

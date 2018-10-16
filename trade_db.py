@@ -47,7 +47,6 @@ class TradeDB:
                     order_info['balance']['balances'][order_info['currency_to']]['available'],
                     order_info['ask'], order_info['bid'], parent_trade_order_id, trade_order_id, order_info['user_id'],
                     order_info['external_order_id'], order_info['user_quote_price'], order_info['currency_from'])
-                print(insert_str)
                 self.log.debug(insert_str)
                 cur = conn.cursor()
                 cur.execute(insert_str)
@@ -56,6 +55,8 @@ class TradeDB:
                 self.log.debug('Inserted order <%s> with id <%s>', str(order_info), return_order_id)
             except Exception as e:
                 self.log.error("DB error: <%s>", str(e))
+            finally:
+                conn.close()
 
             return return_order_id
 
@@ -187,9 +188,8 @@ class TradeDB:
                         'tradeOrderId': trade_order_id,
                         'parentOrderId': curr_order[14],
                         'actionType': curr_order[2],
-                        'currencyFrom': curr_order[19],
+                        'assetPair': curr_order[9] + "-" + curr_order[19],
                         'currencyFromAvailable': curr_order[10],
-                        'currencyTo': curr_order[9],
                         'currencyToAvailable': curr_order[11],
                         'size': curr_order[3],
                         'price': curr_order[4],
