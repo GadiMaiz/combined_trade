@@ -27,6 +27,7 @@ import init_db
 app = Flask(__name__)
 
 client_dir = os.path.join(app.root_path, 'client')
+VALID_PAIRS = ['BTC-USD', 'BCH-USD', 'BTC-EUR', 'BCH-EUR', 'LTC-EUR', 'BCH-BTC', 'LTC-BTC']
 
 @app.route('/OrdersTracker')
 def send_orderbook_page():
@@ -198,17 +199,22 @@ def send_order():
         user_id = request_params["userId"]                           if "userId"  in request_params else ''
         max_order_size = float(request_params["maxOrderSize"])       if "maxOrderSize" in request_params else 0
         duration_sec = int(request_params['durationSec'])            if "durationSec" in request_params else 0
-        order_status = exchanges_manager.send_order(request_params['exchanges'],
-                                                    action_type,
-                                                    float(request_params['size']),
-                                                    request_params['currencyTo'],
-                                                    price,
-                                                    request_params['currencyFrom'],
-                                                    duration_sec,
-                                                    max_order_size,
-                                                    external_order_id,
-                                                    user_quote_price,
-                                                    user_id)
+        asset_pair = request_params['assetPair']
+        if asset_pair in VALID_PAIRS:
+            asset_pair_split = asset_pair.split('-')
+            currency_to = asset_pair_split[0]
+            currency_from = asset_pair_split[1]
+            order_status = exchanges_manager.send_order(request_params['exchanges'],
+                                                        action_type,
+                                                        float(request_params['size']),
+                                                        currency_to,
+                                                        price,
+                                                        currency_from,
+                                                        duration_sec,
+                                                        max_order_size,
+                                                        external_order_id,
+                                                        user_quote_price,
+                                                        user_id)
     ####################################################
     else:
         order_status = exchanges_manager.send_order(request_params['exchanges'], request_params['action_type'],
@@ -585,7 +591,7 @@ if __name__ == '__main__':
         active_exchanges['GDAX'] = True
 
     kraken_fees = {'take': 0.26, 'make': 0.16}
-    kraken_orderbook = KrakenOrderbook(['BTC-USD', 'BCH-USD', 'BTC-EUR', 'BCH-EUR', 'LTC-EUR', 'BCH-BTC', 'LTC-BTC'],
+    kraken_orderbook = KrakenOrderbook(VALID_PAIRS,
                                        kraken_fees)
     active_exchanges['Kraken'] = False
     if "Kraken" in start_exchanges:
