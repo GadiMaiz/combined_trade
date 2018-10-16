@@ -8,7 +8,8 @@ import logging
 class KrakenOrderbook(OrderbookBase):
     MINIMUM_REFRESH_INTERVAL_SEC = 10
     KRAKEN_PAIRS_DICT = {'BTC-USD': 'XXBTZUSD', 'BCH-USD': 'BCHUSD', 'BTC-EUR': 'XXBTZEUR', 'BCH-EUR': 'BCHEUR',
-                         'LTC-EUR': 'XLTCZEUR', 'BCH-BTC': 'BCHXBT', 'LTC-BTC': 'XLTCXXBT', 'ETH-BTC': 'XETHXXBT'}
+                         'LTC-EUR': 'XLTCZEUR', 'BCH-BTC': 'BCHXBT', 'LTC-BTC': 'XLTCXXBT', 'ETH-BTC': 'XETHXXBT',
+                         'ETH-EUR': 'XETHZEUR'}
 
     def __init__(self, asset_pairs, fees, **kwargs):
         super().__init__(asset_pairs, fees)

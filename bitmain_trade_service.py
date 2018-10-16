@@ -16,13 +16,13 @@ from exchange_clients_manager import ExchangeClientManager
 from sent_orders_type import SentOrdersType
 import logging
 from logging.handlers import RotatingFileHandler
-import json
 import re
 import sys
 import getopt
 import time
 import os
 import json
+import init_db
 
 app = Flask(__name__)
 
@@ -198,7 +198,6 @@ def send_order():
         user_id = request_params["userId"]                           if "userId"  in request_params else ''
         max_order_size = float(request_params["maxOrderSize"])       if "maxOrderSize" in request_params else 0
         duration_sec = int(request_params['durationSec'])            if "durationSec" in request_params else 0
- 
         order_status = exchanges_manager.send_order(request_params['exchanges'],
                                                     action_type,
                                                     float(request_params['size']),
@@ -306,6 +305,7 @@ def exchange_login(exchange):
         log.error("Failed to login to exchange '{}': {}".format(exchange, ex))
 
     return jsonify(result)
+
 
 def login_to_exchange(exchange, params):
     try:
@@ -441,7 +441,8 @@ def get_active_orderbooks(currency):
 
 def create_rotating_log(log_file, log_level):
     logging.basicConfig(filename=log_file, level=log_level,
-                        format='%(asctime)s %(levelname)s %(message)s %(filename)s(%(lineno)d) %(funcName)s %(threadName)s %(thread)d')
+                        format='%(asctime)s %(levelname)s %(filename)s(%(lineno)d) %(funcName)s %(threadName)s'
+                               ' %(thread)d %(message)s')
     logger = logging.getLogger(__name__)
     
     # add a rotating handler
@@ -516,7 +517,9 @@ if __name__ == '__main__':
 
     # log = logging.getLogger('werkzeug')
     # log.setLevel(log_level)
-
+    data_dir = "./data"
+    db_filename = "Transactions.data"
+    init_db.init_db(data_dir, db_filename)
     bitstamp_credentials = None
     huobi_credentials = None
     kraken_credentials = None
@@ -544,7 +547,7 @@ if __name__ == '__main__':
     except Exception as ex:
         log.error("Failed to parse exchange credentials, parameter error: {}".format(ex))
 
-    print("Connecting to orderbooks")
+    log.debug("Connecting to orderbooks")
     bitstamp_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD'}
     bitstamp_inner_logger = logging.ERROR
     if log_level is logging.DEBUG:
@@ -560,7 +563,7 @@ if __name__ == '__main__':
     if "Bitstamp" in start_exchanges:
         bitstamp_orderbook.start_orderbook()
         active_exchanges['Bitstamp'] = True
-        print("Bitstamp started")
+        log.debug("Bitstamp started")
 
     bitfinex_currencies = {'BTC-USD': 'BTCUSD', 'BCH-USD': 'BCHUSD'}
     bitfinex_fees = {'take': 0.1, 'make': 0.2}
@@ -570,7 +573,7 @@ if __name__ == '__main__':
     if "Bitfinex" in start_exchanges:
         bitfinex_orderbook.start_orderbook()
         active_exchanges['Bitfinex'] = True
-        print("Bitfinex started")
+        log.debug("Bitfinex started")
 
     gdax_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD'}
     gdax_fees = {'take': 0.3, 'make': 0}
@@ -601,7 +604,7 @@ if __name__ == '__main__':
 
 ##############################################################
 ##############################################################
-    print("Orderbooks started")
+    log.debug("Orderbooks started")
     unified_orderbook = UnifiedOrderbook({"Bitstamp": bitstamp_orderbook,
                                           "Bitfinex": bitfinex_orderbook,
                                           "GDAX": gdax_orderbook,
@@ -636,9 +639,9 @@ if __name__ == '__main__':
                                                           'args': {'credentials': huobi_credentials,
                                                                    'orderbook': orderbooks['Huobi']}}
                                                },
-                                              "./Transactions.data",
+                                              os.path.join(data_dir, db_filename),
                                               watchdog)
     #app.run(host= '0.0.0.0', ssl_context='adhoc')
-    print(active_exchanges)
+    log.info("Active exchanges: <%s>", active_exchanges)
 
     app.run(host=bind_ip, port=listener_port)
