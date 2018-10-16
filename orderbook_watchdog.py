@@ -37,7 +37,8 @@ class OrderbookWatchdog():
         for curr_orderbook_dict in self._orderbooks_dict:
             if self._orderbooks_dict[curr_orderbook_dict]['orderbook'] and \
                     self._orderbooks_dict[curr_orderbook_dict]['orderbook'].is_thread_orderbook():
-                compare_orderbooks[curr_orderbook_dict] = self._get_partial_books(self._orderbooks_dict[curr_orderbook_dict])
+                compare_orderbooks[curr_orderbook_dict] = self._get_partial_books(
+                    self._orderbooks_dict[curr_orderbook_dict])
                 empty_orderbook[curr_orderbook_dict] = 0
         #restart_counter = 1
         restarts_log = []
@@ -64,6 +65,7 @@ class OrderbookWatchdog():
                     log.debug("Comparing <%s>, compare book is: <%s>",
                               curr_orderbook_dict, compare_orderbooks[curr_orderbook_dict])
                     if curr_orderbook_dict in compare_orderbooks and \
+                            self._orderbooks_dict[curr_orderbook_dict]['active'] and \
                             compare_orderbooks[curr_orderbook_dict] and \
                             current_orderbooks[curr_orderbook_dict]:
                                 #print("Comparing {}\n{}".format(curr_orderbook_dict, current_orderbooks[curr_orderbook_dict]))
@@ -81,10 +83,12 @@ class OrderbookWatchdog():
                                     #if restart_counter % 30 == 0:
                                         #restart_counter = 0
                                         #print("Restarting after some attemps")
-                                    log.error("Empty orderbook: %s", current_orderbooks[curr_orderbook_dict])
+                                    log.error("Empty orderbook: %s %s", curr_orderbook_dict,
+                                              current_orderbooks[curr_orderbook_dict])
                                     empty_orderbook[curr_orderbook_dict] += 1
                                     if empty_orderbook[curr_orderbook_dict] >= 3:
-                                        log.error("Restarting empty orderbook: %s\n%s", curr_orderbook_dict, empty_orderbook)
+                                        log.error("Restarting empty orderbook: %s\n%s", curr_orderbook_dict,
+                                                  empty_orderbook)
                                         empty_orderbook[curr_orderbook_dict] = 0
                                         restarted_orderbook = True
                                         self.restart_orderbook(curr_orderbook_dict)
