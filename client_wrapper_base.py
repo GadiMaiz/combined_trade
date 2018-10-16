@@ -379,8 +379,8 @@ class ClientWrapperBase:
         #try:
         execute_size_coin = size_coin
         price_and_spread = None
-        if relative_size:
-            price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(currency_to + "-USD")
+        # if relative_size:
+        price_and_spread = self._orderbook['orderbook'].get_current_spread_and_price(currency_to + "-" + currency_from)
         try:
             self._client_mutex.acquire()
             if action_type == 'buy' or action_type == 'buy_limit' or action_type == 'buy_market':
@@ -394,7 +394,7 @@ class ClientWrapperBase:
                                                                                    self.ORDER_EXECUTION_MAX_FACTOR))
 
                     execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
-                    execute_size_coin = max(execute_size_coin, self.minimum_order_size(currency_to + "-USD"))
+                    execute_size_coin = max(execute_size_coin, self.minimum_order_size(currency_to +  "-" + currency_from))
                     self.log.debug("size: <%f> execute_size: <%f> max_order_size: <%f>", size_coin, execute_size_coin,
                                    max_order_size)
 
@@ -421,7 +421,7 @@ class ClientWrapperBase:
                                                                                    self.ORDER_EXECUTION_MAX_FACTOR))
 
                     execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
-                    execute_size_coin = max(execute_size_coin, self.minimum_order_size(currency_to + "-USD"))
+                    execute_size_coin = max(execute_size_coin, self.minimum_order_size(currency_to +  "-" + currency_from))
                     self.log.debug("size: <%f> execute_size: <%f>, max_order_size: <%f>", size_coin, execute_size_coin,
                                    max_order_size)
 
@@ -465,8 +465,9 @@ class ClientWrapperBase:
         trade_order_id = -1
         if order_info is not None and done_size > 0:
             self._balance_changed = True
-
             order_info['balance'] = self.account_balance()
+            order_info["ask"] = price_and_spread["ask"]["price"]
+            order_info["bid"] = price_and_spread["bid"]["price"]
             trade_order_id = self._db_interface.write_order_to_db(order_info)
         return {'execution_size': done_size, 'execution_message': execution_message,
                 'order_status': order_status, 'trade_order_id': trade_order_id}
