@@ -97,7 +97,10 @@ class ExchangeClientManager():
             if exchange in active_exchanges:
                 order_exchanges.append(exchange)
         result = {'order_status': False, 'execution_size': 0, 'execution_message': 'Invalid exchanges'}
-        if len(order_exchanges) == 1 and order_exchanges[0] in self._clients:
+        if len(order_exchanges) == 0:
+            self.log.error("Can't execute order for exchanges <%s> because none of them is in the active_exchanges"
+                           " list: <%s>", exchanges, active_exchanges)
+        elif len(order_exchanges) == 1 and order_exchanges[0] in self._clients:
             #if duration_sec > 0:
             self.log.info("Sending order to <%s>", order_exchanges[0])
             result = self._clients[order_exchanges[0]]['client'].send_order(action_type, currency_to_size,
