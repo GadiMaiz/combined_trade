@@ -459,7 +459,7 @@ def create_rotating_log(log_file, log_level):
                                ' %(thread)d %(message)s')
 
     # add a rotating handler
-    handler = RotatingFileHandler(log_file, mode='a+', maxBytes=1024*180, backupCount=5)
+    handler = RotatingFileHandler(log_file, mode='a+', maxBytes=(1024 * 1024 * 5), backupCount=5)
     handler.setFormatter(formatter)
     handler.setLevel(log_level)
     log.addHandler(handler)
