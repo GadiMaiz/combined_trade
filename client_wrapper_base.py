@@ -134,7 +134,7 @@ class ClientWrapperBase:
                     self._order_complete(False, True)
                 else:
                     actions_dict = {'timed_sell': 'sell', 'timed_buy': 'buy', 'sell_limit': 'sell_limit',
-                                    'buy_limit': 'buy_limit'}
+                                    'buy_limit': 'buy_limit', "buy_market": "buy_market", "sell_market": "sell_market"}
                     self.log.info("Time order, action: <%s>, size_coin: <%f>, currency_to: <%s>, price: <%f> "
                                   "currency_from: <%s>, duration_sec: <%f>, max_order_size: <%f>",
                                   actions_dict[action_type], size_coin, currency_to, price, currency_from,

@@ -196,9 +196,9 @@ def send_order():
         external_order_id = request_params["externalOrderId"]        if 'externalOrderId' in request_params else ''
         user_quote_price = float(request_params["userQuotePrice"])   if 'userQuotePrice'  in request_params else 0
         user_id = request_params["userId"]                           if "userId"  in request_params else ''
-        max_order_size = float(request_params["maxOrderSize"])       if "maxOrderSize" in request_params else None
-        duration_sec = int(request_params['durationSec'])            if "durationSec" in request_params else None
-
+        max_order_size = float(request_params["maxOrderSize"])       if "maxOrderSize" in request_params else 0
+        duration_sec = int(request_params['durationSec'])            if "durationSec" in request_params else 0
+ 
         order_status = exchanges_manager.send_order(request_params['exchanges'],
                                                     action_type,
                                                     float(request_params['size']),
@@ -294,13 +294,16 @@ def set_client_credentials():
 
 @app.route('/exchange/<exchange>/login', methods=['POST'])
 def exchange_login(exchange):
-    result = {'loginStatus': False}
+    result = {'status': "logged out", 'exchange' : exchange}
     try:
-        request_params = json.loads(request.data)     
-        result['loginStatus'] = login_to_exchange(exchange, request_params)
+        request_params = json.loads(request.data) 
+        if login_to_exchange(exchange, request_params) == True:
+            result['status'] = 'logged in'
+            result['exchange'] = exchange
+
+                 
     except Exception as ex:
         log.error("Failed to login to exchange '{}': {}".format(exchange, ex))
-        result['loginStatus'] = False
 
     return jsonify(result)
 
@@ -347,9 +350,11 @@ def login_to_exchange(exchange, params):
 
 @app.route('/exchange/<exchange>/logout', methods=['POST'])
 def exchange_logout(exchange):
-    result = {'loginStatus': 'False'}
+    result = {"status" : "logged in", "exchange" : exchange}
     if exchange in orderbooks:
-        result['loginStatus'] = str(exchanges_manager.logout_from_exchange(exchange))
+        if exchanges_manager.logout_from_exchange(exchange) == True:
+            result['status'] = "logged out"
+            result['exchange'] = exchange
     return jsonify(result)
 
 @app.route('/Logout/<exchange>')
