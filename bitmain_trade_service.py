@@ -24,6 +24,8 @@ import time
 import os
 import json
 
+log = None
+
 app = Flask(__name__)
 
 client_dir = os.path.join(app.root_path, 'client')
@@ -435,15 +437,32 @@ def get_active_orderbooks(currency):
     return str(result)
 
 def create_rotating_log(log_file, log_level):
-    logging.basicConfig(filename=log_file, level=log_level,
-                        format='%(asctime)s %(levelname)s %(message)s %(filename)s(%(lineno)d) %(funcName)s %(threadName)s %(thread)d')
-    logger = logging.getLogger(__name__)
-    
+    global log
+    global app
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s %(filename)s(%(lineno)d) %(funcName)s %(threadName)s %(thread)d')
+    log = logging.getLogger('smart-trader')
+    log.setLevel(log_level)
+
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s %(filename)s(%(lineno)d) %(funcName)s %(threadName)s %(thread)d')
+
     # add a rotating handler
-    handler = RotatingFileHandler(log_file, maxBytes=(1024 * 512), backupCount=5)
-    logger.addHandler(handler)
+    handler = RotatingFileHandler(log_file, mode='a+', maxBytes=1024*180, backupCount=5)
+    handler.setFormatter(formatter)
+    handler.setLevel(log_level)
+    log.addHandler(handler)
+
+    # set flask logger
+    flask_logger = logging.getLogger('werkzeug')
+    if log_level is logging.DEBUG:
+        flask_logger.setLevel(log_level)
+    else:
+        flask_logger.setLevel(logging.ERROR)
+
+    flask_logger.addHandler(handler)
+
 
 if __name__ == '__main__':
+
     argv = sys.argv[1:]
     bind_ip = None
     bitstamp_user = ''
@@ -504,7 +523,7 @@ if __name__ == '__main__':
         log_file = os.path.join(log_dir, 'bitmain_trade_service.log')
         create_rotating_log(log_file, log_level)
 
-    log = logging.getLogger(__name__)
+    # log = logging.getLogger('smart-trader')
     #log.addHandler(handler)
     log.info("=== Starting ===")
     log.debug("args: %s", str(argv))

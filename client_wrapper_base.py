@@ -34,7 +34,7 @@ class ClientWrapperBase:
     MINIMUM_REMAINING_SIZE = 0.0001
 
     def __init__(self, orderbook, db_interface, clients_manager):
-        self.log = logging.getLogger(__name__)
+        self.log = logging.getLogger('smart-trader')
         self._timed_command_listener = None
         self._timed_take_order_thread = None
         self._timed_make_order_thread = None

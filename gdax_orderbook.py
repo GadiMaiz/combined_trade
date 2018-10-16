@@ -16,7 +16,7 @@ class GdaxOrderbook(OrderbookBase):
         self._orderbook = None
         self._init_complete = False
         self._is_alive = False
-        self._log = logging.getLogger(__name__)
+        self._log = logging.getLogger('smart-trader')
         if GdaxOrderbook._event_loop is None:
             GdaxOrderbook._event_loop = asyncio.get_event_loop()
 

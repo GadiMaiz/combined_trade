@@ -16,7 +16,7 @@ class KrakenOrderbook(OrderbookBase):
         self._last_orderbook_timestamp = dict()
         self._last_trades_timestamp = dict()
         self._orderbook_mutex = Lock()
-        self._log = logging.getLogger(__name__)
+        self._log = logging.getLogger('smart-trader')
 
     def _start(self):
         pass

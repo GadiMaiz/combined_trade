@@ -10,7 +10,7 @@ import pusherclient
 from base import WSSAPI
 
 # Init Logging Facilities
-log = logging.getLogger(__name__)
+log = logging.getLogger('smart-trader')
 
 
 class BitstampWSS(WSSAPI):

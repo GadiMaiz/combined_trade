@@ -9,7 +9,7 @@ import huobi  # TODO - this dependency came from pip install huobi , maybe it sh
 class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
     def __init__(self, credentials, orderbook, db_interface, clients_manager, supportedCurrencies = {'btc','usdt','bch','ltc'}):
         super().__init__(orderbook, db_interface, clients_manager)
-        self.log = logging.getLogger(__name__)
+        self.log = logging.getLogger('smart-trader')
         self._huobi_client = None
         self._signed_in_user = ""
         self._api_key = ""
