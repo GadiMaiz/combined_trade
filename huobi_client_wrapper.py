@@ -104,7 +104,7 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
         self.log.debug("account ID = " + str(account_id))
         execute_result = { 'order_status': False}
         if account_id == None:
-            print ('ERROR empty account Id') #TODO  error handling
+            self.log.info('ERROR empty account Id')
             execute_result['status'] = 'Error'
             execute_result['order_status'] = True
             return execute_result
@@ -134,7 +134,7 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
                 execute_result['status'] = 'Finished'
                 execute_result['order_status'] = True   
         except Exception as e:
-            self.log.error("%s %s", action_type, e)
+            self.log.error("execution failed ,%s %s", action_type, e)
             execute_result['status'] = 'Error'
             execute_result['order_status'] = True
         return execute_result

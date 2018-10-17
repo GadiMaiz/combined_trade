@@ -117,14 +117,13 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
                         self.log.error("Unknown order status: <%s>", exchange_order_status)
                         execute_result['status'] = "Error"
                 else:
-                    if self._cancel_order(execute_result['id']):
-                        self.log.info("Cancelled")
+                    if self._cancel_order(execute_result['id'], False):
+                        self.log.error("order <%s> was Cancelled, order execution failed", execute_result['id'])
                         execute_result['status'] = "Cancelled"
                     else:
-                        self.log.info("Can't cancel order <%s> , order done successfully", execute_result['id'])
                         execute_result['order_status'] = True
                         execute_result['status'] = 'Finished'
-                        self.log.debug("Order finished")
+                        self.log.info("order <%s> finished successfully", execute_result['id'])
                         exchange_order_status = self.order_status(execute_result['id'])
                         if execute_result['id'] not in exchange_order_status:
                             # We don't know the price so we set the limit price as a speculation
@@ -185,7 +184,7 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
     def create_order_tracker(self, order, orderbook, order_info, crypto_type):
         return KrakenOrderTracker(order, orderbook, self, order_info, crypto_type)
 
-    def _cancel_order(self, order_id):
+    def _cancel_order(self, order_id, expect_to_be_canceled = True):
         cancel_status = False
         if self._kraken_client is not None and self._signed_in_user != "":
             try:
@@ -193,9 +192,10 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
                 self.log.debug("Cancel status: <%s>", cancel_status)
                 print("Cancel status:", cancel_status)
             except Exception as e:
-                self.log.error("Cancel exception: %s", str(e))
-                print("Kraken cancel error:", e, cancel_status)
-                print ("Cancel exception: <{}>".format(e))
+                if expect_to_be_cancelled:
+                    self.log.error("Cancel exception: %s", str(e))
+                    print("Kraken cancel error:", e, cancel_status)
+                    print ("Cancel exception: <{}>".format(e))
         return cancel_status
 
     def exchange_accuracy(self):
