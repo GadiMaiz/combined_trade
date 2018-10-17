@@ -481,7 +481,7 @@ if __name__ == '__main__':
     bitstamp_secret = ''
     listener_port = 5000
     frozen_orderbook_timeout_sec = 60
-    log_level = logging.ERROR
+    log_level = logging.INFO
     bitstamp_key = None
     start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken', 'Huobi']
     open_log = True

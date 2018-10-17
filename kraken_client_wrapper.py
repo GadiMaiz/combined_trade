@@ -118,9 +118,10 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
                         execute_result['status'] = "Error"
                 else:
                     if self._cancel_order(execute_result['id']):
+                        self.log.info("Cancelled")
                         execute_result['status'] = "Cancelled"
                     else:
-                        self.log.info("Can't cancel order <%s>, order done successfully", execute_result['id'])
+                        self.log.info("Can't cancel order <%s> , order done successfully", execute_result['id'])
                         execute_result['order_status'] = True
                         execute_result['status'] = 'Finished'
                         self.log.debug("Order finished")
