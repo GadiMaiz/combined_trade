@@ -20,17 +20,15 @@ types:
 /exchange/{exchange}:
   /orderbook:
     description: Exchange name {exchange} or "Unified" for a unified orderbook
-    /{currency_to}:
-      description: Currency to buy / sell
-      /{currency_in}:
-        description: Currency that the orders are traded in
-        get:
-          description: Gets the current orderbook of an exchange
-          responses: 
-            200:
-              body: 
-                application/json:
-                  type: Orderbook
+    /{assetPair}:
+      description: Orderbook's asset pair
+      get:
+        description: Gets the current orderbook of an exchange
+        responses: 
+          200:
+            body: 
+              application/json:
+                type: Orderbook
   /login:
     description: Login to an exchange with API key credentials
     post:
@@ -94,8 +92,7 @@ types:
             "exchanges": ["Kraken", "Bitstamp"],
             "actionType": "buy",
             "size": 0.1,
-            "currencyTo": "BTC",
-            "currencyFrom": "EUR",
+            "assetPair": "BTC-EUR",
             "externalOrderId": "asdf23asd",
             "userId": "sd432g",
             "userQuotePrice": 6500
@@ -133,19 +130,18 @@ types:
                     "exchange": "Bitfinex",
                     "actionType": "buy",
                     "size": 0.1,
-                    "price": 6581.8,
                     "exchangeOrderId": "17869737638",
-                    "status": "Finished",
-                    "orderTime": 2018-10-10 10:05:13.384,
-                    "timedOrder": false,
-                    "currencyTo": "BTC",
-                    "currencyFrom": "EUR",
+                    "assetPair": "BTC-EUR",
                     "currencyFromAvailable": 3522.28410189,
                     "currencyToAvailable": 0.10772093,
                     "ask": 0.0,
                     "bid": 0.0,
                     "externalOrderId": "1234A",
                     "userId": "ABC",
+                    "orderTime": 2018-10-10T10:05:13.38Z,                    
+                    "price": 6581.8,                    
+                    "status": "Finished",                    
+                    "timedOrder": false,                    
                     "tradeOrderId": "850",
                     "userQuotePrice": 6500
                   }
