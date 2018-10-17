@@ -460,12 +460,15 @@ class ClientWrapperBase:
                 self.log.info("Order done, size is <%f>", done_size)
         
         trade_order_id = -1
-        if order_info is not None and done_size > 0:
-            self._balance_changed = True
-            order_info['balance'] = self.account_balance()
+        if order_info is not None:
+            if done_size > 0:
+                self._balance_changed = True
+                order_info['balance'] = self.account_balance()
             order_info["ask"] = price_and_spread["ask"]["price"]
             order_info["bid"] = price_and_spread["bid"]["price"]
             trade_order_id = self._db_interface.write_order_to_db(order_info)
+
+
         return {'execution_size': done_size, 'execution_message': execution_message,
                 'order_status': order_status, 'trade_order_id': trade_order_id}
 

@@ -9,7 +9,7 @@ import huobi  # TODO - this dependency came from pip install huobi , maybe it sh
 class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
     def __init__(self, credentials, orderbook, db_interface, clients_manager, supportedCurrencies = {'btc','usdt','bch','ltc'}):
         super().__init__(orderbook, db_interface, clients_manager)
-        self.log = logging.getLogger('smart-trader')
+        self.log = logging.getLogger(__name__)
         self._huobi_client = None
         self._signed_in_user = ""
         self._api_key = ""
@@ -127,8 +127,10 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
                                 'order_status': False}
             
             if orderStatus.data['data']['state'] == 'canceled':
+                self.log.info('order - ' + exchange_result.data['data'] + ' was Cancelled')
                 execute_result['status'] = "Cancelled"
             else:
+                self.log.info('order - ' + exchange_result.data['data'] + ' Finished')
                 execute_result['status'] = 'Finished'
                 execute_result['order_status'] = True   
         except Exception as e:

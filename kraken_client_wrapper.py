@@ -108,19 +108,19 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
                         execute_result['executed_price_usd'] = \
                             float(exchange_order_status[execute_result['id']]['price'])
                     if exchange_order_status[execute_result['id']]['status'] == 'open':
-                        self.log.debug("Status is open")
+                        self.log.info("Status is open")
                         execute_result['status'] = "Open"
                     elif exchange_order_status[execute_result['id']]['status'] == 'closed':
-                        self.log.debug("Status is closed, finishing order")
+                        self.log.info("Status is closed, finishing order")
                         execute_result['status'] = "Finished"
                     else:
-                        self.log.debug("Unknown order status: <%s>", exchange_order_status)
+                        self.log.error("Unknown order status: <%s>", exchange_order_status)
                         execute_result['status'] = "Error"
                 else:
                     if self._cancel_order(execute_result['id']):
                         execute_result['status'] = "Cancelled"
                     else:
-                        self.log.debug("Can't cancel order <%s>, order done", execute_result['id'])
+                        self.log.info("Can't cancel order <%s>, order done successfully", execute_result['id'])
                         execute_result['order_status'] = True
                         execute_result['status'] = 'Finished'
                         self.log.debug("Order finished")
