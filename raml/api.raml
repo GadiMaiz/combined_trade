@@ -41,7 +41,7 @@ types:
         200:
           body:
             application/json:
-              type: LoginStatus
+              example: { "status": "logged in", "exchange" : "Huobi"  }
   
   /logout:
     post:
@@ -51,7 +51,7 @@ types:
         200:
           body:
             application/json:
-              type: LoginStatus
+              example: { "status": "logged out", "exchange" : "Huobi" }
 
   /accountBalance:
     get:
