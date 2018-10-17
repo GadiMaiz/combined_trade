@@ -403,11 +403,9 @@ class ClientWrapperBase:
                     self.log.info("Buying <%f> <%s>-<%s> with limit of <%f>", execute_size_coin, currency_to,
                                   currency_from, price)
                     if action_type == 'buy':
-                        sent_order = self.buy_immediate_or_cancel(execute_size_coin, price, currency_from,
-                                                                  self.CRYPTO_CURRENCIES_DICT[currency_to])
+                        sent_order = self.buy_immediate_or_cancel(execute_size_coin, price, currency_from, currency_to)
                     elif action_type == 'buy_limit':
-                        sent_order = self.buy_limit(execute_size_coin, price,
-                                                    self.CRYPTO_CURRENCIES_DICT[currency_to])
+                        sent_order = self.buy_limit(execute_size_coin, price, currency_from, currency_to)
                     elif action_type == 'buy_market':
                         sent_order = self.buy_market(execute_size_coin, currency_from, currency_to)
                     self.log.debug("sent order: <%s>", str(sent_order))
@@ -430,12 +428,10 @@ class ClientWrapperBase:
                     self.log.info("Selling <%f> <%s>-<%s> with limit of <%f>", execute_size_coin, currency_to,
                                   currency_from, price)
                     if action_type == 'sell':
-                        sent_order = self.sell_immediate_or_cancel(execute_size_coin, price, currency_from,
-                                                                   self.CRYPTO_CURRENCIES_DICT[currency_to])
+                        sent_order = self.sell_immediate_or_cancel(execute_size_coin, price, currency_from, currency_to)
                     elif action_type == 'sell_limit':
                         print("Sell limit {} for {}".format(execute_size_coin, price))
-                        sent_order = self.sell_limit(execute_size_coin, price, currency_from,
-                                                     self.CRYPTO_CURRENCIES_DICT[currency_to])
+                        sent_order = self.sell_limit(execute_size_coin, price, currency_from, currency_to)
                     elif action_type == 'sell_market':
                         sent_order = self.sell_market(execute_size_coin, currency_from, currency_to)
                     self.log.debug("sent order: <%s>", str(sent_order))
@@ -450,6 +446,7 @@ class ClientWrapperBase:
         finally:
             self._client_mutex.release()
         order_status = False
+        done_size = 0
         if sent_order is not None:
             order_id = sent_order.get("id")
             order_info['exchange_id'] = order_id
@@ -458,10 +455,10 @@ class ClientWrapperBase:
             order_info['price'] = sent_order['executed_price_usd']
             order_status = sent_order['order_status']
 
-        done_size = 0
-        if order_info['status'] == 'Finished':
-            done_size = execute_size_coin
-        self.log.info("Order done, size is <%f>", done_size)
+            if order_info['status'] == 'Finished':
+                done_size = execute_size_coin
+                self.log.info("Order done, size is <%f>", done_size)
+        
         trade_order_id = -1
         if order_info is not None and done_size > 0:
             self._balance_changed = True

@@ -66,9 +66,8 @@ def get_orderbook_str(exchange, currency):
     return result
 
 
-@app.route('/exchange/<exchange>/orderbook/<currency_to>/<currency_from>')
-def get_exchange_orderbook(exchange, currency_to, currency_from):
-    asset_pair = currency_to + "-" + currency_from
+@app.route('/exchange/<exchange>/orderbook/<asset_pair>')
+def get_exchange_orderbook(exchange, asset_pair):
     orders = get_orderbook(exchange, asset_pair)
     order_types = ['asks', 'bids']
     for order_type in order_types:
@@ -80,8 +79,7 @@ def get_exchange_orderbook(exchange, currency_to, currency_from):
         del orders['rate']
     if 'currency' in orders:
         del orders['currency']
-    orders['currencyTo'] = currency_to
-    orders['currencyFrom'] = currency_from
+    orders['assetPair'] = asset_pair
     if 'average_spread' in orders:
         average_spread = orders['average_spread']
         del orders['average_spread']
@@ -94,7 +92,7 @@ def get_exchange_orderbook(exchange, currency_to, currency_from):
             del last_price['type']
             last_price['actionType'] = action_type
         orders['lastPrice'] = last_price
-    return str(orders)
+    return jsonify(orders)
 
 
 def get_orderbook(exchange, currency):
@@ -136,7 +134,7 @@ def get_all_accounts_balance_force():
 @app.route('/exchange/<exchange>/accountBalance')
 def get_exchange_balance(exchange):
     account_balance = exchanges_manager.exchange_balance(exchange, False)
-    return str(account_balance)
+    return jsonify(account_balance)
 
 
 @app.route('/Transactions/<exchange>')
@@ -190,7 +188,7 @@ def send_order():
         action_type = None
         price = None
         if 'price' in request_params:
-            price = request_params['price']
+            price = float(request_params['price'])
             action_type =  request_params['actionType'] + '_limit'
         else:
             price = 0
@@ -459,7 +457,7 @@ def create_rotating_log(log_file, log_level):
                                ' %(thread)d %(message)s')
 
     # add a rotating handler
-    handler = RotatingFileHandler(log_file, mode='a+', maxBytes=1024*180, backupCount=5)
+    handler = RotatingFileHandler(log_file, mode='a+', maxBytes=(1024 * 1024 * 5), backupCount=5)
     handler.setFormatter(formatter)
     handler.setLevel(log_level)
     log.addHandler(handler)
