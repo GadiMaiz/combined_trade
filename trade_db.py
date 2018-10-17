@@ -7,7 +7,7 @@ import datetime
 class TradeDB:
     def __init__(self, db_file):
         self._db_file = db_file
-        self.log = logging.getLogger(__name__)
+        self.log = logging.getLogger('smart-trader')
 
     def create_db_connection(self, db_file):
         """ create a database connection to a SQLite database """

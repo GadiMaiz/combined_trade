@@ -21,7 +21,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
     def __init__(self, clients, orderbook, db_interface, watchdog, sent_order_identifier, clients_manager):
         self._clients = clients
         super().__init__(orderbook, db_interface, clients_manager)
-        self.log = logging.getLogger(__name__)
+        self.log = logging.getLogger('smart-trader')
         self._watchdog = watchdog
         self._sent_order_identifier = sent_order_identifier
 

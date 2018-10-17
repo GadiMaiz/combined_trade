@@ -6,7 +6,7 @@ import psutil
 import os
 import threading
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('smart-trader')
 
 
 class OrderbookWatchdog():

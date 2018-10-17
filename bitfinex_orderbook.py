@@ -3,7 +3,7 @@ from threading import Thread
 from orderbook_base import OrderbookBase
 import logging
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('smart-trader')
 
 class BitfinexOrderbook(OrderbookBase):
     symbols_dict = {'BTCUSD': 'BTC', 'BCHUSD': 'BCH', 'BTC-USD': 'BTC', 'BCH-USD': 'BCH'}

@@ -33,7 +33,7 @@ class OrderbookBase:
             self._live_trades[curr_asset_pair] = []
             self._rate_trackers[curr_asset_pair] = {'buy': ExecutionRateTracker(),
                                                     'sell': ExecutionRateTracker()}
-        self._log = logging.getLogger(__name__)
+        self._log = logging.getLogger('smart-trader')
         self._orders_for_listening = {}
 
         for curr_asset_pair in self.get_asset_pairs():

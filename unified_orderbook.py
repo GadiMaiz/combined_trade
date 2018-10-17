@@ -10,7 +10,7 @@ class UnifiedOrderbook:
         self._orderbooks = orderbooks
         self._is_thread_orderbook = False
         self._orders_mutex = Lock()
-        self._log = logging.getLogger(__name__)
+        self._log = logging.getLogger('smart-trader')
 
     def set_orderbook(self, exchange, orderbook):
         try:
