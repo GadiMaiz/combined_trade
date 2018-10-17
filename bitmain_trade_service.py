@@ -188,7 +188,7 @@ def send_order():
         action_type = None
         price = None
         if 'price' in request_params:
-            price = request_params['price']
+            price = float(request_params['price'])
             action_type =  request_params['actionType'] + '_limit'
         else:
             price = 0
