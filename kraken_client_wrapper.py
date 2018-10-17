@@ -175,10 +175,10 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
     def exchange_fee(self, crypto_type):
         return 0.2
 
-    def buy_limit(self, execute_size_coin, price, crypto_type, currency_from, currency_to):
+    def buy_limit(self, execute_size_coin, price, currency_from, currency_to):
         return self._execute_exchange_order("buy_limit", False, execute_size_coin, currency_from, currency_to, price)
 
-    def sell_limit(self, execute_size_coin, price, crypto_type, currency_from, currency_to):
+    def sell_limit(self, execute_size_coin, price, currency_from, currency_to):
         return self._execute_exchange_order("sell_limit", False, execute_size_coin, currency_from, currency_to, price)
 
     def create_order_tracker(self, order, orderbook, order_info, crypto_type):
