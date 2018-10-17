@@ -64,9 +64,8 @@ def get_orderbook_str(exchange, currency):
     return result
 
 
-@app.route('/exchange/<exchange>/orderbook/<currency_to>/<currency_from>')
-def get_exchange_orderbook(exchange, currency_to, currency_from):
-    asset_pair = currency_to + "-" + currency_from
+@app.route('/exchange/<exchange>/orderbook/<asset_pair>')
+def get_exchange_orderbook(exchange, asset_pair):
     orders = get_orderbook(exchange, asset_pair)
     order_types = ['asks', 'bids']
     for order_type in order_types:
@@ -78,8 +77,7 @@ def get_exchange_orderbook(exchange, currency_to, currency_from):
         del orders['rate']
     if 'currency' in orders:
         del orders['currency']
-    orders['currencyTo'] = currency_to
-    orders['currencyFrom'] = currency_from
+    orders['assetPair'] = asset_pair
     if 'average_spread' in orders:
         average_spread = orders['average_spread']
         del orders['average_spread']
@@ -92,7 +90,7 @@ def get_exchange_orderbook(exchange, currency_to, currency_from):
             del last_price['type']
             last_price['actionType'] = action_type
         orders['lastPrice'] = last_price
-    return str(orders)
+    return jsonify(orders)
 
 
 def get_orderbook(exchange, currency):
@@ -134,7 +132,7 @@ def get_all_accounts_balance_force():
 @app.route('/exchange/<exchange>/accountBalance')
 def get_exchange_balance(exchange):
     account_balance = exchanges_manager.exchange_balance(exchange, False)
-    return str(account_balance)
+    return jsonify(account_balance)
 
 
 @app.route('/Transactions/<exchange>')
