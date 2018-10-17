@@ -14,7 +14,7 @@ class HuobiOrderbook(OrderbookBase):
 
     def __init__(self, asset_pairs, fees, **kwargs):
         super().__init__(asset_pairs, fees)
-        self.log = logging.getLogger(__name__)
+        self.log = logging.getLogger('smart-trader')
         self._listener_thread = None
         self._listener_ws = None
         self._is_running = False

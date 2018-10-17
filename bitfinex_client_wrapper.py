@@ -6,7 +6,7 @@ from order_tracker import BitfinexOrderTracker
 class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
     def __init__(self, credentials, orderbook, db_interface, clients_manager):
         super().__init__(orderbook, db_interface, clients_manager)
-        self.log = logging.getLogger(__name__)
+        self.log = logging.getLogger('smart-trader')
         self._bitfinex_client = None
         self._signed_in_user = ""
         self.set_credentials(credentials)

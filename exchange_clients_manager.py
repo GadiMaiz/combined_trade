@@ -7,7 +7,7 @@ import time
 
 class ExchangeClientManager():
     def __init__(self, exchanges_params, db_file, watchdog):
-        self.log = logging.getLogger(__name__)
+        self.log = logging.getLogger('smart-trader')
         self._reserved_balances = {'BTC': 0, 'BCH': 0, 'USD': 0}
         self._clients = dict()
         self._db_interface = TradeDB(db_file)
