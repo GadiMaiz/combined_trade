@@ -128,6 +128,17 @@ class TradeDB:
                             where_clause += ', '
                         where_clause += '\'{}\''.format(action_type)
                 where_clause += ') '
+            
+            if 'userId' in filter:
+                if where_clause != "":
+                    where_clause += " AND "
+                where_clause += 'user_id = \'{}\''.format(filter['userId'])
+            
+            if 'externalOrderId' in filter:
+                if where_clause != "":
+                    where_clause += " AND "
+                where_clause += 'external_order_id = \'{}\''.format(filter['externalOrderId'])
+
         if where_clause != "":
             where_clause = "WHERE {}".format(where_clause)
         query = "SELECT * FROM (SELECT rowid, * FROM sent_orders ORDER BY datetime(order_time) DESC) " + where_clause + \
