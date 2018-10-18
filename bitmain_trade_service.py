@@ -29,7 +29,7 @@ log = None
 app = Flask(__name__)
 
 client_dir = os.path.join(app.root_path, 'client')
-VALID_PAIRS = ['BTC-USD', 'BCH-USD', 'BTC-EUR', 'BCH-EUR', 'LTC-EUR', 'BCH-BTC', 'LTC-BTC']
+VALID_PAIRS = ['BTC-USD', 'BCH-USD', 'BTC-EUR', 'BCH-EUR', 'LTC-EUR', 'BCH-BTC', 'LTC-BTC', 'LTC-USD']
 
 @app.route('/OrdersTracker')
 def send_orderbook_page():
@@ -572,7 +572,7 @@ if __name__ == '__main__':
         log.error("Failed to parse exchange credentials, parameter error: {}".format(ex))
 
     log.debug("Connecting to orderbooks")
-    bitstamp_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD'}
+    bitstamp_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD', 'LTC-USD': 'LTC-USD'}
     bitstamp_inner_logger = logging.ERROR
     if log_level is logging.DEBUG:
         bitstamp_inner_logger = logging.DEBUG
@@ -580,7 +580,8 @@ if __name__ == '__main__':
     if bitstamp_key is not None:
         bitstamp_args['key'] = bitstamp_key
     bitstamp_fees = {'take': 0.25, 'make': 0.25}
-    bitstamp_orderbook = BitstampOrderbook(asset_pairs=[bitstamp_currencies['BTC-USD'], bitstamp_currencies['BCH-USD']],
+    bitstamp_orderbook = BitstampOrderbook(asset_pairs=[bitstamp_currencies['BTC-USD'], bitstamp_currencies['BCH-USD'],
+                                                        bitstamp_currencies['LTC-USD']],
                                            fees=bitstamp_fees, **bitstamp_args)
     active_exchanges = dict()
     active_exchanges['Bitstamp'] = False
@@ -649,7 +650,7 @@ if __name__ == '__main__':
                   'Unified': {'orderbook': unified_orderbook, 'currencies_dict': bitstamp_currencies,
                               'creator': UnifiedOrderbook, 'active': True, 'fees': dict()}}
     watchdog = OrderbookWatchdog(orderbooks, frozen_orderbook_timeout_sec)
-    watchdog.start()
+    #watchdog.start()
     exchanges_manager = ExchangeClientManager({'Bitstamp': {'creator': BitstampClientWrapper,
                                                             'args': {'credentials': bitstamp_credentials,
                                                                      'orderbook': orderbooks['Bitstamp']}},
