@@ -184,7 +184,7 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
     def create_order_tracker(self, order, orderbook, order_info, currency_from, currency_to):
         return KrakenOrderTracker(order, orderbook, self, order_info, currency_from, currency_to)
 
-    def _cancel_order(self, order_id, expect_to_be_canceled = True):
+    def _cancel_order(self, order_id, expect_to_be_cancelled=True):
         cancel_status = False
         if self._kraken_client is not None and self._signed_in_user != "":
             try:
@@ -194,8 +194,8 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
             except Exception as e:
                 if expect_to_be_cancelled:
                     self.log.error("Cancel exception: %s", str(e))
-                    print("Kraken cancel error:", e, cancel_status)
-                    print ("Cancel exception: <{}>".format(e))
+                else:
+                    self.log.debug("Cancel exception: %s", str(e))
         return cancel_status
 
     def exchange_accuracy(self):
