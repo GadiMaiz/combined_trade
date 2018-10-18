@@ -55,6 +55,7 @@ class TradeDB:
                 self.log.debug('Inserted order <%s> with id <%s>', str(order_info), return_order_id)
             except Exception as e:
                 self.log.error("DB error: <%s>", str(e))
+                print("DB error:", str(e))
             finally:
                 conn.close()
 
