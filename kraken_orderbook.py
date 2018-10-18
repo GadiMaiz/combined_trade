@@ -18,56 +18,58 @@ class KrakenOrderbook(OrderbookBase):
         self._last_trades_timestamp = dict()
         self._orderbook_mutex = Lock()
         self._log = logging.getLogger('smart-trader')
+        self._started = False
 
     def _start(self):
-        pass
+        self._started = True
 
     def _stop(self):
-        pass
+        self._started = False
 
     def _get_orderbook_from_exchange(self, asset_pair, size):
-        kraken_pair = asset_pair
-        if asset_pair in KrakenOrderbook.KRAKEN_PAIRS_DICT:
-            kraken_pair = KrakenOrderbook.KRAKEN_PAIRS_DICT[asset_pair]
-
-        curr_time = time.time()
-        orders = None
-        self._orderbook_mutex.acquire()
-        try:
-            if kraken_pair in self._last_orderbooks and kraken_pair in self._last_orderbook_timestamp and curr_time - \
-                    self._last_orderbook_timestamp[kraken_pair] <= KrakenOrderbook.MINIMUM_REFRESH_INTERVAL_SEC:
-                orders = self._last_orderbooks[kraken_pair]
-            else:
-                try:
-                    k = KrakenREST()
-                    orders_bytes = k.query('GET', 'public/Depth', params={'pair': kraken_pair})
-                    orders = json.loads(orders_bytes.content)
-                    self._last_orderbook_timestamp[kraken_pair] = curr_time
-                    self._last_orderbooks[kraken_pair] = orders
-                except Exception as e:
-                    self._log.error("Kraken exception:", e)
-                    if kraken_pair in self._last_orderbooks[kraken_pair]:
-                        orders = self._last_orderbooks[kraken_pair]
-                    else:
-                        orders = {"result": {kraken_pair: {'asks': [], 'bids': []}}}
-        finally:
-            self._orderbook_mutex.release()
         result = {
             'asks': [],
             'bids': [],
         }
+        if self._started:
+            kraken_pair = asset_pair
+            if asset_pair in KrakenOrderbook.KRAKEN_PAIRS_DICT:
+                kraken_pair = KrakenOrderbook.KRAKEN_PAIRS_DICT[asset_pair]
 
-        for i in range(min(size, len(orders["result"][kraken_pair]["asks"]))):
-            result['asks'].append({"price": float(orders["result"][kraken_pair]["asks"][i][0]),
-                                   "size": float(orders["result"][kraken_pair]["asks"][i][1]),
-                                   'source': "Kraken"})
+            curr_time = time.time()
+            orders = None
+            self._orderbook_mutex.acquire()
+            try:
+                if kraken_pair in self._last_orderbooks and kraken_pair in self._last_orderbook_timestamp and curr_time - \
+                        self._last_orderbook_timestamp[kraken_pair] <= KrakenOrderbook.MINIMUM_REFRESH_INTERVAL_SEC:
+                    orders = self._last_orderbooks[kraken_pair]
+                else:
+                    try:
+                        k = KrakenREST()
+                        orders_bytes = k.query('GET', 'public/Depth', params={'pair': kraken_pair})
+                        orders = json.loads(orders_bytes.content)
+                        self._last_orderbook_timestamp[kraken_pair] = curr_time
+                        self._last_orderbooks[kraken_pair] = orders
+                    except Exception as e:
+                        self._log.error("Kraken exception:", e)
+                        if kraken_pair in self._last_orderbooks[kraken_pair]:
+                            orders = self._last_orderbooks[kraken_pair]
+                        else:
+                            orders = {"result": {kraken_pair: {'asks': [], 'bids': []}}}
+            finally:
+                self._orderbook_mutex.release()
 
-        for i in range(min(size, len(orders["result"][kraken_pair]["bids"]))):
-            result['bids'].append({"price": float(orders["result"][kraken_pair]["bids"][i][0]),
-                                   "size": float(orders["result"][kraken_pair]["bids"][i][1]),
-                                   'source': "Kraken"})
+            for i in range(min(size, len(orders["result"][kraken_pair]["asks"]))):
+                result['asks'].append({"price": float(orders["result"][kraken_pair]["asks"][i][0]),
+                                       "size": float(orders["result"][kraken_pair]["asks"][i][1]),
+                                       'source': "Kraken"})
 
-        #print("Get Kraken book:", asset_pair, size, result)
+            for i in range(min(size, len(orders["result"][kraken_pair]["bids"]))):
+                result['bids'].append({"price": float(orders["result"][kraken_pair]["bids"][i][0]),
+                                       "size": float(orders["result"][kraken_pair]["bids"][i][1]),
+                                       'source': "Kraken"})
+
+            #print("Get Kraken book:", asset_pair, size, result)
         return result
 
     def get_last(self, pair):
