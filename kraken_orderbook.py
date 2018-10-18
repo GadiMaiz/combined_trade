@@ -92,7 +92,7 @@ class KrakenOrderbook(OrderbookBase):
                                                          'type': type,
                                                          'time': last_trade[2]}
                 except Exception as e:
-                    print("Kraken orderbook exception:", e)
+                    self._log.error("Kraken orderbook exception: <%s>", e)
                     if kraken_pair not in self._last_trades_timestamp:
                         self._last_trade[kraken_pair] = {'price': 0,
                                                          'type': "",
