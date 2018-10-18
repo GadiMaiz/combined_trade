@@ -143,9 +143,9 @@ class BitfinexClientWrapper(client_wrapper_base.ClientWrapperBase):
         return self._execute_exchange_order("sell", execute_size_coin, price, currency_from, currency_to,
                                             "exchange limit")
 
-    def create_order_tracker(self, order, orderbook, order_info, crypto_type):
+    def create_order_tracker(self, order, orderbook, order_info, currency_from, currency_to):
         order['id'] = int(order['id'])
-        return BitfinexOrderTracker(order, orderbook, self, order_info, crypto_type)
+        return BitfinexOrderTracker(order, orderbook, self, order_info, currency_from, currency_to)
 
     def exchange_accuracy(self):
         return '1e-1'
