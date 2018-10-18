@@ -47,7 +47,7 @@ class TradeDB:
                     order_info['balance']['balances'][order_info['currency_to']]['available'],
                     order_info['ask'], order_info['bid'], parent_trade_order_id, trade_order_id, order_info['user_id'],
                     order_info['external_order_id'], order_info['user_quote_price'], order_info['currency_from'])
-                self.log.debug(insert_str)
+                self.log.debug("Insert command: <%s>", insert_str)
                 cur = conn.cursor()
                 cur.execute(insert_str)
                 conn.commit()
@@ -55,6 +55,7 @@ class TradeDB:
                 self.log.debug('Inserted order <%s> with id <%s>', str(order_info), return_order_id)
             except Exception as e:
                 self.log.error("DB error: <%s>", str(e))
+                print("DB error:", str(e))
             finally:
                 conn.close()
 

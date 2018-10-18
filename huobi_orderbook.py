@@ -21,7 +21,7 @@ class HuobiOrderbook(OrderbookBase):
         self._current_orderbook = {}
 
     def _start(self):
-        self.log.info('start huobi exchange')
+        self.log.debug('start huobi exchange')
         while(True):
             try:
                 self._listener_ws = create_connection("wss://api.huobipro.com/ws")

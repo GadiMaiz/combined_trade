@@ -572,7 +572,7 @@ if __name__ == '__main__':
         log.error("Failed to parse exchange credentials, parameter error: {}".format(ex))
 
     log.debug("Connecting to orderbooks")
-    bitstamp_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD'}
+    bitstamp_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD', 'LTC-USD': 'LTC-USD'}
     bitstamp_inner_logger = logging.ERROR
     if log_level is logging.DEBUG:
         bitstamp_inner_logger = logging.DEBUG
@@ -649,7 +649,7 @@ if __name__ == '__main__':
                   'Unified': {'orderbook': unified_orderbook, 'currencies_dict': bitstamp_currencies,
                               'creator': UnifiedOrderbook, 'active': True, 'fees': dict()}}
     watchdog = OrderbookWatchdog(orderbooks, frozen_orderbook_timeout_sec)
-    watchdog.start()
+    #watchdog.start()
     exchanges_manager = ExchangeClientManager({'Bitstamp': {'creator': BitstampClientWrapper,
                                                             'args': {'credentials': bitstamp_credentials,
                                                                      'orderbook': orderbooks['Bitstamp']}},

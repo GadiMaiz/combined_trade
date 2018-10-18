@@ -46,17 +46,20 @@ class BitstampOrderbook(OrderbookBase):
 
     def handle_q(self):
         trade_types = {1: "sell", 0: "buy"}
-        asset_pair_dict = {'BTCUSD': 'BTC-USD', 'BCHUSD': 'BCH-USD'}
+        asset_pair_dict = {'BTCUSD': 'BTC-USD', 'BCHUSD': 'BCH-USD', 'LTCUSD': 'LTC-USD'}
         while self.running:
             data = self._bitstamp_wss_listener.data_q.get()
             if data[0] == 'live_trades':
                 pair = data[1]
                 trade_dict = json.loads(data[2])
-                self._last_trade[asset_pair_dict[pair]] = {"price": trade_dict["price"],
-                                                           "type": trade_types[trade_dict["type"]],
-                                                           "time": trade_dict["timestamp"]}
+                bitstamp_pair = pair
+                if pair in asset_pair_dict:
+                    bitstamp_pair = asset_pair_dict[pair]
+                self._last_trade[bitstamp_pair] = {"price": trade_dict["price"],
+                                                   "type": trade_types[trade_dict["type"]],
+                                                   "time": trade_dict["timestamp"]}
                 self._updated_listened_orders(trade_dict)
-                self._track_trade_info(trade_dict, 'BTC-USD')
+                self._track_trade_info(trade_dict, bitstamp_pair)
             self._bitstamp_wss_listener.data_q.task_done()
 
     def _updated_listened_orders(self, trade_info):

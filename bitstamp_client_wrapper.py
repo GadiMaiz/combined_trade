@@ -83,8 +83,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                 self._orderbook['fees'].update(fees)
                 self._orderbook['orderbook'].set_fees(self._orderbook['fees'])"""
             except Exception as e:
-                print("Exception was thrown e = " + e)
-                self.log.error("%s", str(e))
+                self.log.error("Exception: <%s>", str(e))
         return result
 
     def get_exchange_name(self):
@@ -103,13 +102,11 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                     limit_order_result = exchange_method(size, price, currency_to.lower(), currency_from.lower())
                         
                 self.log.info("Execution result: <%s>", execute_result)
-                print("Execution result:", execute_result, limit_order_result)
                 order_id = limit_order_result['id']
                 execute_result['id'] = int(order_id)
                 execute_result['executed_price_usd'] = price
                 order_status = self.order_status(order_id)
                 self.log.debug("order status <%s>", order_status)
-                print("order status:", order_status)
 
                 cancel_status = False
                 if order_status is not None and 'status' in order_status and order_status['status'] == 'Finished' and \
@@ -177,7 +174,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                 cancel_status = self._bitstamp_client.cancel_order(order_id)
                 self.log.debug("Cancel status: <%s>", cancel_status)
             except Exception as e:
-                self.log.error("Cancel exception: %s", str(e))
+                self.log.debug("Cancel exception: %s", str(e))
         return cancel_status
 
     def transactions(self, transactions_limit):
@@ -213,19 +210,19 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
             result = {'exchange': self.get_exchange_name(), 'order_status': False, 'status': 'Error'}
         return result
 
-    def get_order_status_from_transactions(self, order_id, crypto_type):
+    def get_order_status_from_transactions(self, order_id, currency_from, currency_to):
         results = {'executed_size': 0, 'transactions': []}
         all_transactions = self.transactions(500)
         self.log.debug("curr transaction <%d> transactions: <%s>", order_id, all_transactions)
         for curr_transaction in all_transactions:
-            if curr_transaction['order_id'] == order_id:
-                results['executed_size'] += abs(float(curr_transaction[(crypto_type.lower())]))
+            if 'order_id' in curr_transaction and int(curr_transaction['order_id']) == int(order_id):
+                results['executed_size'] += abs(float(curr_transaction[(currency_to.lower())]))
                 results['transactions'].append(curr_transaction)
                 self.log.debug("update from transactions result: <%s>", results)
         return results
 
-    def create_order_tracker(self, order, orderbook, order_info, crypto_type):
-        return BitstampOrderTracker(order, orderbook, self, order_info, crypto_type)
+    def create_order_tracker(self, order, orderbook, order_info, currency_from, currency_to):
+        return BitstampOrderTracker(order, orderbook, self, order_info, currency_from, currency_to)
 
     def reconnect(self):
         if self._bitstamp_client is None and self._signed_in_user != "":
@@ -233,8 +230,8 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
             self.set_credentials({'username': self._signed_in_user, 'key': self._api_key, 'secret': self._secret})
 
 
-    def sell_market(self, size, currency_type1, currency_type2):
-        return self._execute_immediate_or_cancel(self._bitstamp_client.sell_market_order, size, None, currency_type1, False, currency_type2)        
+    def sell_market(self, size, currency_from, currency_to):
+        return self._execute_immediate_or_cancel(self._bitstamp_client.sell_market_order, size, None, currency_from, False, currency_to)
 
-    def buy_market(self, size, currency_type1, currency_type2):
-        return self._execute_immediate_or_cancel(self._bitstamp_client.buy_market_order, size, None, currency_type1, False, currency_type2)     
+    def buy_market(self, size, currency_to, currency_from):
+        return self._execute_immediate_or_cancel(self._bitstamp_client.buy_market_order, size, None, currency_from, False, currency_to)
