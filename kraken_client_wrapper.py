@@ -181,8 +181,8 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
     def sell_limit(self, execute_size_coin, price, currency_from, currency_to):
         return self._execute_exchange_order("sell_limit", False, execute_size_coin, currency_from, currency_to, price)
 
-    def create_order_tracker(self, order, orderbook, order_info, crypto_type):
-        return KrakenOrderTracker(order, orderbook, self, order_info, crypto_type)
+    def create_order_tracker(self, order, orderbook, order_info, currency_from, currency_to):
+        return KrakenOrderTracker(order, orderbook, self, order_info, currency_from, currency_to)
 
     def _cancel_order(self, order_id, expect_to_be_canceled = True):
         cancel_status = False
