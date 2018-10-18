@@ -29,7 +29,7 @@ log = None
 app = Flask(__name__)
 
 client_dir = os.path.join(app.root_path, 'client')
-VALID_PAIRS = ['BTC-USD', 'BCH-USD', 'BTC-EUR', 'BCH-EUR', 'LTC-EUR', 'BCH-BTC', 'LTC-BTC', 'LTC-USD']
+VALID_PAIRS = ['BTC-USD', 'BCH-USD', 'BTC-EUR', 'BCH-EUR', 'LTC-EUR', 'BCH-BTC', 'LTC-BTC']
 
 @app.route('/OrdersTracker')
 def send_orderbook_page():
@@ -580,8 +580,7 @@ if __name__ == '__main__':
     if bitstamp_key is not None:
         bitstamp_args['key'] = bitstamp_key
     bitstamp_fees = {'take': 0.25, 'make': 0.25}
-    bitstamp_orderbook = BitstampOrderbook(asset_pairs=[bitstamp_currencies['BTC-USD'], bitstamp_currencies['BCH-USD'],
-                                                        bitstamp_currencies['LTC-USD']],
+    bitstamp_orderbook = BitstampOrderbook(asset_pairs=[bitstamp_currencies['BTC-USD'], bitstamp_currencies['BCH-USD']],
                                            fees=bitstamp_fees, **bitstamp_args)
     active_exchanges = dict()
     active_exchanges['Bitstamp'] = False
