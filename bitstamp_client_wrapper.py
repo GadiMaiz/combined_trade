@@ -83,8 +83,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                 self._orderbook['fees'].update(fees)
                 self._orderbook['orderbook'].set_fees(self._orderbook['fees'])"""
             except Exception as e:
-                print("Exception was thrown e = " + e)
-                self.log.error("%s", str(e))
+                self.log.error("Exception: <%s>", str(e))
         return result
 
     def get_exchange_name(self):
@@ -103,13 +102,11 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                     limit_order_result = exchange_method(size, price, currency_to.lower(), currency_from.lower())
                         
                 self.log.info("Execution result: <%s>", execute_result)
-                print("Execution result:", execute_result, limit_order_result)
                 order_id = limit_order_result['id']
                 execute_result['id'] = int(order_id)
                 execute_result['executed_price_usd'] = price
                 order_status = self.order_status(order_id)
                 self.log.debug("order status <%s>", order_status)
-                print("order status:", order_status)
 
                 cancel_status = False
                 if order_status is not None and 'status' in order_status and order_status['status'] == 'Finished' and \

@@ -450,7 +450,7 @@ class ClientWrapperBase:
         if sent_order is not None:
             order_id = sent_order.get("id")
             order_info['exchange_id'] = order_id
-            print("Sent order:", sent_order)
+            self.log.debug("Sent order: <%s>", sent_order)
             order_info['status'] = sent_order['status']
             order_info['price'] = sent_order['executed_price_usd']
             order_status = sent_order['order_status']
@@ -464,8 +464,12 @@ class ClientWrapperBase:
             if done_size > 0:
                 self._balance_changed = True
                 order_info['balance'] = self.account_balance()
-            order_info["ask"] = price_and_spread["ask"]["price"]
-            order_info["bid"] = price_and_spread["bid"]["price"]
+            order_info["ask"] = 0
+            order_info["bid"] = 0
+            if price_and_spread and 'ask' in price_and_spread and 'price' in price_and_spread['ask']:
+                order_info["ask"] = price_and_spread["ask"]["price"]
+            if price_and_spread and 'bid' in price_and_spread and 'price' in price_and_spread['bid']:
+                order_info["bid"] = price_and_spread["bid"]["price"]
             trade_order_id = self._db_interface.write_order_to_db(order_info)
 
 
