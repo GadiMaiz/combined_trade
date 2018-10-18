@@ -67,11 +67,11 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
         result = {}
         if self._huobi_client is not None and self._signed_in_user != "":
             try:
-                print("Getting balance from Huobi")
+                self.log.debug("Getting balance from Huobi for user <%s>", self._signed_in_user)
                 account_id = self._huobi_client.accounts().data['data'][0]['id']
-                bitstamp_account_balance = self._huobi_client.balance(account_id=account_id)
-                print("Balance arrived from Huobi:", bitstamp_account_balance)
-                balanceList = bitstamp_account_balance.data['data']['list']
+                huobi_account_balance = self._huobi_client.balance(account_id=account_id)
+                self.log.debug("Balance arrived from Huobi: <%s>", huobi_account_balance)
+                balanceList = huobi_account_balance.data['data']['list']
                 result = {}
                 balances = {}
                 for element in balanceList:
@@ -102,14 +102,14 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
     def _execute_exchange_order(self, action_type, size, price, currency_from, currency_to):
         account_id = self._huobi_client.accounts().data['data'][0]['id']
         self.log.debug("account ID = " + str(account_id))
-        execute_result = { 'order_status': False}
-        if account_id == None:
+        execute_result = {'order_status': False, 'executed_price_usd': price}
+        if account_id is None:
             self.log.info('ERROR empty account Id')
             execute_result['status'] = 'Error'
             execute_result['order_status'] = True
             return execute_result
         try:
-            if price != None:
+            if price is not None:
                 exchange_result = self._huobi_client.place(account_id=str(account_id), amount=str(size), price=str(price),  symbol=currency_to + currency_from, type=action_type)
             else :
                 exchange_result = self._huobi_client.place(account_id=str(account_id), amount=str(size),  symbol=currency_to + currency_from, type=action_type)
@@ -136,7 +136,7 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
         except Exception as e:
             self.log.error("execution failed ,%s %s", action_type, e)
             execute_result['status'] = 'Error'
-            execute_result['order_status'] = True
+            execute_result['order_status'] = False
         return execute_result
         
     
