@@ -90,11 +90,14 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
         return "Huobi"
 
     def buy_immediate_or_cancel(self, execute_size_coin, price, currency_from, currency_to):
-        # return self._execute_exchange_order('buy-ioc', execute_size_coin, price_fiat, currency_type1, currency_type2)
+        c_from = self.currencies_dict[currency_from]
+        c_to = self.currencies_dict[currency_to]
         return self._execute_exchange_order('buy-ioc', execute_size_coin, price, currency_from, currency_to)
         
 
     def sell_immediate_or_cancel(self, execute_size_coin, price, currency_from, currency_to):
+        c_from = self.currencies_dict[currency_from]
+        c_to = self.currencies_dict[currency_to]
         return self._execute_exchange_order('sell-ioc', execute_size_coin, price, currency_from, currency_to)
 
 
@@ -179,25 +182,15 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
         c_to = self.currencies_dict[currency_to]
         return self._execute_exchange_order('buy-market', execute_size_coin, None, c_from, c_to)
 
-    # def _order_complete(self, is_timed_order, report_status):
-    #     if self._clients_manager:
-    #         if is_timed_order and report_status:
-    #             self._clients_manager.set_last_status(self.get_timed_order_status())
-    #             print("Setting last status", self.get_timed_order_status())
+    def buy_limit(self, execute_size_coin, price, currency_from, currency_to):
+        c_from = self.currencies_dict[currency_from]
+        c_to = self.currencies_dict[currency_to]
+        return self._execute_exchange_order('buy-limit', execute_size_coin, price, c_from, c_to)
 
-    # def _create_timed_order_executer(self, asset_pair, action_type):
-    #     return TimedOrderExecuter(self, self._orderbook, asset_pair)
+    def sell_limit(self, execute_size_coin, price, currency_from, currency_to):
+        c_from = self.currencies_dict[currency_from]
+        c_to = self.currencies_dict[currency_to]
+        return self._execute_exchange_order('sell-limit', execute_size_coin, price, c_from, c_to)
 
-    # def buy_limit(self, execute_size_coin, price_fiat, crypto_type):
-    #     return {}
-
-    # def sell_limit(self, execute_size_coin, price_fiat, crypto_type):
-    #     return {}
-
-    # def _cancel_order(self, order_id):
-    #     return None
-
-    # def _cancel_active_limit_order(self):
-    #     pass
 
 
