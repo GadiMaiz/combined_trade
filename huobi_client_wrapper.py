@@ -92,15 +92,13 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
     def buy_immediate_or_cancel(self, execute_size_coin, price, currency_from, currency_to):
         c_from = self.currencies_dict[currency_from]
         c_to = self.currencies_dict[currency_to]
-        return self._execute_exchange_order('buy-ioc', execute_size_coin, price, currency_from, currency_to)
+        return self._execute_exchange_order('buy-ioc', execute_size_coin, price, c_from, c_to)
         
 
     def sell_immediate_or_cancel(self, execute_size_coin, price, currency_from, currency_to):
         c_from = self.currencies_dict[currency_from]
         c_to = self.currencies_dict[currency_to]
-        return self._execute_exchange_order('sell-ioc', execute_size_coin, price, currency_from, currency_to)
-
-
+        return self._execute_exchange_order('sell-ioc', execute_size_coin, price, c_from, c_to)
 
     def _execute_exchange_order(self, action_type, size, price, currency_from, currency_to):
         account_id = self._huobi_client.accounts().data['data'][0]['id']
