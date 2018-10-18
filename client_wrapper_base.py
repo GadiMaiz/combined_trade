@@ -142,12 +142,12 @@ class ClientWrapperBase:
                     if not self.is_timed_order_running():
                         if action_type == 'sell_limit' or action_type == 'buy_limit':
                             order_sent = self.execute_timed_make_order(actions_dict[action_type], size_coin,
-                                                                       currency_to, currency_from, price,
+                                                                       currency_from, currency_to, price,
                                                                        duration_sec, max_order_size, report_status,
                                                                        external_order_id, user_quote_price, user_id)
                         else:
                             order_sent = self.execute_timed_take_order(actions_dict[action_type], size_coin,
-                                                                       currency_to, price, currency_from,
+                                                                       currency_to, currency_from, price,
                                                                        duration_sec, max_order_size, external_order_id,
                                                                        user_quote_price, user_id)
                     else:
@@ -238,7 +238,7 @@ class ClientWrapperBase:
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
         order_time = "%s.%02d" % (dt, int(micro) / 1000)
         order_info = {'exchange': self.get_exchange_name(), 'action_type': action_type, 'size': size_coin,
-                      'price': price, 'exchange_id': 0, 'order_time' : order_time,
+                      'price': price, 'exchange_id': 0, 'order_time': order_time,
                       'timed_order': self.TIMED_ORDERS_DICT[True], 'status': "Timed Take Order",
                       'currency_from': currency_from,
                       'currency_to': currency_to,
@@ -558,7 +558,7 @@ class ClientWrapperBase:
         print("order info before execution: <{}>".format(order_info))
         parent_trade_order_id = self._db_interface.write_order_to_db(order_info)
         order_info['parent_trade_order_id'] = parent_trade_order_id
-        self._reserved_crypto_type = crypto_type
+        self._reserved_crypto_type = currency_to
         """if action_type == 'sell':
             self._reserved_crypto = size_coin
         elif action_type == 'buy':
@@ -572,7 +572,7 @@ class ClientWrapperBase:
         self._timed_order_start_time = time.time()#start_timestamp.strftime('%Y-%m-%d %H:%M:%S')
         self._timed_order_execution_start_time = ''
         self._timed_order_required_size = size_coin
-        asset_pair = crypto_type + "-" + fiat_type
+        asset_pair = currency_to + "-" + currency_from
         self._timed_order_done_size = 0
         self._timed_order_elapsed_time = 0
         self._timed_order_duration_sec = duration_sec
