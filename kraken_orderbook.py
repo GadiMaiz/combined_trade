@@ -51,7 +51,7 @@ class KrakenOrderbook(OrderbookBase):
                         self._last_orderbook_timestamp[kraken_pair] = curr_time
                         self._last_orderbooks[kraken_pair] = orders
                     except Exception as e:
-                        self._log.error("Kraken exception:", e)
+                        self._log.error("Kraken exception: %s", e)
                         if kraken_pair in self._last_orderbooks[kraken_pair]:
                             orders = self._last_orderbooks[kraken_pair]
                         else:
