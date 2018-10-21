@@ -400,7 +400,7 @@ class ClientWrapperBase:
 
                 if execute_size_coin > 0:
                     order_info['size'] = execute_size_coin
-                    self.log.info("Buying <%f> <%s>-<%s> with limit of <%f>", execute_size_coin, currency_to,
+                    self.log.info("<%s> <%f> <%s>-<%s> with limit of <%f>", action_type, execute_size_coin, currency_to,
                                   currency_from, price)
                     if action_type == 'buy':
                         sent_order = self.buy_immediate_or_cancel(execute_size_coin, price, currency_from, currency_to)
@@ -425,12 +425,11 @@ class ClientWrapperBase:
 
                 if execute_size_coin > 0:
                     order_info['size'] = execute_size_coin
-                    self.log.info("Selling <%f> <%s>-<%s> with limit of <%f>", execute_size_coin, currency_to,
+                    self.log.info("<%s> <%f> <%s>-<%s> with limit of <%f>", action_type, execute_size_coin, currency_to,
                                   currency_from, price)
                     if action_type == 'sell':
                         sent_order = self.sell_immediate_or_cancel(execute_size_coin, price, currency_from, currency_to)
                     elif action_type == 'sell_limit':
-                        print("Sell limit {} for {}".format(execute_size_coin, price))
                         sent_order = self.sell_limit(execute_size_coin, price, currency_from, currency_to)
                     elif action_type == 'sell_market':
                         sent_order = self.sell_market(execute_size_coin, currency_from, currency_to)
@@ -440,7 +439,6 @@ class ClientWrapperBase:
         except Exception as e:
             order_info = None
             self.log.error("Order not sent: <%s>", str(e))
-            print(e)
             sent_order = None
             execute_size_coin = 0
         finally:
@@ -454,6 +452,9 @@ class ClientWrapperBase:
             order_info['status'] = sent_order['status']
             order_info['price'] = sent_order['executed_price_usd']
             order_status = sent_order['order_status']
+
+            if 'execution_message' in sent_order:
+                execution_message = sent_order['execution_message']
 
             if order_info['status'] == 'Finished':
                 done_size = execute_size_coin
@@ -471,7 +472,6 @@ class ClientWrapperBase:
             if price_and_spread and 'bid' in price_and_spread and 'price' in price_and_spread['bid']:
                 order_info["bid"] = price_and_spread["bid"]["price"]
             trade_order_id = self._db_interface.write_order_to_db(order_info)
-
 
         return {'execution_size': done_size, 'execution_message': execution_message,
                 'order_status': order_status, 'trade_order_id': trade_order_id}

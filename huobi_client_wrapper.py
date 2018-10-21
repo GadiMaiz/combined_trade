@@ -136,6 +136,9 @@ class HuobiClientWrapper(client_wrapper_base.ClientWrapperBase):
                 execute_result['order_status'] = True   
         except Exception as e:
             self.log.error("execution failed ,%s %s", action_type, e)
+            exception_str = str(e)
+            execute_result['execution_message'] = "{} {}".format(action_type, exception_str[0:min(
+                100, len(exception_str))])
             execute_result['status'] = 'Error'
             execute_result['order_status'] = False
         return execute_result
