@@ -176,6 +176,7 @@ def cancel_timed_order():
 
 
 @app.route('/SendOrder', methods=['POST'])
+@app.route('/sendOrder', methods=['POST'])
 def send_order():
     log.debug("Send Order")
     request_params = json.loads(request.data)
