@@ -27,6 +27,12 @@ class ExchangeClientManager():
         result['exchange'] = exchange
         return result
 
+    def exchange_assets(self, exchange):
+        result = dict()
+        if exchange in self._clients:
+            result = self._orderbooks[exchange]['orderbook'].get_asset_pairs()
+        return result
+
     def exchange_balance(self, exchange, extended_info=True):
         result = dict()
         if exchange in self._clients:

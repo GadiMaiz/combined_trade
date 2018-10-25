@@ -94,6 +94,9 @@ def get_exchange_orderbook(exchange, asset_pair):
         orders['lastPrice'] = last_price
     return jsonify(orders)
 
+@app.route('/exchange/<exchange>/assetPairs')
+def get_exchange_asset_pairs(exchange):
+    return jsonify(exchanges_manager.exchange_assets(exchange))
 
 def get_orderbook(exchange, currency):
     #print(str(time.time()) + " start get_orderbook", exchange, currency)
@@ -620,7 +623,7 @@ if __name__ == '__main__':
     #huobi_currencies = {'BTC-USD': 'btcusdt', 'BCH-USD': 'bchusdt'}
     huobi_listen_pairs = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD', 'BCH-BTC': 'BCH-BTC', 'LTC-BTC': 'LTC-BTC'}
     huobi_fees = {'take': 0.2, 'make': 0.2}
-    huobi_orderbook = HuobiOrderbook(huobi_listen_pairs.values(), huobi_fees)
+    huobi_orderbook = HuobiOrderbook(list(huobi_listen_pairs.values()), huobi_fees)
 
     active_exchanges['Huobi'] = False
     if "Huobi" in start_exchanges:
