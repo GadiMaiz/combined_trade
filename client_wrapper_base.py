@@ -110,6 +110,8 @@ class ClientWrapperBase:
         result = self._last_balance
         if not extended_info:
             result = dict()
+            if 'balances' not in self._last_balance:
+                self._last_balance['balances'] = dict()
             for balance in self._last_balance['balances']:
                 result[balance] = {'amount': self._last_balance['balances'][balance]['amount'],
                                    'available': self._last_balance['balances'][balance]['available']}
