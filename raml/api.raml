@@ -41,6 +41,17 @@ types:
             application/json:
               example: { "status": "logged in", "exchange" : "Huobi"  }
   
+  /assetPair:
+    description: Gets the asset pairs the the exchange supports
+    resposnes:
+      200:
+        body:
+          application/json:
+            type: object
+            properties:
+              assetPairs: string[]
+              exchange: string
+  
   /logout:
     post:
       body:
