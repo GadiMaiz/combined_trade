@@ -137,6 +137,9 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
             self.log.error("%s %s %s", action_type, kraken_pair, e)
             execute_result['status'] = 'Error'
             execute_result['order_status'] = False
+            exception_str = str(e)
+            execute_result['execution_message'] = "{} {}".format(action_type, exception_str[0:min(
+                100, len(exception_str))])
         return execute_result
 
     def buy_immediate_or_cancel(self, execute_size_coin, price, currency_from, currency_to):
