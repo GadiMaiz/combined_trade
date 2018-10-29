@@ -35,13 +35,19 @@ class TradeDB:
                 trade_order_id = -1
                 if 'trade_order_id' in order_info:
                     trade_order_id = order_info['trade_order_id']
+                exchange_id = ''
+                if 'exchange_id' in order_info and order_info['exchange_id'] is not None:
+                    exchange_id = order_info['exchange_id']
+                price = 'NULL'
+                if 'price' in order_info and order_info['price'] is not None:
+                    price = order_info['price']
                 parent_trade_order_id = -1
                 if 'parent_trade_order_id' in order_info:
                     parent_trade_order_id = order_info['parent_trade_order_id']
                 insert_str = "INSERT INTO sent_orders VALUES('{}', '{}', {}, {}, '{}', '{}', '{}', {}, '{}', {}, {}" \
                              ", {}, {}, {}, {}, '{}', '{}', {}, '{}')".format(
                     order_info['exchange'], order_info['action_type'], order_info['size'],
-                    order_info['price'], order_info['exchange_id'], order_info['status'], order_info['order_time'],
+                    price, exchange_id, order_info['status'], order_info['order_time'],
                     order_info['timed_order'], order_info['currency_to'],
                     order_info['balance']['balances'][order_info['currency_from']]['available'],
                     order_info['balance']['balances'][order_info['currency_to']]['available'],
@@ -55,7 +61,6 @@ class TradeDB:
                 self.log.debug('Inserted order <%s> with id <%s>', str(order_info), return_order_id)
             except Exception as e:
                 self.log.error("DB error: <%s>", str(e))
-                print("DB error:", str(e))
             finally:
                 conn.close()
 
