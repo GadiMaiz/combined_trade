@@ -24,6 +24,8 @@ types:
       description: Orderbook's asset pair
       get:
         description: Gets the current orderbook of an exchange
+        queryParameters:
+          limit?: number
         responses: 
           200:
             body: 

@@ -68,7 +68,13 @@ def get_orderbook_str(exchange, currency):
 
 @app.route('/exchange/<exchange>/orderbook/<asset_pair>')
 def get_exchange_orderbook(exchange, asset_pair):
-    orders = get_orderbook(exchange, asset_pair)
+    limit = request.args.get('limit')
+    if limit and limit.isdigit():
+        limit = int(limit)
+    else:
+        limit = None
+
+    orders = get_orderbook(exchange, asset_pair, limit)
     order_types = ['asks', 'bids']
     for order_type in order_types:
         if order_type in orders:
@@ -98,18 +104,18 @@ def get_exchange_orderbook(exchange, asset_pair):
 def get_exchange_asset_pairs(exchange):
     return jsonify(exchanges_manager.exchange_assets(exchange))
 
-def get_orderbook(exchange, currency):
+def get_orderbook(exchange, currency, limit=8):
     #print(str(time.time()) + " start get_orderbook", exchange, currency)
     result = {'asks': [], 'bids': [], 'average_spread': 0, 'currency': currency}
     if exchange in orderbooks and orderbooks[exchange]:
         request_orders = orderbooks[exchange]
         if exchange == "Unified":
-            curr_orders = request_orders['orderbook'].get_unified_orderbook(currency, 8, OrderbookFee.NO_FEE)
+            curr_orders = request_orders['orderbook'].get_unified_orderbook(currency, limit, OrderbookFee.NO_FEE)
             curr_orders['currency'] = currency
             return curr_orders
         else:
             if request_orders['orderbook']:
-                result = request_orders['orderbook'].get_current_partial_book(currency, 8, OrderbookFee.NO_FEE)
+                result = request_orders['orderbook'].get_current_partial_book(currency, limit, OrderbookFee.NO_FEE)
                 result['currency'] = currency
                 if result != None:
                     result['average_spread'] = request_orders['orderbook'].get_average_spread(currency)
