@@ -106,6 +106,8 @@ def get_exchange_asset_pairs(exchange):
 
 def get_orderbook(exchange, currency, limit=8):
     #print(str(time.time()) + " start get_orderbook", exchange, currency)
+    if not limit:
+        limit = 8
     result = {'asks': [], 'bids': [], 'average_spread': 0, 'currency': currency}
     if exchange in orderbooks and orderbooks[exchange]:
         request_orders = orderbooks[exchange]
