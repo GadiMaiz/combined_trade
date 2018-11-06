@@ -1,2 +1,4 @@
 bitmain_trade_service.log*
 *.pyc
+build/*
+Transactions.data

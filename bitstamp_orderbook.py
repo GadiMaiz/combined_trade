@@ -69,7 +69,6 @@ class BitstampOrderbook(OrderbookBase):
         elif trade_info['sell_order_id'] in self._orders_for_listening:
             order_id = trade_info['sell_order_id']
         if order_id:
-            print("Order id found:", order_id)
             self._orders_for_listening[order_id].order_changed(trade_info['amount'], trade_info['price'],
                                                                trade_info['timestamp'])
 
