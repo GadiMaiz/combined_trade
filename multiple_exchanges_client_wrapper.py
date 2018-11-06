@@ -225,7 +225,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
             for exchange in self._clients:
                 client_for_order = self._clients[exchange]
                 client_price = client_for_order.get_orderbook_price(asset_pair)
-                self.log.debug("Making in exchange <%s> with price <%f>", exchange, client_price)
+                self.log.debug("Making in exchange <%s> with prices <%s>", exchange, str(client_price))
                 sort_factor = 0
                 if client_price:
                     price_type = ""
