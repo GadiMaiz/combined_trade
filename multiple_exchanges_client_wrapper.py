@@ -165,14 +165,14 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                       'balance': self.account_balance()}
         self.log.info("order info before execution: <%s>", order_info)
         self._db_interface.write_order_to_db(order_info)
-        self._reserved_crypto_type = crypto_type
+        self._reserved_crypto_type = currency_from
         self._timed_order_action = action_type
         self._timed_order_price = price
         start_timestamp = datetime.datetime.utcnow()
         self._timed_order_start_time = time.time()#start_timestamp.strftime('%Y-%m-%d %H:%M:%S')
         self._timed_order_execution_start_time = ''
         self._timed_order_required_size = size_coin
-        asset_pair = currency_from + "-" + currency_to
+        asset_pair = currency_to + "-" + currency_from
         self._timed_order_done_size = 0
         self._timed_order_elapsed_time = 0
         self._timed_order_duration_sec = duration_sec
@@ -225,6 +225,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
             for exchange in self._clients:
                 client_for_order = self._clients[exchange]
                 client_price = client_for_order.get_orderbook_price(asset_pair)
+                print("Making in exchange {} with price {}".format(exchange, client_price))
                 sort_factor = 0
                 if client_price:
                     price_type = ""
@@ -360,9 +361,11 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                                                                     best_price))
                         price_sorted_clients[exchange_index]['client'].send_order(action_type,
                                                                                   price_sorted_clients[exchange_index]
-                                                                                  ['execute_size'], currency_from,
-                                                                                  currency_to, best_price, duration_sec,
-                                                                                  max_order_size, False)
+                                                                                  ['execute_size'], currency_to,
+                                                                                  best_price, currency_from,
+                                                                                  duration_sec, max_order_size, False,
+                                                                                  external_order_id, user_quote_price,
+                                                                                  user_id)
 
             if self.is_timed_order_running():
                 sleep_interval = random.uniform(MultipleExchangesClientWrapper.TIMED_MAKE_SLEEP_FACTOR *
