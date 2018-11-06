@@ -229,11 +229,17 @@ def send_order():
                                                         user_id)
     ####################################################
     else:
+        duration_sec = 0
+        if 'duration_sec' in request_params:
+            duration_sec = int(request_params['duration_sec'])
+        max_order_size = 0
+        if 'max_order_size' in request_params:
+            max_order_size = float(request_params['max_order_size'])
         order_status = exchanges_manager.send_order(request_params['exchanges'], request_params['action_type'],
                                                     float(request_params['size_coin']), request_params['crypto_type'],
                                                     float(request_params['price_fiat']), request_params['fiat_type'],
-                                                    int(request_params['duration_sec']),
-                                                    float(request_params['max_order_size']))
+                                                    duration_sec,
+                                                    max_order_size)
     result = order_status
     #print(result)
     result['order_status'] = str(result['order_status'])
