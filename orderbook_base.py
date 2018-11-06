@@ -50,12 +50,13 @@ class OrderbookBase:
         started = False
         while not started:
             try:
+                temp_log_level = self._log.level
                 self._start()
+                self._log.setLevel(temp_log_level)
                 started = True
             except Exception as e:
                 self._log.error("Error starting orderbook: <%s>, retrying", e)
                 time.sleep(1)
-
 
     def stop_orderbook(self):
         self._orderbook_running = False

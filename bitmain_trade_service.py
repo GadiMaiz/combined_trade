@@ -464,7 +464,6 @@ def create_rotating_log(log_file, log_level):
                                ' %(thread)d %(message)s')
     log = logging.getLogger('smart-trader')
     log.setLevel(log_level)
-
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(filename)s(%(lineno)d) %(funcName)s %(threadName)s'
                                ' %(thread)d %(message)s')
 
@@ -582,12 +581,9 @@ if __name__ == '__main__':
             gdax_credentials = exchanges_credentials['GDAX']
     except Exception as ex:
         log.error("Failed to parse exchange credentials, parameter error: {}".format(ex))
-
     log.debug("Connecting to orderbooks")
     bitstamp_currencies = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD', 'LTC-USD': 'LTC-USD'}
     bitstamp_inner_logger = logging.ERROR
-    if log_level is logging.DEBUG:
-        bitstamp_inner_logger = logging.DEBUG
     bitstamp_args = {'log_level': bitstamp_inner_logger}
     if bitstamp_key is not None:
         bitstamp_args['key'] = bitstamp_key
@@ -600,7 +596,6 @@ if __name__ == '__main__':
         bitstamp_orderbook.start_orderbook()
         active_exchanges['Bitstamp'] = True
         log.debug("Bitstamp started")
-
     bitfinex_currencies = {'BTC-USD': 'BTCUSD', 'BCH-USD': 'BCHUSD'}
     bitfinex_fees = {'take': 0.1, 'make': 0.2}
     bitfinex_orderbook = BitfinexOrderbook([bitfinex_currencies['BTC-USD'], bitfinex_currencies['BCH-USD']],
