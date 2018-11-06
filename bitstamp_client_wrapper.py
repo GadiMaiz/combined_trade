@@ -108,7 +108,6 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                 execute_result['executed_price_usd'] = price
                 order_status = self.order_status(order_id)
                 self.log.debug("order status <%s>", order_status)
-
                 cancel_status = False
                 if order_status is not None and 'status' in order_status and order_status['status'] == 'Finished' and \
                         len(order_status['transactions']) > 0:
@@ -134,10 +133,11 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                     try:
                         found_transaction = False
                         all_transactions = self._bitstamp_client.user_transactions()
+                        asset_pair_key = currency_to.lower() + "_" + currency_from.lower()
                         self.log.debug("curr transaction <%d> transactions: <%s>", order_id, all_transactions)
                         for curr_transaction in all_transactions:
                             if curr_transaction['order_id'] == order_id or curr_transaction['order_id'] == int(order_id):
-                                execute_result['executed_price_usd'] = curr_transaction['btc_usd']
+                                execute_result['executed_price_usd'] = curr_transaction[asset_pair_key]
                                 found_transaction = True
                                 break
                         if not found_transaction:
