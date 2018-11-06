@@ -629,6 +629,7 @@ class ClientWrapperBase:
                 try:
                     self._client_mutex.acquire()
                     cancel_status = self._cancel_order(active_order['id'])
+                    print("Cancel status:", cancel_status)
                 finally:
                     self._client_mutex.release()
                 tracked_order['order_time'] = datetime.datetime.utcnow()

@@ -152,7 +152,8 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
 
     def _execute_timed_make_order_in_thread(self, action_type, size_coin, currency_from, currency_to, price,
                                             duration_sec, max_order_size, max_relative_spread_factor,
-                                            relative_to_best_order_ratio, report_status):
+                                            relative_to_best_order_ratio, report_status, external_order_id,
+                                            user_quote_price, user_id):
         self.log.debug("executing timed make order")
         order_timestamp = datetime.datetime.utcnow()
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')

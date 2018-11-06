@@ -59,7 +59,7 @@ class BitstampOrderbook(OrderbookBase):
                                                    "type": trade_types[trade_dict["type"]],
                                                    "time": trade_dict["timestamp"]}
                 self._updated_listened_orders(trade_dict)
-                self._track_trade_info(trade_dict, bitstamp_pair)
+                #self._track_trade_info(trade_dict, bitstamp_pair)
             self._bitstamp_wss_listener.data_q.task_done()
 
     def _updated_listened_orders(self, trade_info):
