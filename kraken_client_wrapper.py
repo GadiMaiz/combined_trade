@@ -193,7 +193,6 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
             try:
                 cancel_status = pykraken.kprivate.kprivate_cancelorder(self._kraken_client, order_id)
                 self.log.debug("Cancel status: <%s>", cancel_status)
-                print("Cancel status:", cancel_status)
             except Exception as e:
                 if expect_to_be_cancelled:
                     self.log.error("Cancel exception: %s", str(e))
