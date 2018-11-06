@@ -151,25 +151,31 @@ class TradeDB:
                 limit_clause
         sent_orders = conn.execute(query)
         data = sent_orders.fetchall()
-        all_orders = {}
-
-        # collect all parents orders
-        for curr_order in data:
-            if (curr_order[14] == -1 and type == SentOrdersType.HIERARCHICAL) or (type == SentOrdersType.FLAT):
+        result = []
+        conn.close()
+        # add child orders to parents orders
+        if type == SentOrdersType.FLAT:
+            for curr_order in data:
                 trade_order_id = self.get_trade_order_id(curr_order)
                 order_dict = self.get_curr_order(curr_order, trade_order_id, type)
-                all_orders[trade_order_id] = order_dict
-        
-        # add child orders to parents orders
-        if type == SentOrdersType.HIERARCHICAL:
+                result.append(order_dict)
+
+        elif type == SentOrdersType.HIERARCHICAL:
+            # collect all parents orders
+            all_orders = {}
+            for curr_order in data:
+                if (curr_order[14] == -1 and type == SentOrdersType.HIERARCHICAL) or (type == SentOrdersType.FLAT):
+                    trade_order_id = self.get_trade_order_id(curr_order)
+                    order_dict = self.get_curr_order(curr_order, trade_order_id, type)
+                    all_orders[trade_order_id] = order_dict
             for curr_order in data:
                 if curr_order[14] != -1 and curr_order[14] in all_orders:
                     trade_order_id = self.get_trade_order_id(curr_order)
                     order_dict = self.get_curr_order(curr_order, trade_order_id, type)
                     all_orders.get(curr_order[14]).get('childOrders').append(order_dict)
-        
-        conn.close()
-        return list(all_orders.values())
+            result = list(all_orders.values())
+
+        return result
 
     def get_trade_order_id(self, curr_order):
         trade_order_id = curr_order[0]
