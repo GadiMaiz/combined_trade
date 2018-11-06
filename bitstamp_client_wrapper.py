@@ -1,6 +1,7 @@
 import bitstamp.client
 import client_wrapper_base
 import logging
+import time
 from order_tracker import BitstampOrderTracker
 
 
@@ -170,11 +171,18 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
     def _cancel_order(self, order_id):
         cancel_status = False
         if self._bitstamp_client is not None and self._signed_in_user != "":
-            try:
-                cancel_status = self._bitstamp_client.cancel_order(order_id)
-                self.log.debug("Cancel status: <%s>", cancel_status)
-            except Exception as e:
-                self.log.debug("Cancel exception: %s", str(e))
+            internal_error_exception = True
+            while internal_error_exception:
+                internal_error_exception = False
+                try:
+                    cancel_status = self._bitstamp_client.cancel_order(order_id)
+                    self.log.debug("Cancel status: <%s>", cancel_status)
+                except Exception as e:
+                    self.log.error("Cancel exception: %s", str(e))
+                    if "INTERNAL SERVER ERROR" in str(e):
+                        self.log.error("Can't cancel because of internal server error exception: %s", str(e))
+                        internal_error_exception = True
+                        time.sleep(0.5)
         return cancel_status
 
     def transactions(self, transactions_limit):
