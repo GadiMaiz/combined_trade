@@ -635,11 +635,13 @@ class ClientWrapperBase:
                 tracked_order['order_time'] = datetime.datetime.utcnow()
                 already_written_to_db = False
                 if cancel_status:
+                    print("Cancelling order", active_order)
                     tracked_order['status'] = "Cancelled"
                     additional_sleep_time_for_cancel = random.uniform(ClientWrapperBase.MAKE_ORDER_CANCEL_MIN_SLEEP_SEC,
                                                                       ClientWrapperBase.MAKE_ORDER_CANCEL_MAX_SLEEP_SEC)
                     time.sleep(additional_sleep_time_for_cancel)
 
+                # Cancelling failed so the order was done
                 elif active_order and active_order['executed_size'] != active_order['required_size']:
                     print("Getting information for order {} from exchange transactions".format(active_order['id']))
                     if active_order['executed_size'] > 0:
@@ -652,9 +654,11 @@ class ClientWrapperBase:
                     else:
                         tracked_order['status'] = "Make Order Executed"
                 elif active_order and active_order['executed_size'] == active_order['required_size']:
+                    print("Not writing order {} to db because it's complete".format(active_order['id']))
                     already_written_to_db = True
 
                 if not already_written_to_db:
+                    print("Writing order to DB:", tracked_order)
                     trade_order_id = self._db_interface.write_order_to_db(tracked_order)
                     tracked_order['trade_order_id'] = trade_order_id
                 active_order_tracker.unregister_order()
@@ -762,7 +766,7 @@ class ClientWrapperBase:
         minimum_sizes = {'BTC-USD': 0.002, 'BCH-USD': 0.02, 'BTC-EUR': 0.002, 'BCH-EUR': 0.02}
         result = 0
         if asset_pair in minimum_sizes:
-            minimum_sizes[asset_pair]
+            result = minimum_sizes[asset_pair]
         return result
 
     def is_client_initialized(self):
