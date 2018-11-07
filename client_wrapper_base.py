@@ -118,7 +118,7 @@ class ClientWrapperBase:
         return result
 
     def send_order(self, action_type, size_coin, currency_to, price, currency_from, duration_sec, max_order_size,
-                   report_status, external_order_id, user_quote_price, user_id):
+                   report_status, external_order_id, user_quote_price, user_id, parent_trade_order_id=-1):
         order_sent = {'order_status': False, 'execution_size': 0, 'execution_message': ''}
         if not self.is_client_initialized():
             order_sent['execution_message'] = 'Exchange client not initialized'
@@ -146,7 +146,8 @@ class ClientWrapperBase:
                             order_sent = self.execute_timed_make_order(actions_dict[action_type], size_coin,
                                                                        currency_from, currency_to, price,
                                                                        duration_sec, max_order_size, report_status,
-                                                                       external_order_id, user_quote_price, user_id)
+                                                                       external_order_id, user_quote_price, user_id,
+                                                                       parent_trade_order_id)
                         else:
                             order_sent = self.execute_timed_take_order(actions_dict[action_type], size_coin,
                                                                        currency_from, currency_to, price,
@@ -365,7 +366,7 @@ class ClientWrapperBase:
                              max_order_size, is_timed_order, parent_trade_order_id, external_order_id, user_quote_price,
                              user_id):
         self.log.info("send_immediate: my type: <%s>, action_type: <%s>, size_coin: <%f>, coin_to: <%s>, price: <%f>, "
-                      "parent_order_id: <%s>", type(self), action_type, size_coin, currency_to, price,
+                      "parent_trade_order_id: <%s>", type(self), action_type, size_coin, currency_to, price,
                       parent_trade_order_id)
         sent_order = None
         execution_message = ''
@@ -533,7 +534,8 @@ class ClientWrapperBase:
         return result
 
     def execute_timed_make_order(self, action_type, size_coin, currency_from, currency_to, price, duration_sec,
-                                 max_order_size, report_status, external_order_id, user_quote_price, user_id):
+                                 max_order_size, report_status, external_order_id, user_quote_price, user_id,
+                                 parent_trade_order_id):
         if self._timed_make_order_thread is not None and self._timed_make_order_thread.is_alive():
             return False
         else:
@@ -541,7 +543,7 @@ class ClientWrapperBase:
                                                    args=(action_type, float(size_coin), currency_from, currency_to,
                                                          float(price), int(duration_sec), float(max_order_size), 0.2, 0,
                                                          bool(report_status), external_order_id, user_quote_price,
-                                                         user_id),
+                                                         user_id, parent_trade_order_id),
                                                    daemon=True,
                                                    name='Execute Timed Make Order Thread')
             self._is_timed_order_running = True
@@ -551,7 +553,7 @@ class ClientWrapperBase:
     def _execute_timed_make_order_in_thread(self, action_type, size_coin, currency_from, currency_to, price,
                                             duration_sec, max_order_size, max_relative_spread_factor,
                                             relative_to_best_order_ratio, report_status, external_order_id,
-                                            user_quote_price, user_id):
+                                            user_quote_price, user_id, parent_trade_order_id):
         self.log.debug("executing timed make order")
         order_timestamp = datetime.datetime.utcnow()
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
@@ -563,7 +565,9 @@ class ClientWrapperBase:
                       'balance': self.account_balance(), 'external_order_id': external_order_id,
                       'user_quote_price': user_quote_price, 'user_id': user_id}
         self.log.info("order info before execution: <%s>", order_info)
-        parent_trade_order_id = self._db_interface.write_order_to_db(order_info)
+        db_trade_order_id = self._db_interface.write_order_to_db(order_info)
+        if parent_trade_order_id == -1:
+            parent_trade_order_id = db_trade_order_id
         order_info['parent_trade_order_id'] = parent_trade_order_id
         self._reserved_crypto_type = currency_to
         """if action_type == 'sell':

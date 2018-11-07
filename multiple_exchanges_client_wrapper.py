@@ -153,7 +153,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
     def _execute_timed_make_order_in_thread(self, action_type, size_coin, currency_from, currency_to, price,
                                             duration_sec, max_order_size, max_relative_spread_factor,
                                             relative_to_best_order_ratio, report_status, external_order_id,
-                                            user_quote_price, user_id):
+                                            user_quote_price, user_id, parent_trade_order_id):
         self.log.debug("executing timed make order")
         order_timestamp = datetime.datetime.utcnow()
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
@@ -162,9 +162,12 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                       'price' : price, 'exchange_id': 0, 'order_time' : order_time,
                       'timed_order': self.TIMED_ORDERS_DICT[True], 'status': "Timed Order", 'currency_to': currency_to,
                       'currency_from': currency_from,
-                      'balance': self.account_balance()}
+                      'balance': self.account_balance(), 'external_order_id': external_order_id,
+                      'user_quote_price': user_quote_price, 'user_id': user_id}
         self.log.info("order info before execution: <%s>", order_info)
-        self._db_interface.write_order_to_db(order_info)
+        db_trade_order_id = self._db_interface.write_order_to_db(order_info)
+        if parent_trade_order_id == -1:
+            parent_trade_order_id = db_trade_order_id
         self._reserved_crypto_type = currency_from
         self._timed_order_action = action_type
         self._timed_order_price = price
@@ -358,7 +361,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                                                                   best_price, currency_from,
                                                                                   duration_sec, max_order_size, False,
                                                                                   external_order_id, user_quote_price,
-                                                                                  user_id)
+                                                                                  user_id, parent_trade_order_id)
 
             if self.is_timed_order_running():
                 sleep_interval = random.uniform(MultipleExchangesClientWrapper.TIMED_MAKE_SLEEP_FACTOR *
