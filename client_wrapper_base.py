@@ -149,7 +149,7 @@ class ClientWrapperBase:
                                                                        external_order_id, user_quote_price, user_id)
                         else:
                             order_sent = self.execute_timed_take_order(actions_dict[action_type], size_coin,
-                                                                       currency_to, currency_from, price,
+                                                                       currency_from, currency_to, price,
                                                                        duration_sec, max_order_size, external_order_id,
                                                                        user_quote_price, user_id)
                     else:
@@ -396,10 +396,11 @@ class ClientWrapperBase:
                                                                                    self.ORDER_EXECUTION_MAX_FACTOR))
 
                     execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
-                    execute_size_coin = max(execute_size_coin, self.minimum_order_size(currency_to +  "-" + currency_from))
+                    execute_size_coin = max(execute_size_coin, self.minimum_order_size(
+                        currency_to + "-" + currency_from))
                     self.log.debug("size: <%f> execute_size: <%f> max_order_size: <%f>", size_coin, execute_size_coin,
                                    max_order_size)
-
+                execute_size_coin = float(Decimal(execute_size_coin).quantize(Decimal('1e-4')))
                 if execute_size_coin > 0:
                     order_info['size'] = execute_size_coin
                     self.log.info("<%s> <%f> <%s>-<%s> with limit of <%f>", action_type, execute_size_coin, currency_to,
@@ -421,10 +422,11 @@ class ClientWrapperBase:
                                                                                    self.ORDER_EXECUTION_MAX_FACTOR))
 
                     execute_size_coin = self._get_order_size_limit(execute_size_coin, max_order_size)
-                    execute_size_coin = max(execute_size_coin, self.minimum_order_size(currency_to +  "-" + currency_from))
+                    execute_size_coin = max(execute_size_coin,
+                                            self.minimum_order_size(currency_to + "-" + currency_from))
                     self.log.debug("size: <%f> execute_size: <%f>, max_order_size: <%f>", size_coin, execute_size_coin,
                                    max_order_size)
-
+                execute_size_coin = float(Decimal(execute_size_coin).quantize(Decimal('1e-4')))
                 if execute_size_coin > 0:
                     order_info['size'] = execute_size_coin
                     self.log.info("<%s> <%f> <%s>-<%s> with limit of <%f>", action_type, execute_size_coin, currency_to,
