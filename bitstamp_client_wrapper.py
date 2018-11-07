@@ -43,7 +43,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                 self._signed_in_user = ''
                 self._bitstamp_client = None
         except Exception as e:
-            print("Login exception: ", e)
+            self.log.error("Login exception: <%s>", e)
             self._bitstamp_client = None
             self._signed_in_user = ''
             self._balance_changed = False
@@ -147,7 +147,8 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                         self.log.error("Exception while getting transactions data: <%s>", str(e))
 
         except Exception as e:
-            self.log.error("%s %s", str(type(exchange_method)), str(e))
+            self.log.error("Error executing %s, size=<%f>, price=<%f>, type_from=<%s>, type_to=<%s>, error is: <%s> ",
+                           exchange_method, size, price, currency_from, currency_to, str(e))
             execute_result['status'] = 'Error'
         return execute_result
 
@@ -165,7 +166,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
             try:
                 order_status = self._bitstamp_client.order_status(order_id)
             except Exception as e:
-                self.log.error("can't get order status: %s", str(e))
+                self.log.error("can't get order status for order <%s>: %s", order_id, str(e))
         return order_status
 
     def _cancel_order(self, order_id):
@@ -178,7 +179,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                     cancel_status = self._bitstamp_client.cancel_order(order_id)
                     self.log.debug("Cancel status: <%s>", cancel_status)
                 except Exception as e:
-                    self.log.error("Cancel exception: %s", str(e))
+                    self.log.debug("Cancel exception: %s", str(e))
                     if "INTERNAL SERVER ERROR" in str(e):
                         self.log.error("Can't cancel because of internal server error exception: %s", str(e))
                         internal_error_exception = True
@@ -234,7 +235,6 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
 
     def reconnect(self):
         if self._bitstamp_client is None and self._signed_in_user != "":
-            print("Reconnect required")
             self.set_credentials({'username': self._signed_in_user, 'key': self._api_key, 'secret': self._secret})
 
 
