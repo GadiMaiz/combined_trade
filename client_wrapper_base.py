@@ -563,7 +563,8 @@ class ClientWrapperBase:
                       'timed_order': self.TIMED_ORDERS_DICT[True], 'status': "Make Order",
                       'currency_from': currency_from, 'currency_to': currency_to,
                       'balance': self.account_balance(), 'external_order_id': external_order_id,
-                      'user_quote_price': user_quote_price, 'user_id': user_id}
+                      'user_quote_price': user_quote_price, 'user_id': user_id,
+                      'parent_trade_order_id': parent_trade_order_id}
         self.log.info("order info before execution: <%s>", order_info)
         db_trade_order_id = self._db_interface.write_order_to_db(order_info)
         if parent_trade_order_id == -1:
@@ -636,7 +637,9 @@ class ClientWrapperBase:
                     self.log.debug("Cancel status: <%s>", str(cancel_status))
                 finally:
                     self._client_mutex.release()
-                tracked_order['order_time'] = datetime.datetime.utcnow()
+                tracked_order_timestamp = datetime.datetime.utcnow()
+                (dt, micro) = tracked_order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
+                tracked_order['order_time'] = "%s.%02d" % (dt, int(micro) / 1000)
                 already_written_to_db = False
                 if cancel_status:
                     self.log.debug("Cancelling order <%s>", str(active_order))
@@ -705,7 +708,9 @@ class ClientWrapperBase:
                         tracked_order['size'] = new_order_size
                         tracked_order['balance'] = self.account_balance()
                         tracked_order['price'] = new_order_price
-                        tracked_order['order_time'] = datetime.datetime.utcnow()
+                        tracked_order_timestamp = datetime.datetime.utcnow()
+                        (dt, micro) = tracked_order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
+                        tracked_order['order_time'] = "%s.%02d" % (dt, int(micro) / 1000)
                         if active_order['status'] == 'Open':
                             tracked_order['status'] = "Make Order Sent"
                             tracked_order['executed_size'] = 0
@@ -806,7 +811,9 @@ class ClientWrapperBase:
             order_info['size'] = executed_size
             order_info['balance'] = self.account_balance()
             order_info['price'] = price
-            order_info['order_time'] = datetime.datetime.utcnow()
+            order_timestamp = datetime.datetime.utcnow()
+            (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
+            order_info['order_time'] = "%s.%02d" % (dt, int(micro) / 1000)
             order_info['status'] = "Make Order Executed"
             self.log.debug("Make order info when updating from orders tracker: <%s>", str(order_info))
             if not ('updated_from_transactions' in order_info and order_info['updated_from_transactions']):
