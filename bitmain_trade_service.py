@@ -132,25 +132,28 @@ def get_orderbook(exchange, currency, limit=8):
 
 @app.route('/AccountBalance')
 def get_all_accounts_balance():
-    account_balances = exchanges_manager.get_all_account_balances(False)
+    account = request.args.get('account')
+    account_balances = exchanges_manager.get_all_account_balances(False, account)
     return str(account_balances)
 
 
 @app.route('/AccountBalanceForce')
 def get_all_accounts_balance_force():
-    account_balances = exchanges_manager.get_all_account_balances(True)
+    account = request.args.get('account')
+    account_balances = exchanges_manager.get_all_account_balances(True, account)
     return str(account_balances)
 
 
 @app.route('/exchange/<exchange>/accountBalance')
 def get_exchange_balance(exchange):
-    account_balance = exchanges_manager.exchange_balance(exchange, False)
+    account = request.args.get('account')
+    account_balance = exchanges_manager.exchange_balance(exchange, account, False)
     return jsonify(account_balance)
 
 
 @app.route('/Transactions/<exchange>')
 def get_bitstamp_transactions(exchange):
-    #print(str(time.time()) + " start get_bitstamp_transactions")
+    account = request.args.get('account')
     transactions_limit = None
     try:
         transactions_limit = int(request.args.get('limit'))
@@ -160,28 +163,28 @@ def get_bitstamp_transactions(exchange):
         transactions_limit = 0
     transactions = []
     if exchange in orderbooks:
-        transactions = exchanges_manager.get_exchange_transactions(exchange, transactions_limit)
-    #print(str(time.time()) + " end get_bitstamp_transactions")
+        transactions = exchanges_manager.get_exchange_transactions(exchange, transactions_limit, account)
     return str(transactions)
 
 @app.route('/IsTimedOrderRunning')
 def is_time_order_running():
-    result = {'time_order_running': str(exchanges_manager.is_timed_order_running())}
+    account = request.args.get('account')
+    result = {'time_order_running': str(exchanges_manager.is_timed_order_running(account))}
     return str(result)
 
 
 @app.route('/GetTimedOrderStatus')
 def get_timed_order_status():
-    #print(str(time.time()) + " start get_timed_order_status")
-    result = exchanges_manager.get_timed_order_status()
+    account = request.args.get('account')
+    result = exchanges_manager.get_timed_order_status(account)
     result['timed_order_running'] = str(result['timed_order_running'])
-    #print(str(time.time()) + " end get_timed_order_status")
     return str(result)
 
 
 @app.route('/CancelTimedOrder')
 def cancel_timed_order():
-    result = {'cancel_time_order_result': str(exchanges_manager.cancel_timed_order())}
+    account = request.args.get('account')
+    result = {'cancel_time_order_result': str(exchanges_manager.cancel_timed_order(account))}
     log.info(result)
     return str(result)
 
@@ -190,6 +193,7 @@ def cancel_timed_order():
 @app.route('/sendOrder', methods=['POST'])
 def send_order():
     log.debug("Send Order")
+    account = request.args.get('account')
     request_params = json.loads(request.data)
     #print("Sending order in web service")
     result = dict()
@@ -224,6 +228,7 @@ def send_order():
                                                         currency_from,
                                                         duration_sec,
                                                         max_order_size,
+                                                        account,
                                                         external_order_id,
                                                         user_quote_price,
                                                         user_id)
@@ -239,9 +244,8 @@ def send_order():
                                                     float(request_params['size_coin']), request_params['crypto_type'],
                                                     float(request_params['price_fiat']), request_params['fiat_type'],
                                                     duration_sec,
-                                                    max_order_size)
+                                                    max_order_size, account)
     result = order_status
-    #print(result)
     result['order_status'] = str(result['order_status'])
     log.info("command sent")
     return jsonify(result)
@@ -249,7 +253,6 @@ def send_order():
 
 @app.route('/GetSentOrders', methods=['GET'])
 def get_sent_orders():
-    #print(str(time.time()) + " start get_sent_orders")
     try:
         orders_limit = int(request.args.get('limit'))
     except:
@@ -258,13 +261,11 @@ def get_sent_orders():
     if orders_limit is None:
         orders_limit = 0
     sent_orders = exchanges_manager.get_sent_orders(SentOrdersType.FLAT, orders_limit)
-    #print(str(time.time()) + " end get_sent_orders")
     return jsonify(sent_orders)
 
 
 @app.route('/GetSentOrdersFiltered', methods=['POST'])
 def get_sent_orders_filtered():
-    #print(str(time.time()) + " start get_sent_orders_filtered")
     sent_orders = []
     request_filter = {}
     orders_limit = 0
@@ -279,12 +280,10 @@ def get_sent_orders_filtered():
 
     if valid_parameters:
         sent_orders = exchanges_manager.get_sent_orders(SentOrdersType.FLAT, orders_limit, request_filter)
-    #print(str(time.time()) + " start get_sent_orders_filtered")
     return jsonify(sent_orders)
 
 @app.route('/reports/sentOrders', methods=['POST'])
 def sent_orders():
-    #print(str(time.time()) + " start get_sent_orders_filtered")
     sent_orders = []
     request_filter = {}
     orders_limit = 0
@@ -299,7 +298,6 @@ def sent_orders():
 
     if valid_parameters:
         sent_orders = exchanges_manager.get_sent_orders(SentOrdersType.HIERARCHICAL, orders_limit, request_filter)
-    #print(str(time.time()) + " start get_sent_orders_filtered")
     return jsonify(sent_orders)
 
 @app.route('/SetClientCredentials', methods=['POST'])
@@ -307,8 +305,9 @@ def set_client_credentials():
     result = {'set_credentials_status': 'False'}
     try:
         request_params = json.loads(request.data) 
-        exchange = request_params['exchange']    
-        result['set_credentials_status'] = str(login_to_exchange(exchange, request_params))
+        exchange = request_params['exchange']
+        account = request.args.get('account')
+        result['set_credentials_status'] = str(login_to_exchange(exchange, request_params, account))
     except Exception as ex:
         log.error("Failed to set client credentials, parameter error: {}".format(ex))
         result['set_credentials_status'] = 'False'
@@ -317,10 +316,11 @@ def set_client_credentials():
 
 @app.route('/exchange/<exchange>/login', methods=['POST'])
 def exchange_login(exchange):
-    result = {'status': "logged out", 'exchange' : exchange}
+    account = request.args.get('account')
+    result = {'status': "logged out", 'exchange': exchange}
     try:
         request_params = json.loads(request.data) 
-        if login_to_exchange(exchange, request_params) == True:
+        if login_to_exchange(exchange, request_params, account):
             result['status'] = 'logged in'
             result['exchange'] = exchange
 
@@ -331,7 +331,7 @@ def exchange_login(exchange):
     return jsonify(result)
 
 
-def login_to_exchange(exchange, params):
+def login_to_exchange(exchange, params, account):
     try:
         fees = dict()
 
@@ -350,7 +350,6 @@ def login_to_exchange(exchange, params):
                     fees['make'] = fee
             except ValueError as e:
                 pass
-
         if exchange in orderbooks and 'username' in params and 'key' in params and \
                 'secret' in params:
             # Make sure that the username is a number
@@ -363,9 +362,9 @@ def login_to_exchange(exchange, params):
                                'secret': params['secret']}
                 orderbooks[exchange]['fees'].update(fees)
                 orderbooks[exchange]['orderbook'].set_fees(orderbooks[exchange]['fees'])
-                return exchanges_manager.set_exchange_credentials(exchange, credentials)
+                return exchanges_manager.set_exchange_credentials(exchange, credentials, account)
             else:
-                print("ERROR: account id, key or secret contain forbidden characters")
+                log.error("ERROR: account id, key or secret contain forbidden characters")
                 return False     
              
     except Exception as ex:
@@ -374,28 +373,29 @@ def login_to_exchange(exchange, params):
 
 @app.route('/exchange/<exchange>/logout', methods=['POST'])
 def exchange_logout(exchange):
-    result = {"status" : "logged in", "exchange" : exchange}
+    account = request.args.get('account')
+    result = {"status": "logged in", "exchange" : exchange}
     if exchange in orderbooks:
-        if exchanges_manager.logout_from_exchange(exchange) == True:
+        if exchanges_manager.logout_from_exchange(exchange, account):
             result['status'] = "logged out"
             result['exchange'] = exchange
     return jsonify(result)
 
 @app.route('/Logout/<exchange>')
 def logout(exchange):
+    account = request.args.get('account')
     result = {'set_credentials_status': 'False'}
     if exchange in orderbooks:
-        result['set_credentials_status'] = str(exchanges_manager.logout_from_exchange(exchange))
+        result['set_credentials_status'] = str(exchanges_manager.logout_from_exchange(exchange, account))
     return str(result)
 
 
 @app.route('/GetSignedInCredentials')
 def get_signed_in_credentials():
-    #print(str(time.time()) + " start get_signed_in_credentials")
     result = {}
+    account = request.args.get('account')
     for exchange in orderbooks:
-        result[exchange] = exchanges_manager.get_signed_in_credentials(exchange)
-    #print(str(time.time()) + " end get_signed_in_credentials")
+        result[exchange] = exchanges_manager.get_signed_in_credentials(exchange, account)
     return str(result)
 
 

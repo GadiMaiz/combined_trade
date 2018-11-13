@@ -18,9 +18,9 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
     TIMED_MAKE_SLEEP_INTERVAL_SEC = 30
     TIMED_MAKE_SLEEP_FACTOR = 0.75
 
-    def __init__(self, clients, orderbook, db_interface, watchdog, sent_order_identifier, clients_manager):
+    def __init__(self, clients, orderbook, db_interface, watchdog, sent_order_identifier, clients_manager, account):
         self._clients = clients
-        super().__init__(orderbook, db_interface, clients_manager)
+        super().__init__(orderbook, db_interface, clients_manager, account)
         self.log = logging.getLogger('smart-trader')
         self._watchdog = watchdog
         self._sent_order_identifier = sent_order_identifier

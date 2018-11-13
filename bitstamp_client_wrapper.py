@@ -6,8 +6,8 @@ from order_tracker import BitstampOrderTracker
 
 
 class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
-    def __init__(self, credentials, orderbook, db_interface, clients_manager):
-        super().__init__(orderbook, db_interface, clients_manager)
+    def __init__(self, credentials, orderbook, db_interface, clients_manager, account):
+        super().__init__(orderbook, db_interface, clients_manager, account)
         self.log = logging.getLogger('smart-trader')
         self._bitstamp_client = None
         self._signed_in_user = ""

@@ -33,8 +33,9 @@ class ClientWrapperBase:
     BID_ASK_RATIO_SIZE_LIMIT = 0.2
     MINIMUM_REMAINING_SIZE = 0.0001
 
-    def __init__(self, orderbook, db_interface, clients_manager):
+    def __init__(self, orderbook, db_interface, clients_manager, account):
         self.log = logging.getLogger('smart-trader')
+        self._account = account
         self._timed_command_listener = None
         self._timed_take_order_thread = None
         self._timed_make_order_thread = None
@@ -784,7 +785,7 @@ class ClientWrapperBase:
     def _order_complete(self, is_timed_order, report_status):
         if self._clients_manager:
             if is_timed_order and report_status:
-                self._clients_manager.set_last_status(self.get_timed_order_status())
+                self._clients_manager.set_last_status(self.get_timed_order_status(), self._account)
                 self.log.debug("Setting last status <%s>", str(self.get_timed_order_status()))
 
     def _create_timed_order_executer(self, asset_pair, action_type):
