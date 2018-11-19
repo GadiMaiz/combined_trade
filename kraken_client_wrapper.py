@@ -77,8 +77,8 @@ class KrakenClientWrapper(client_wrapper_base.ClientWrapperBase):
         return "Kraken"
 
     def _execute_exchange_order(self, action, cancel, size, currency_from, currency_to, price=None):
-        self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type_from=<%s>, type_to=<%s>, cancel=<%s>".format(
-            action, size,  price, currency_from, currency_to, cancel))
+        self.log.debug("Executing <%s>, size=<%f>, price=<%f>, type_from=<%s>, type_to=<%s>, cancel=<%s>",
+                       action, size,  price, currency_from, currency_to, cancel)
 
         action_type_parsed = action.split('_')
         buy_or_sell = action_type_parsed[0]
