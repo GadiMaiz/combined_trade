@@ -8,7 +8,6 @@ from bitstamp_client_wrapper import BitstampClientWrapper
 from bitstamp_orderbook import BitstampOrderbook
 from kraken_orderbook import KrakenOrderbook
 from kraken_client_wrapper import KrakenClientWrapper
-from huobi_client_wrapper import HuobiClientWrapper
 from huobi_orderbook import HuobiOrderbook
 from huobi_client_wrapper import HuobiClientWrapper
 from orderbook_watchdog import OrderbookWatchdog
@@ -503,11 +502,12 @@ if __name__ == '__main__':
     start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken', 'Huobi']
     open_log = True
     exchanges_credentials = None
+    trade_updates_url = None
     if 'EXCHANGES_CREDENTIALS' in os.environ:
         exchanges_credentials = os.environ['EXCHANGES_CREDENTIALS']
 
     try:
-        opts, args = getopt.getopt(argv, "rdc:p:t:l:b:e:")
+        opts, args = getopt.getopt(argv, "rdc:p:t:l:b:e:u:")
         for opt, arg in opts:
             if opt == '-r':
                 bitstamp_key = opt
@@ -515,8 +515,8 @@ if __name__ == '__main__':
                 bind_ip = "0.0.0.0"
             elif opt == '-c':
                 exchanges_credentials = arg
-            # elif opt == "-u":
-            #     bitstamp_user = arg
+            elif opt == "-u":
+                 trade_updates_url = arg
             # elif opt == "-k":
             #     bitstamp_api_key = arg
             # elif opt == "-s":
@@ -677,7 +677,7 @@ if __name__ == '__main__':
                                                                    'orderbook': orderbooks['Huobi']}}
                                                },
                                               os.path.join(data_dir, db_filename),
-                                              watchdog)
+                                              watchdog, trade_updates_url)
     #app.run(host= '0.0.0.0', ssl_context='adhoc')
     log.info("Active exchanges: <%s>", active_exchanges)
 

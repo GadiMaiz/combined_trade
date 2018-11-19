@@ -8,12 +8,12 @@ import time
 class ExchangeClientManager:
     DEFAULT_ACCOUNT = "smart_trade_default"
 
-    def __init__(self, exchanges_params, db_file, watchdog):
+    def __init__(self, exchanges_params, db_file, watchdog, trades_update_url):
         self.log = logging.getLogger('smart-trader')
         self._reserved_balances = {'BTC': 0, 'BCH': 0, 'USD': 0}
         self._default_account = ExchangeClientManager.DEFAULT_ACCOUNT
         self._clients = dict()
-        self._db_interface = TradeDB(db_file)
+        self._db_interface = TradeDB(db_file, trades_update_url)
         self._orderbooks = dict()
         self._watchdog = watchdog
         self._sent_orders_multiple_exchanges_identifier = 0
@@ -146,7 +146,7 @@ class ExchangeClientManager:
             if len(order_exchanges) == 0:
                 self.log.error("Can't execute order for exchanges <%s> because none of them is in the active_exchanges"
                                " list: <%s>", exchanges, active_exchanges)
-            elif len(order_exchanges) == 1 and order_exchanges[0] in self._clients:
+            elif len(order_exchanges) == 1 and order_exchanges[0] in self._clients[account]:
                 #if duration_sec > 0:
                 self.log.info("Sending order to <%s>", order_exchanges[0])
                 result = self._clients[account][order_exchanges[0]]['client'].send_order(

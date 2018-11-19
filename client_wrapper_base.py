@@ -248,7 +248,7 @@ class ClientWrapperBase:
                       'currency_to': currency_to,
                       'balance': self.account_balance(),
                       'external_order_id': external_order_id,
-                      'user_quote_price': user_quote_price, 'user_id': user_id}
+                      'user_quote_price': user_quote_price, 'user_id': user_id, 'account': self._account}
         self.log.debug("order info before execution: <%s>", order_info)
         parent_trade_id = self._db_interface.write_order_to_db(order_info)
         self._reserved_crypto_type = currency_to
@@ -378,7 +378,7 @@ class ClientWrapperBase:
                       'order_time': order_time, 'timed_order': self.TIMED_ORDERS_DICT[is_timed_order],
                       'status': "Init", 'currency_to': currency_to, 'parent_trade_order_id': parent_trade_order_id,
                       'external_order_id': external_order_id, 'user_quote_price': user_quote_price, 'user_id': user_id,
-                      'currency_from': currency_from}
+                      'currency_from': currency_from, 'account': self._account}
         self.log.debug("Immediate order: <%s>", order_info)
         #try:
         execute_size_coin = size_coin
@@ -565,7 +565,7 @@ class ClientWrapperBase:
                       'currency_from': currency_from, 'currency_to': currency_to,
                       'balance': self.account_balance(), 'external_order_id': external_order_id,
                       'user_quote_price': user_quote_price, 'user_id': user_id,
-                      'parent_trade_order_id': parent_trade_order_id}
+                      'parent_trade_order_id': parent_trade_order_id, 'account': self._account}
         self.log.info("order info before execution: <%s>", order_info)
         db_trade_order_id = self._db_interface.write_order_to_db(order_info)
         if parent_trade_order_id == -1:

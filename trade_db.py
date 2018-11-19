@@ -3,10 +3,13 @@ import sqlite3
 import logging
 import re
 import datetime
+import requests
+import json
 
 class TradeDB:
-    def __init__(self, db_file):
+    def __init__(self, db_file, trades_update_url):
         self._db_file = db_file
+        self._trades_update_url = trades_update_url
         self.log = logging.getLogger('smart-trader')
 
     def create_db_connection(self, db_file):
@@ -59,12 +62,40 @@ class TradeDB:
                 conn.commit()
                 return_order_id = cur.lastrowid
                 self.log.debug('Inserted order <%s> with id <%s>', str(order_info), return_order_id)
+                if trade_order_id == -1:
+                    trade_order_id = return_order_id
+                self.notify_trade_updates(order_info, trade_order_id, exchange_id, price, parent_trade_order_id)
             except Exception as e:
                 self.log.error("DB error: <%s>", str(e))
             finally:
                 conn.close()
 
             return return_order_id
+
+    def notify_trade_updates(self, order_info, trade_order_id, exchange_id, price, parent_trade_order_id):
+        if price == 'NULL':
+            price = -1
+        if self._trades_update_url is not None:
+            try:
+                trade_notification = {'exchange': order_info['exchange'], 'actionType': order_info['action_type'],
+                                      'size': order_info['size'], 'price': price, 'exchangeOrderId': exchange_id,
+                                      'status': order_info['status'], 'orderTime': order_info['order_time'],
+                                      'timedOrder': order_info['timed_order'],
+                                      'currencyFrom': order_info['currency_from'],
+                                      'currencyFromAvailable':
+                                          order_info['balance']['balances'][order_info['currency_from']]['available'],
+                                      'currencyTo': order_info['currency_to'],
+                                      'currencyToAvailable':
+                                          order_info['balance']['balances'][order_info['currency_to']]['available'],
+                                      'ask': order_info['ask'], 'bid': order_info['bid'],
+                                      'parentOrderId': parent_trade_order_id, 'tradeOrderId': trade_order_id,
+                                      'userId': order_info['user_id'], 'internalOrderId':
+                                          order_info['external_order_id']}
+                self.log.debug("Sending trade notification <%s>", trade_notification)
+                notification_request = requests.post(self._trades_update_url, data=json.dumps(trade_notification))
+                self.log.debug("Trade notification sent with result <%s>", notification_request)
+            except Exception as e:
+                self.log.error("Error sending trade notification <%s>: <%s>", trade_notification, e)
 
     def get_sent_orders(self, type, orders_limit, filter):
         conn = self.create_db_connection(self._db_file)

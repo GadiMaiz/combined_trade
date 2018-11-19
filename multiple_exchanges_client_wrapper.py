@@ -90,7 +90,8 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                                                    exchanges_to_execute[exchange],
                                                                    currency_to, price,
                                                                    currency_from, relative_size, max_order_size,
-                                                                   is_timed_order, parent_trade_order_id)
+                                                                   is_timed_order, parent_trade_order_id,
+                                                                   external_order_id, user_quote_price, user_id)
                 self.log.debug("Sent order to exchange <%s>: <%s>", exchange, sent_order)
                 if sent_order['execution_message'] != '':
                     execution_messages.append(sent_order['execution_message'])
@@ -163,7 +164,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                       'timed_order': self.TIMED_ORDERS_DICT[True], 'status': "Timed Order", 'currency_to': currency_to,
                       'currency_from': currency_from,
                       'balance': self.account_balance(), 'external_order_id': external_order_id,
-                      'user_quote_price': user_quote_price, 'user_id': user_id}
+                      'user_quote_price': user_quote_price, 'user_id': user_id, 'account': self._account}
         self.log.info("order info before execution: <%s>", order_info)
         db_trade_order_id = self._db_interface.write_order_to_db(order_info)
         if parent_trade_order_id == -1:
