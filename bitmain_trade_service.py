@@ -133,14 +133,14 @@ def get_orderbook(exchange, currency, limit=8):
 def get_all_accounts_balance():
     account = request.args.get('account')
     account_balances = exchanges_manager.get_all_account_balances(False, account)
-    return str(account_balances)
+    return jsonify(account_balances)
 
 
 @app.route('/AccountBalanceForce')
 def get_all_accounts_balance_force():
     account = request.args.get('account')
     account_balances = exchanges_manager.get_all_account_balances(True, account)
-    return str(account_balances)
+    return jsonify(account_balances)
 
 
 @app.route('/exchange/<exchange>/accountBalance')
