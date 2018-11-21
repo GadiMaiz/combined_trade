@@ -219,8 +219,8 @@ class ExchangeClientManager:
             result = timed_order_client.cancel_timed_order(account)
         return result
 
-    def get_sent_orders(self, type, limit, filter=None):
-        return self._db_interface.get_sent_orders(type, limit, filter)
+    def get_sent_orders(self, order_type, limit, query_filter=None):
+        return self._db_interface.get_sent_orders(order_type, limit, query_filter)
 
     def unregister_client(self, identifier):
         self._multiple_clients.pop(identifier, None)
@@ -235,7 +235,7 @@ class ExchangeClientManager:
                     break
 
             if not timed_order_client:
-                for curr_exchange in self._clients:
+                for curr_exchange in self._clients[account]:
                     if self._clients[account][curr_exchange]['client'].is_timed_order_running():
                         timed_order_client = self._clients[curr_exchange]['client']
                         break
