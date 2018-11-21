@@ -672,11 +672,11 @@ class ClientWrapperBase:
                 active_order_tracker.unregister_order()
                 active_order = None
                 active_order_tracker = None
-            elif execute_order_on_current_market:
-                self.log.debug("Current order <%s> still valid on current price and spread <%s>", str(tracked_order),
-                               str(current_price_and_spread))
+            elif execute_order_on_current_market and tracked_order is not None:
+                self.log.debug("Current order <%s> still valid on current price and spread <%s>, price_changed=<%s>",
+                               str(tracked_order), str(current_price_and_spread), str(price_changed))
 
-            if execute_order_on_current_market and price_changed:
+            if execute_order_on_current_market and (price_changed or active_order is None):
                 new_order_size = size_coin - self._timed_order_done_size
                 price_size_ratio = random.uniform(ClientWrapperBase.BID_ASK_RATIO_SIZE_LIMIT,
                                                   1 - ClientWrapperBase.BID_ASK_RATIO_SIZE_LIMIT)
@@ -687,10 +687,12 @@ class ClientWrapperBase:
                                      random.uniform(ClientWrapperBase.MAX_EXECUTION_MIN_FACTOR * max_order_size,
                                                     max_order_size))
                 if size_coin - self._timed_order_done_size - new_order_size < \
-                    self.minimum_order_size(currency_to + "-" + currency_from):
+                        self.minimum_order_size(currency_to + "-" + currency_from):
                     new_order_size = size_coin - self._timed_order_done_size
                 new_order_size = float(Decimal(new_order_size).quantize(Decimal('1e-4')))
-                if new_order_size > 0:
+                if new_order_size <= 0:
+                    self.log.warning("Error calculating new order size: <%f>, retrying")
+                else:
                     self.log.debug("New order size: <%f>,  new order price: <%f>, price and spread: <%s>, " \
                                    "spread difference: <%f>, remaining size <%f>", new_order_size, new_order_price,
                                    current_price_and_spread, spread_difference, size_coin - self._timed_order_done_size)
@@ -731,6 +733,7 @@ class ClientWrapperBase:
                         active_order = None
 
             if self._timed_order_done_size >= size_coin - ClientWrapperBase.MINIMUM_REMAINING_SIZE:
+                order_info['status'] = 'Finished'
                 self._is_timed_order_running = False
             else:
                 time.sleep(random.uniform(
@@ -742,10 +745,12 @@ class ClientWrapperBase:
             try:
                 self._client_mutex.acquire()
                 self._cancel_order(active_order['id'])
+                order_info['status'] = 'Cancelled'
             finally:
                 self._client_mutex.release()
             active_order_tracker.unregister_order()
 
+        self._db_interface.write_order_to_db(order_info)
         self._order_complete(True, report_status)
 
     def _get_balance_from_exchange(self):
