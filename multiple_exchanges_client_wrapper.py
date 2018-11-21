@@ -372,7 +372,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                                 MultipleExchangesClientWrapper.TIMED_MAKE_SLEEP_INTERVAL_SEC,
                                                 MultipleExchangesClientWrapper.TIMED_MAKE_SLEEP_INTERVAL_SEC)
                 self.log.debug("Sleeping for <%f> seconds", sleep_interval)
-                time.sleep(sleep_interval)
+                self._cancel_event.wait(sleep_interval)
                 prev_time = curr_time
         for exchange in self._clients:
             client_for_order = self._clients[exchange]

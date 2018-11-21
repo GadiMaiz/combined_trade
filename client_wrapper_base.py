@@ -1,6 +1,6 @@
 import datetime
 import time
-from threading import Thread, Lock
+from threading import Thread, Lock, Event
 import random
 import math
 from timed_order_executer import TimedOrderExecuter
@@ -42,6 +42,7 @@ class ClientWrapperBase:
         self._last_balance = {}
         self._transactions = []
         self._is_timed_order_running = False
+        self._cancel_event = Event()
         self._timed_order_action = ''
         self._timed_order_price = 0
         self._timed_order_start_time = ''
@@ -353,12 +354,14 @@ class ClientWrapperBase:
                 if self._timed_order_done_size >= size_coin:
                     self._is_timed_order_running = False
                 else:
-                    time.sleep(sleep_time)
+                    self._cancel_event.wait(sleep_time)
             except Exception as e:
                 self.log.error("Unexpected error during timed order: %s, %s",
                                str(e), traceback.extract_tb(sys.exc_info()))
         self._reserved_crypto = 0
         self._reserved_usd = 0
+        order_info['status'] = "Timed Take Order Finished"
+        self._db_interface.write_order_to_db(order_info)
         self._order_complete(True, True)
 
         self.log.info("Timed action finished")
@@ -511,6 +514,7 @@ class ClientWrapperBase:
         result = False
         if self._is_timed_order_running:
             self._is_timed_order_running = False
+            self._cancel_event.set()
             result = True
 
         return result
@@ -738,9 +742,10 @@ class ClientWrapperBase:
                 order_info['status'] = 'Make Order Finished'
                 self._is_timed_order_running = False
             else:
-                time.sleep(random.uniform(
+                make_order_sleep = random.uniform(
                     ClientWrapperBase.MAKE_ORDER_MINIMUM_SLEEP_SEC, ClientWrapperBase.MAKE_ORDER_MAXIMUM_SLEEP_SEC) + \
-                           additional_sleep_time_for_cancel)
+                           additional_sleep_time_for_cancel
+                self._cancel_event.wait(make_order_sleep)
 
         if active_order:
             self.log.info("Done size: <%f>, Cancelling order: <%s>", self._timed_order_done_size, str(active_order))
