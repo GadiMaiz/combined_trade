@@ -691,7 +691,7 @@ class ClientWrapperBase:
                     new_order_size = size_coin - self._timed_order_done_size
                 new_order_size = float(Decimal(new_order_size).quantize(Decimal('1e-4')))
                 if new_order_size <= 0:
-                    self.log.warning("Error calculating new order size: <%f>, remaining_size: <%f>, done_size: <%f>, "
+                    self.log.warning("Can't calculating new order size: <%f>, remaining_size: <%f>, done_size: <%f>, "
                                      "size_from_price: <%f>, retrying", new_order_size, size_coin,
                                      self._timed_order_done_size, size_from_price)
                 else:
@@ -735,7 +735,7 @@ class ClientWrapperBase:
                         active_order = None
 
             if self._timed_order_done_size >= size_coin - ClientWrapperBase.MINIMUM_REMAINING_SIZE:
-                order_info['status'] = 'Finished'
+                order_info['status'] = 'Make Order Finished'
                 self._is_timed_order_running = False
             else:
                 time.sleep(random.uniform(

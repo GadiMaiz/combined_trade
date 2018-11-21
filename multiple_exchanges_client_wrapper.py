@@ -258,6 +258,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
             self.log.debug("Order size sorted clients: <%s>", str(min_order_sorted_clients))
             if remaining_size <= ClientWrapperBase.MINIMUM_REMAINING_SIZE:
                 self._is_timed_order_running = False
+                order_info['status'] = 'Make Order Finished'
             else:
                 num_of_exchanges = 1
                 orders_big_enough = False
@@ -317,6 +318,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                         self.log.debug("Not enough available balance in the exchanges for executing the order, "
                                        "missing <%f>", balance_for_order)
                         self._is_timed_order_running = False
+                        order_info['status'] = 'Make Order Incomplete'
                 elif change_sizes_for_balance and action_type == 'buy_limit':
                     balance_sorted_clients = sorted(min_order_sorted_clients, key=operator.itemgetter('usd_balance'))
                     balance_for_order = remaining_size
@@ -340,6 +342,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                     if balance_for_order > 0.0001:
                         self.log.debug("Not enough available usd in the exchanges for executing the order")
                         self._is_timed_order_running = False
+                        order_info['status'] = 'Make Order Incomplete'
 
                 if self.is_timed_order_running():
                     self.log.debug("Min order sorted clients: <%s>", min_order_sorted_clients)
@@ -380,4 +383,5 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
             client_for_order = self._clients[exchange]
             client_for_order.join_timed_make_thread()
 
+        self._db_interface.write_order_to_db(order_info)
         self._order_complete(True, True)
