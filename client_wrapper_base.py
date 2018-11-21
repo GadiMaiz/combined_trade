@@ -691,7 +691,9 @@ class ClientWrapperBase:
                     new_order_size = size_coin - self._timed_order_done_size
                 new_order_size = float(Decimal(new_order_size).quantize(Decimal('1e-4')))
                 if new_order_size <= 0:
-                    self.log.warning("Error calculating new order size: <%f>, retrying")
+                    self.log.warning("Error calculating new order size: <%f>, remaining_size: <%f>, done_size: <%f>, "
+                                     "size_from_price: <%f>, retrying", new_order_size, size_coin,
+                                     self._timed_order_done_size, size_from_price)
                 else:
                     self.log.debug("New order size: <%f>,  new order price: <%f>, price and spread: <%s>, " \
                                    "spread difference: <%f>, remaining size <%f>", new_order_size, new_order_price,
