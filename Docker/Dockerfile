@@ -23,7 +23,7 @@ RUN rm -rf venv/lib/python3.6/site-packages/psutil*
 RUN source venv/bin/activate && pip install psutil --force-reinstall
 
 # environment variables
-ENV DEFAULT_EXCHANGES='Kraken/Huobi'
+ENV DEFAULT_EXCHANGES='Bitstamp/Bitfinex/Kraken/GDAX'
 ENV LOG_LEVEL='info'
 ENV SERVER_PORT=5000
 

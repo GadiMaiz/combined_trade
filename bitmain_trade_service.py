@@ -8,9 +8,6 @@ from bitstamp_client_wrapper import BitstampClientWrapper
 from bitstamp_orderbook import BitstampOrderbook
 from kraken_orderbook import KrakenOrderbook
 from kraken_client_wrapper import KrakenClientWrapper
-from huobi_client_wrapper import HuobiClientWrapper
-from huobi_orderbook import HuobiOrderbook
-from huobi_client_wrapper import HuobiClientWrapper
 from orderbook_watchdog import OrderbookWatchdog
 from exchange_clients_manager import ExchangeClientManager
 from sent_orders_type import SentOrdersType
@@ -500,7 +497,7 @@ if __name__ == '__main__':
     frozen_orderbook_timeout_sec = 60
     log_level = logging.INFO
     bitstamp_key = None
-    start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken', 'Huobi']
+    start_exchanges = ['Bitstamp', 'Bitfinex', 'GDAX', 'Kraken']
     open_log = True
     exchanges_credentials = None
     if 'EXCHANGES_CREDENTIALS' in os.environ:
@@ -562,7 +559,6 @@ if __name__ == '__main__':
     db_filename = "Transactions.data"
     init_db.init_db(data_dir, db_filename)
     bitstamp_credentials = None
-    huobi_credentials = None
     kraken_credentials = None
     bitfinex_credentials = None
     gdax_credentials = None
@@ -577,8 +573,6 @@ if __name__ == '__main__':
 
         if not exchanges_credentials is None and 'Bitstamp' in exchanges_credentials:
             bitstamp_credentials = exchanges_credentials['Bitstamp']
-        if not exchanges_credentials is None and 'Huobi' in exchanges_credentials:
-            huobi_credentials = exchanges_credentials['Huobi']
         if not exchanges_credentials is None and 'Kraken' in exchanges_credentials:
             kraken_credentials = exchanges_credentials['Kraken']
         if not exchanges_credentials is None and 'Bitfinex' in exchanges_credentials:
@@ -629,24 +623,13 @@ if __name__ == '__main__':
         kraken_orderbook.start_orderbook()
         active_exchanges['Kraken'] = True
 
-    #huobi_currencies = {'BTC-USD': 'btcusdt', 'BCH-USD': 'bchusdt'}
-    huobi_listen_pairs = {'BTC-USD': 'BTC-USD', 'BCH-USD': 'BCH-USD', 'BCH-BTC': 'BCH-BTC', 'LTC-BTC': 'LTC-BTC'}
-    huobi_fees = {'take': 0.2, 'make': 0.2}
-    huobi_orderbook = HuobiOrderbook(list(huobi_listen_pairs.values()), huobi_fees)
-
-    active_exchanges['Huobi'] = False
-    if "Huobi" in start_exchanges:
-        huobi_orderbook.start_orderbook()
-        active_exchanges['Huobi'] = True
-
 ##############################################################
 ##############################################################
     log.debug("Orderbooks started")
     unified_orderbook = UnifiedOrderbook({"Bitstamp": bitstamp_orderbook,
                                           "Bitfinex": bitfinex_orderbook,
                                           "GDAX": gdax_orderbook,
-                                          "Kraken": kraken_orderbook,
-                                          "Huobi": huobi_orderbook})
+                                          "Kraken": kraken_orderbook})
 
     orderbooks = {'Bitstamp': {'orderbook': bitstamp_orderbook, 'currencies_dict': bitstamp_currencies,
                                'creator': BitstampOrderbook, 'args': bitstamp_args,
@@ -657,8 +640,6 @@ if __name__ == '__main__':
                                'creator': BitfinexOrderbook, 'active': active_exchanges['Bitfinex'], 'fees': bitfinex_fees},
                   'Kraken': {'orderbook': kraken_orderbook, 'currencies_dict': bitstamp_currencies,
                              'creator': KrakenOrderbook, 'active': active_exchanges['Kraken'], 'fees': kraken_fees},
-                  'Huobi': {'orderbook': huobi_orderbook, 'currencies_dict': huobi_listen_pairs,
-                            'creator': HuobiOrderbook, 'active': active_exchanges['Huobi'], 'fees': huobi_fees},
                   'Unified': {'orderbook': unified_orderbook, 'currencies_dict': bitstamp_currencies,
                               'creator': UnifiedOrderbook, 'active': True, 'fees': dict()}}
     watchdog = OrderbookWatchdog(orderbooks, frozen_orderbook_timeout_sec)
@@ -671,10 +652,7 @@ if __name__ == '__main__':
                                                                      'orderbook': orderbooks['Bitfinex']}},
                                                'Kraken': {'creator': KrakenClientWrapper,
                                                           'args': {'credentials': kraken_credentials,
-                                                                   'orderbook': orderbooks['Kraken']}},
-                                               'Huobi': {'creator': HuobiClientWrapper,
-                                                          'args': {'credentials': huobi_credentials,
-                                                                   'orderbook': orderbooks['Huobi']}}
+                                                                   'orderbook': orderbooks['Kraken']}}
                                                },
                                               os.path.join(data_dir, db_filename),
                                               watchdog)
