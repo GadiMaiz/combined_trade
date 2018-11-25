@@ -602,7 +602,7 @@ if __name__ == '__main__':
         bitstamp_orderbook.start_orderbook()
         active_exchanges['Bitstamp'] = True
         log.debug("Bitstamp started")
-    bitfinex_currencies = {'BTC-USD': 'BTCUSD', 'BCH-USD': 'BCHUSD'}
+    bitfinex_currencies = {'BTC-USD': 'BTCUSD', 'BCH-USD': 'BABUSD'}
     bitfinex_fees = {'take': 0.1, 'make': 0.2}
     bitfinex_orderbook = BitfinexOrderbook([bitfinex_currencies['BTC-USD'], bitfinex_currencies['BCH-USD']],
                                            bitfinex_fees)
