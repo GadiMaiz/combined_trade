@@ -1,1 +1,6 @@
-bitmain_trade_service.log
+bitmain_trade_service.log*
+*.pyc
+build/*
+Transactions.data
+data/Transactions.data
+client/bundle.js

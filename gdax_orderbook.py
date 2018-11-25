@@ -16,7 +16,7 @@ class GdaxOrderbook(OrderbookBase):
         self._orderbook = None
         self._init_complete = False
         self._is_alive = False
-        self._log = logging.getLogger(__name__)
+        self._log = logging.getLogger('smart-trader')
         if GdaxOrderbook._event_loop is None:
             GdaxOrderbook._event_loop = asyncio.get_event_loop()
 
@@ -45,6 +45,7 @@ class GdaxOrderbook(OrderbookBase):
             self._is_alive = True
             self._event_loop.run_until_complete(self._manage_orderbook_async())
         except Exception as e:
+            self._log.error("Exception when connecting to GDAX orderbook %s", e)
             self._is_alive = False
 
     async def _manage_orderbook_async(self):
@@ -55,12 +56,17 @@ class GdaxOrderbook(OrderbookBase):
                 message = None
                 try:
                     message = await self._orderbook.handle_message()
-                    if message is not None and 'type' in message and 'time' in message and message['type'] == 'ticker':
-                        ticker_time = calendar.timegm(dateutil.parser.parse(message['time']).timetuple())
-                        self._last_trade[message["product_id"]] = {'type': message["side"], "price": float(message["price"]),
-                                                                   'time': ticker_time}
                 except Exception as e:
-                    self._log.error("Error handling message, message is: <%s>, error is: <%s>", message, str(e))
+                    self._log.error("Error receiving message %s %s", message, e)
+                if message is not None:
+                    try:
+                        if message is not None and 'type' in message and 'time' in message and \
+                                message['type'] == 'ticker' and 'product_id' in message:
+                            ticker_time = calendar.timegm(dateutil.parser.parse(message['time']).timetuple())
+                            self._last_trade[message["product_id"]] = {'type': message["side"], "price": float(message["price"]),
+                                                                       'time': ticker_time}
+                    except Exception as e:
+                        self._log.error("Error handling message, message is: <%s>, error is: <%s>", message, str(e))
 
     def _get_orderbook_from_exchange(self, product_id, book_size):
         result = {

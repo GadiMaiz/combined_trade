@@ -7,7 +7,7 @@ import time
 
 class ExchangeClientManager():
     def __init__(self, exchanges_params, db_file, watchdog):
-        self.log = logging.getLogger(__name__)
+        self.log = logging.getLogger('smart-trader')
         self._reserved_balances = {'BTC': 0, 'BCH': 0, 'USD': 0}
         self._clients = dict()
         self._db_interface = TradeDB(db_file)
@@ -27,11 +27,19 @@ class ExchangeClientManager():
         result['exchange'] = exchange
         return result
 
-    def exchange_balance(self, exchange):
+    def exchange_assets(self, exchange):
+        result = {'exchange': exchange,
+                  'assetPairs': []}
+        if exchange in self._clients:
+            result['assetPairs'] = self._orderbooks[exchange]['orderbook'].get_asset_pairs()
+        return result
+
+    def exchange_balance(self, exchange, extended_info=True):
         result = dict()
         if exchange in self._clients:
-            result = self._clients[exchange]['client'].account_balance()
-        result['exchange'] = exchange
+            result = self._clients[exchange]['client'].account_balance(extended_info=extended_info)
+        if extended_info:
+            result['exchange'] = exchange
         return result
 
     def get_all_account_balances(self, force_exchange):
@@ -84,21 +92,29 @@ class ExchangeClientManager():
     def get_exchange_transactions(self, exchange, limit):
         return self._clients[exchange]['client'].transactions(limit)
 
-    def send_order(self, exchanges, action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec,
-                   max_order_size):
-        print("send_order:", exchanges, action_type, size_coin, crypto_type, price_fiat)
+    def send_order(self, exchanges, action_type, currency_to_size, currency_to_type, currency_from_size,
+                   currency_from_type, duration_sec, max_order_size,  external_order_id='', user_quote_price=0,
+                   user_id=''):
+        self.log.info("send_order: exchanges: <%s>, action_type: <%s>, currency_to_size: <%f>, currency_to_type: <%s> "
+                      "currency_from_size: <%f>", exchanges, action_type, currency_to_size, currency_to_type,
+                      currency_from_size)
         active_exchanges = self._watchdog.get_active_exchanges()
         order_exchanges = []
         for exchange in exchanges:
             if exchange in active_exchanges:
                 order_exchanges.append(exchange)
         result = {'order_status': False, 'execution_size': 0, 'execution_message': 'Invalid exchanges'}
-        if len(order_exchanges) == 1 and order_exchanges[0] in self._clients:
+        if len(order_exchanges) == 0:
+            self.log.error("Can't execute order for exchanges <%s> because none of them is in the active_exchanges"
+                           " list: <%s>", exchanges, active_exchanges)
+        elif len(order_exchanges) == 1 and order_exchanges[0] in self._clients:
             #if duration_sec > 0:
-            print("Sending order to", order_exchanges[0])
-            result = self._clients[order_exchanges[0]]['client'].send_order(action_type, size_coin, crypto_type,
-                                                                            price_fiat, fiat_type, duration_sec,
-                                                                            max_order_size, True)
+            self.log.info("Sending order to <%s>", order_exchanges[0])
+            result = self._clients[order_exchanges[0]]['client'].send_order(action_type, currency_to_size,
+                                                                            currency_to_type, currency_from_size,
+                                                                            currency_from_type, duration_sec,
+                                                                            max_order_size, True, external_order_id,
+                                                                            user_quote_price, user_id)
         else:
             valid_exchanges = True
             order_clients = dict()
@@ -121,8 +137,9 @@ class ExchangeClientManager():
                                                                  self)
                 self._multiple_clients[self._sent_orders_multiple_exchanges_identifier] = multiple_client
                 self._sent_orders_multiple_exchanges_identifier = self._sent_orders_multiple_exchanges_identifier + 1
-                result = multiple_client.send_order(action_type, size_coin, crypto_type, price_fiat, fiat_type,
-                                                    duration_sec,  max_order_size, True)
+                result = multiple_client.send_order(action_type, currency_to_size, currency_to_type, currency_from_size,
+                                                    currency_from_type, duration_sec,  max_order_size, True,
+                                                    external_order_id, user_quote_price, user_id)
         return result
 
     def is_timed_order_running(self):
@@ -141,7 +158,7 @@ class ExchangeClientManager():
                   'timed_order_execution_start_time': 0,
                   'timed_order_elapsed_time': 0,
                   'timed_order_duration_sec': 0,
-                  'timed_order_price_fiat': 0,}
+                  'timed_order_price_fiat': 0}
 
         timed_order_client = self._get_timed_order_client()
         #print(timed_order_client)
@@ -161,8 +178,8 @@ class ExchangeClientManager():
             result = timed_order_client.cancel_timed_order()
         return result
 
-    def get_sent_orders(self, limit, filter=None):
-        return self._db_interface.get_sent_orders(limit, filter)
+    def get_sent_orders(self, type, limit, filter=None):
+        return self._db_interface.get_sent_orders(type, limit, filter)
 
     def unregister_client(self, identifier):
         self._multiple_clients.pop(identifier, None)

@@ -3,11 +3,11 @@ from threading import Thread
 from orderbook_base import OrderbookBase
 import logging
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('smart-trader')
 
 class BitfinexOrderbook(OrderbookBase):
-    symbols_dict = {'BTCUSD': 'BTC', 'BCHUSD': 'BCH', 'BTC-USD': 'BTC', 'BCH-USD': 'BCH'}
-    pairs_dict = {'BTCUSD': 'BTC-USD', 'BCHUSD': 'BCH-USD'}
+    symbols_dict = {'BTCUSD': 'BTC', 'BABUSD': 'BCH', 'BTC-USD': 'BTC', 'BCH-USD': 'BCH'}
+    pairs_dict = {'BTCUSD': 'BTC-USD', 'BABUSD': 'BCH-USD'}
 
     def __init__(self, asset_pairs, fees):
         self._external_asset_pairs = []
@@ -22,7 +22,7 @@ class BitfinexOrderbook(OrderbookBase):
         self._orderbook = {'BTC': None, 'BCH': None}
     def _start(self):
 
-        self._bitfinex_client = BitfinexWSS()
+        self._bitfinex_client = BitfinexWSS(BitfinexOrderbook.pairs_dict.keys())
         self._bitfinex_client.start()
         if self._orderbook_thread is None or not self._orderbook_thread.is_alive():
             self._orderbook_thread = Thread(target=self._manage_orderbook,
@@ -41,8 +41,8 @@ class BitfinexOrderbook(OrderbookBase):
         self._running = False
 
     def _manage_orderbook(self):
-        log.info("running manage orderbook thread")
-        orderbook_init = { 'BTCUSD': False, 'BCHUSD': False}
+        log.debug("running manage orderbook thread")
+        orderbook_init = { 'BTCUSD': False, 'BABUSD': False}
         while self._running:
             try:
                 curr_info = self._bitfinex_client.data_q.get()

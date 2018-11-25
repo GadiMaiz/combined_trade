@@ -21,11 +21,11 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
     def __init__(self, clients, orderbook, db_interface, watchdog, sent_order_identifier, clients_manager):
         self._clients = clients
         super().__init__(orderbook, db_interface, clients_manager)
-        self.log = logging.getLogger(__name__)
+        self.log = logging.getLogger('smart-trader')
         self._watchdog = watchdog
         self._sent_order_identifier = sent_order_identifier
 
-    def account_balance(self, reconnect=False):
+    def account_balance(self, reconnect=False, extended_info=True):
         self._last_balance = {'balances': dict()}
         for curr_client in self._clients:
             curr_account_balance = self._clients[curr_client].account_balance()
@@ -45,8 +45,9 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         self._last_balance['fees'] = self._orderbook['orderbook'].get_fees()
         return self._last_balance
 
-    def send_immediate_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, relative_size,
-                             max_order_size, is_timed_order):
+    def send_immediate_order(self, action_type, size_coin, currency_to, price, currency_from, relative_size,
+                             max_order_size, is_timed_order, parent_trade_order_id, external_order_id, user_quote_price,
+                             user_id):
         remaining_size = size_coin
         remaining_execute_attempts = MultipleExchangesClientWrapper.MAXIMUM_ORDER_ATTEMPTS
         orderbook_type = ""
@@ -63,14 +64,14 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         total_execution_size = 0
         if orderbook_type != "":
             open_orders = self._orderbook['orderbook'].get_unified_orderbook\
-                (crypto_type + "-USD", MultipleExchangesClientWrapper.ORDERBOOK_COMMANDS_FOR_ORDER,
+                (currency_to + "-" + currency_from, MultipleExchangesClientWrapper.ORDERBOOK_COMMANDS_FOR_ORDER,
                  OrderbookFee.TAKER_FEE)[orderbook_type]
             order_executed = False
             for curr_open_order in open_orders:
                 exchange = curr_open_order['source']
                 self.log.debug("Gathering order: type=<%s>, exchange=<%s> remaining_size=<%f>, order_size=<%f>, "
                                "price=<%f>, order_price=<%f>, remaining_attemprs=<%f>", action_type, exchange,
-                               remaining_size, curr_open_order['size'], price_fiat, curr_open_order['price'],
+                               remaining_size, curr_open_order['size'], price, curr_open_order['price'],
                                remaining_execute_attempts)
                 execute_size = min(remaining_size, curr_open_order['size'])
                 if exchange not in exchanges_to_execute:
@@ -87,15 +88,15 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                 client_for_order = self._clients[exchange]
                 sent_order = client_for_order.send_immediate_order(action_type,
                                                                    exchanges_to_execute[exchange],
-                                                                   crypto_type, price_fiat,
-                                                                   fiat_type, relative_size, max_order_size,
-                                                                   is_timed_order)
+                                                                   currency_to, price,
+                                                                   currency_from, relative_size, max_order_size,
+                                                                   is_timed_order, parent_trade_order_id)
                 self.log.debug("Sent order to exchange <%s>: <%s>", exchange, sent_order)
                 if sent_order['execution_message'] != '':
                     execution_messages.append(sent_order['execution_message'])
                 if sent_order['execution_size'] > 0:
                     order_executed = True
-                    print("Order executed:", sent_order['execution_size'])
+                    self.log.debug("Order executed: <%f>", sent_order['execution_size'])
                     total_execution_size += sent_order['execution_size']
         if order_executed:
             order_status = "True"
@@ -113,11 +114,11 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                 break
         return are_clients_init
 
-    def send_order(self, action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec, max_order_size,
-                   report_status):
+    def send_order(self, action_type, size_coin, currency_to, price, currency_from, duration_sec, max_order_size,
+                   report_status, external_order_id, user_quote_price, user_id):
         self._watchdog.register_orderbook(self._sent_order_identifier, self._orderbook['orderbook'])
-        return super().send_order(action_type, size_coin, crypto_type, price_fiat, fiat_type, duration_sec,
-                                  max_order_size, report_status)
+        return super().send_order(action_type, size_coin, currency_to, price, currency_from, duration_sec,
+                                  max_order_size, report_status, external_order_id, user_quote_price, user_id)
 
     def _order_complete(self, is_timed_order, report_status):
         self._watchdog.unregister_orderbook(self._sent_order_identifier)
@@ -135,7 +136,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
 
     def _create_timed_order_executer(self, asset_pair, action_type):
         orders = self._orderbook['orderbook'].get_unified_orderbook(asset_pair, 1, OrderbookFee.TAKER_FEE)
-        print(orders)
+        self.log.debug("Orders: <%s>", str(orders))
         exchange = ""
         executer = None
         if action_type == 'buy' and len(orders['asks']) > 0:
@@ -144,32 +145,37 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
             exchange = orders['bids'][0]['source']
 
         if exchange != "":
-            print("Creating timed executer for exchange {}".format(exchange))
+            self.log.debug("Creating timed executer for exchange <%s>", exchange)
             executer = TimedOrderExecuter(self._clients[exchange], {'orderbook': self._orderbook['orderbook']},
                                           asset_pair)
         return executer
 
-    def _execute_timed_make_order_in_thread(self, action_type, size_coin, crypto_type, price_fiat, fiat_type,
+    def _execute_timed_make_order_in_thread(self, action_type, size_coin, currency_from, currency_to, price,
                                             duration_sec, max_order_size, max_relative_spread_factor,
-                                            relative_to_best_order_ratio, report_status):
+                                            relative_to_best_order_ratio, report_status, external_order_id,
+                                            user_quote_price, user_id, parent_trade_order_id):
         self.log.debug("executing timed make order")
         order_timestamp = datetime.datetime.utcnow()
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
         order_time = "%s.%02d" % (dt, int(micro) / 1000)
-        order_info = {'exchange': self.get_exchange_name(), 'action_type': action_type, 'crypto_size': size_coin,
-                      'price_fiat' : price_fiat, 'exchange_id': 0, 'order_time' : order_time,
-                      'timed_order': self.TIMED_ORDERS_DICT[True], 'status': "Timed Order", 'crypto_type': crypto_type,
-                      'balance': self.account_balance()}
+        order_info = {'exchange': self.get_exchange_name(), 'action_type': action_type, 'size': size_coin,
+                      'price' : price, 'exchange_id': 0, 'order_time' : order_time,
+                      'timed_order': self.TIMED_ORDERS_DICT[True], 'status': "Timed Order", 'currency_to': currency_to,
+                      'currency_from': currency_from,
+                      'balance': self.account_balance(), 'external_order_id': external_order_id,
+                      'user_quote_price': user_quote_price, 'user_id': user_id}
         self.log.info("order info before execution: <%s>", order_info)
-        self._db_interface.write_order_to_db(order_info)
-        self._reserved_crypto_type = crypto_type
+        db_trade_order_id = self._db_interface.write_order_to_db(order_info)
+        if parent_trade_order_id == -1:
+            parent_trade_order_id = db_trade_order_id
+        self._reserved_crypto_type = currency_from
         self._timed_order_action = action_type
-        self._timed_order_price_fiat = price_fiat
+        self._timed_order_price = price
         start_timestamp = datetime.datetime.utcnow()
         self._timed_order_start_time = time.time()#start_timestamp.strftime('%Y-%m-%d %H:%M:%S')
         self._timed_order_execution_start_time = ''
         self._timed_order_required_size = size_coin
-        asset_pair = crypto_type + "-" + fiat_type
+        asset_pair = currency_to + "-" + currency_from
         self._timed_order_done_size = 0
         self._timed_order_elapsed_time = 0
         self._timed_order_duration_sec = duration_sec
@@ -212,16 +218,17 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
 
                 if curr_rate < required_rate or self._timed_order_elapsed_time > duration_sec:
                     limit_price_difference -= MultipleExchangesClientWrapper.TIMED_MAKE_PRICE_CHANGE_USD
-                    print("Current rate is too slow, decreasing price difference to {}".format(
-                        limit_price_difference))
+                    self.log.debug("Current rate is too slow, decreasing price difference to <%f>",
+                                   limit_price_difference)
                 elif curr_rate > required_rate:
                     limit_price_difference += MultipleExchangesClientWrapper.TIMED_MAKE_PRICE_CHANGE_USD
-                    print("Current rate is too fast, increasing price difference to {}".format(
-                        limit_price_difference))
+                    self.log.debug("Current rate is too fast, increasing price difference to <%f>",
+                                   limit_price_difference)
             client_prices = dict()
             for exchange in self._clients:
                 client_for_order = self._clients[exchange]
                 client_price = client_for_order.get_orderbook_price(asset_pair)
+                self.log.debug("Making in exchange <%s> with prices <%s>", exchange, str(client_price))
                 sort_factor = 0
                 if client_price:
                     price_type = ""
@@ -233,13 +240,13 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                         sort_factor = -1
                     client_price_usd = client_price[price_type]['price']
                     client_balance = client_for_order.account_balance()
-                    print("Balance for {}: {}".format(exchange, client_balance))
+                    self.log.debug("Balance for <%s>: <%s>", exchange, str(client_balance))
                     client_usd_balance = 0
                     if 'balances' in client_balance and 'USD' in client_balance['balances']:
                         client_usd_balance = client_balance['balances']['USD']['available']
                     client_crypto_balance = 0
-                    if 'balances' in client_balance and crypto_type.upper() in client_balance['balances']:
-                        client_crypto_balance = client_balance['balances'][crypto_type.upper()]['available']
+                    if 'balances' in client_balance and currency_to.upper() in client_balance['balances']:
+                        client_crypto_balance = client_balance['balances'][currency_to.upper()]['available']
                     client_prices[exchange] = {'client': client_for_order,
                                                'price': client_price_usd * sort_factor,
                                                'exchange': exchange,
@@ -247,7 +254,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                                'usd_balance': client_usd_balance,
                                                'crypto_balance': client_crypto_balance}
             min_order_sorted_clients = sorted(client_prices.values(), key=operator.itemgetter('minimum_order_size'))
-            print("Order size sorted clients: {}".format(min_order_sorted_clients))
+            self.log.debug("Order size sorted clients: <%s>", str(min_order_sorted_clients))
             if remaining_size <= ClientWrapperBase.MINIMUM_REMAINING_SIZE:
                 self._is_timed_order_running = False
             else:
@@ -275,10 +282,10 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
 
                     if not orders_big_enough and len(min_order_sorted_clients) == 1:
                         self._is_timed_order_running = False
-                        print("Order size is too small for all exchanges, cancelling")
+                        self.log.info("Order size <%f> is too small for all exchanges, cancelling", remaining_size)
                     elif not orders_big_enough:
-                        print("Removing exchange {} because its minimum size is too small".format
-                              (min_order_sorted_clients[remove_exchange]['exchange']))
+                        self.log.debug("Removing exchange <%s> because its minimum size is too small",
+                                       min_order_sorted_clients[remove_exchange]['exchange'])
                         del min_order_sorted_clients[len(min_order_sorted_clients) - 1]
                 num_of_exchanges = len(min_order_sorted_clients)
                 if not change_sizes_for_balance:
@@ -288,84 +295,80 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                     balance_sorted_clients = sorted(min_order_sorted_clients, key=operator.itemgetter('crypto_balance'))
                     balance_for_order = remaining_size
                     exchange_size = float(Decimal(balance_for_order / num_of_exchanges).quantize(Decimal('1e-4')))
-                    print("{} active exchanges, remaining size={}, exchange_size={}, clients={}".format(
-                        num_of_exchanges, balance_for_order, exchange_size, balance_sorted_clients))
+                    self.log.debug("<%d> active exchanges, remaining size=<%f>, exchange_size=<%f>, clients=<%s>",
+                                   num_of_exchanges, balance_for_order, exchange_size, str(balance_sorted_clients))
                     for client_index in range(num_of_exchanges):
                         if exchange_size <= balance_sorted_clients[client_index]['crypto_balance']:
-                            print("Setting execute size to {} for exchange {}".format(
-                                exchange_size, balance_sorted_clients[client_index]))
+                            self.log.debug("Setting execute size to <%f> for exchange <%s>", exchange_size,
+                                           balance_sorted_clients[client_index])
                             balance_sorted_clients[client_index]['execute_size'] = exchange_size
                         else:
                             balance_sorted_clients[client_index]['execute_size'] = \
                                 balance_sorted_clients[client_index]['crypto_balance']
-                            print("Low balance, setting execute size to {} for exchange {}".format(
-                                exchange_size, balance_sorted_clients[client_index]))
-                        print("Going to execute {} in exchange {}".format(
-                            balance_sorted_clients[client_index]['execute_size'],
-                            balance_sorted_clients[client_index]['exchange']))
+                            self.log.debug("Low balance, setting execute size to <%f> for exchange <%s>",
+                                           exchange_size, balance_sorted_clients[client_index])
                         balance_for_order -= balance_sorted_clients[client_index]['execute_size']
                         if client_index < num_of_exchanges - 1:
                             exchange_size = float(
                                 Decimal(balance_for_order / (
                                         num_of_exchanges - client_index - 1)).quantize(Decimal('1e-4')))
                     if balance_for_order > 0.0001:
-                        print("Not enough available balance in the exchanges for executing the order, "
-                              "missing {}".format(balance_for_order))
+                        self.log.debug("Not enough available balance in the exchanges for executing the order, "
+                                       "missing <%f>", balance_for_order)
                         self._is_timed_order_running = False
                 elif change_sizes_for_balance and action_type == 'buy_limit':
                     balance_sorted_clients = sorted(min_order_sorted_clients, key=operator.itemgetter('usd_balance'))
                     balance_for_order = remaining_size
                     exchange_size = float(Decimal(balance_for_order / num_of_exchanges).quantize(Decimal('1e-4')))
                     for client_index in range(num_of_exchanges):
-                        if exchange_size <= balance_sorted_clients[client_index]['usd_balance'] / price_fiat:
+                        if exchange_size <= balance_sorted_clients[client_index]['usd_balance'] / price:
                             balance_sorted_clients[client_index]['execute_size'] = exchange_size
                         else:
                             size_for_client = float(Decimal(
-                                balance_sorted_clients[client_index]['usd_balance'] / price_fiat).quantize(
+                                balance_sorted_clients[client_index]['usd_balance'] / price).quantize(
                                 Decimal('1e-4')))
                             balance_sorted_clients[client_index]['execute_size'] = size_for_client
-                        print("Going to execute {} in exchange {}".format(
-                            balance_sorted_clients[client_index]['execute_size'],
-                            balance_sorted_clients[client_index]['exchange']))
+                        self.log.debug("Going to execute <%f> in exchange <%s>",
+                                       balance_sorted_clients[client_index]['execute_size'],
+                                       balance_sorted_clients[client_index]['exchange'])
                         balance_for_order -= balance_sorted_clients[client_index]['execute_size']
                         if client_index < num_of_exchanges - 1:
                             exchange_size = float(
                                 Decimal(balance_for_order / (
                                         num_of_exchanges - client_index - 1)).quantize(Decimal('1e-4')))
                     if balance_for_order > 0.0001:
-                        print("Not enough available usd in the exchanges for executing the order")
+                        self.log.debug("Not enough available usd in the exchanges for executing the order")
                         self._is_timed_order_running = False
 
                 if self.is_timed_order_running():
-                    print("Min order sorted clients: ", min_order_sorted_clients)
+                    self.log.debug("Min order sorted clients: <%s>", min_order_sorted_clients)
                     price_sorted_clients = sorted(min_order_sorted_clients, key=operator.itemgetter('price'))
-                    #print("num_of_exchanges", num_of_exchanges, "remaining_size", remaining_size, "max_order_size", max_order_size)
-                    #num_of_exchanges = max(num_of_exchanges, 1)
                     best_price = abs(price_sorted_clients[0]['price'])
                     if action_type == 'sell_limit':
                         best_price += limit_price_difference
-                        best_price = max(best_price, price_fiat)
+                        best_price = max(best_price, price)
                     elif action_type == 'buy_limit':
                         best_price -= limit_price_difference
-                        best_price = min(best_price, price_fiat)
-                    print("Going to execute in {} exchanges".format(num_of_exchanges))
+                        best_price = min(best_price, price)
+                    self.log.debug("Going to execute in <%d> exchanges", num_of_exchanges)
                     for exchange_index in range(num_of_exchanges):
-                        print("Executing <{}> in exchange <{}> for <{}> USD".format(price_sorted_clients[exchange_index]
-                                                                                    ['execute_size'],
-                                                                                    price_sorted_clients[exchange_index]
-                                                                                    ['exchange'],
-                                                                                    best_price))
+                        self.log.debug("Executing <%f> in exchange <%s> for <%f> USD",
+                                       price_sorted_clients[exchange_index]['execute_size'],
+                                       price_sorted_clients[exchange_index]['exchange'], best_price)
                         price_sorted_clients[exchange_index]['client'].send_order(action_type,
                                                                                   price_sorted_clients[exchange_index]
-                                                                                  ['execute_size'], crypto_type,
-                                                                                  best_price, fiat_type, duration_sec,
-                                                                                  max_order_size, False)
+                                                                                  ['execute_size'], currency_to,
+                                                                                  best_price, currency_from,
+                                                                                  duration_sec, max_order_size, False,
+                                                                                  external_order_id, user_quote_price,
+                                                                                  user_id, parent_trade_order_id)
 
             if self.is_timed_order_running():
                 sleep_interval = random.uniform(MultipleExchangesClientWrapper.TIMED_MAKE_SLEEP_FACTOR *
                                                 MultipleExchangesClientWrapper.TIMED_MAKE_SLEEP_INTERVAL_SEC,
                                                 MultipleExchangesClientWrapper.TIMED_MAKE_SLEEP_INTERVAL_SEC)
-                print("Sleeping for {} seconds".format(sleep_interval))
+                self.log.debug("Sleeping for <%f> seconds", sleep_interval)
+                #self._cancel_event.wait(sleep_interval)
                 time.sleep(sleep_interval)
                 prev_time = curr_time
         for exchange in self._clients:

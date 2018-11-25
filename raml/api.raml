@@ -1,0 +1,161 @@
+#%RAML 1.0
+---
+title: Smart Trade
+version: v0.4
+protocols: [HTTP]
+mediaType: application/json
+baseUri: http://smart-trader/{version}/
+
+types: 
+  ReportFilter: !include report_filter.raml
+  Order: !include order.raml
+  OrderbookOrder: !include orderbook_order.raml
+  OrderStatus: !include order_status.raml
+  ExchangeCredentials: !include exchange_credentials.raml
+  Orderbook: !include orderbook.raml
+  Price: !include price.raml
+  LoginStatus: !include login_status.raml
+  SentOrder: !include sent_order.raml
+
+/exchange/{exchange}:
+  /orderbook:
+    description: Exchange name {exchange} or "Unified" for a unified orderbook
+    /{assetPair}:
+      description: Orderbook's asset pair
+      get:
+        description: Gets the current orderbook of an exchange
+        queryParameters:
+          limit?: number
+        responses: 
+          200:
+            body: 
+              application/json:
+                type: Orderbook
+  /login:
+    description: Login to an exchange with API key credentials
+    post:
+      body:
+        application/json:
+            type: ExchangeCredentials
+      responses:
+        200:
+          body:
+            application/json:
+              example: { "status": "logged in", "exchange" : "Huobi"  }
+  
+  /assetPair:
+    description: Gets the asset pairs the the exchange supports
+    resposnes:
+      200:
+        body:
+          application/json:
+            type: object
+            properties:
+              assetPairs: string[]
+              exchange: string
+  
+  /logout:
+    post:
+      body:
+        text/plain: !!null
+      responses:
+        200:
+          body:
+            application/json:
+              example: { "status": "logged out", "exchange" : "Huobi" }
+
+  /accountBalance:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              example: { "USD": { "amount": 1600, "available": 1500 }, "BTC": { "amount": 0.7, "available": 0.5 } }
+  
+  /start:
+    post:
+      description: Starts listening to the orderbook of the exchange {exchange}.
+      body:
+        text/plain: !!null
+      responses:
+        200:
+          body:
+            application/json:
+              example: { "status": "started", "exchange": "Kraken" }
+
+  /stop:
+    post:
+      description: Stops listening to the orderbook of the exchange {exchange}. Logs out of it if an account is logged in to it.
+      body:
+        text/plain: !!null
+      responses:
+        200:
+          body:
+            application/json:
+              example: { "status": "stopped", "exchange": "Kraken" }
+
+/sendOrder:
+  post:
+    description: Send an order to be executed on the exchange(s). When a price isn't sent the order is executed as a market order.
+    body:
+      application/json:
+        type: Order
+        example: 
+          { 
+            "exchanges": ["Kraken", "Bitstamp"],
+            "actionType": "buy",
+            "size": 0.1,
+            "assetPair": "BTC-EUR",
+            "externalOrderId": "asdf23asd",
+            "userId": "sd432g",
+            "userQuotePrice": 6500
+          }
+    responses:
+      200:
+        body:
+          application/json:
+            type: OrderStatus
+
+/reports:
+  description: Smart-Trader reports APIs
+  /sentOrders:
+    post:
+      description: Generat report on sent transactions data.
+      body:
+        application/json:
+          properties:
+            limit: 
+              description: Limit the resposnse size (default is 1000).
+              type: number
+              required: true
+            filter:
+              description: Report object.
+              required: true
+              type: ReportFilter
+      responses:
+        200:
+          body:
+            application/json:
+              type: SentOrder[]
+              example:
+                [
+                  { 
+                    "exchange": "Bitfinex",
+                    "actionType": "buy",
+                    "size": 0.1,
+                    "price": 6581.8,
+                    "exchangeOrderId": "17869737638",
+                    "status": "Finished",
+                    "orderTime": 2018-10-10 10:05:13.384,
+                    "timedOrder": false,
+                    "assetPair": "BTC-EUR",
+                    "currencyFromAvailable": 3522.28410189,
+                    "currencyToAvailable": 0.10772093,
+                    "ask": 0.0,
+                    "bid": 0.0,
+                    "externalOrderId": "1234A",
+                    "userId": "ABC",
+                    "tradeOrderId": "850",
+                    "userQuotePrice": 6500
+                  }
+                ]    

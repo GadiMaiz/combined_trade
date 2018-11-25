@@ -34,11 +34,11 @@ class BitstampOrderbook(OrderbookBase):
             self._listener_thread.join()
 
     def _get_orderbook_from_exchange(self, asset_pair, book_size):
-        asset_pair_dict = {'BTC-USD': 'BTC', 'BCH-USD': 'BCH', 'BTC': 'BTC', 'BCH': 'BCH'}
+        #asset_pair_dict = {'BTC-USD': 'BTC', 'BCH-USD': 'BCH', 'BTC': 'BTC', 'BCH': 'BCH'}
         if self._bitstamp_wss_listener:
-            orders = self._bitstamp_wss_listener.get_current_partial_book(asset_pair_dict[asset_pair], book_size)
+            orders = self._bitstamp_wss_listener.get_current_partial_book(asset_pair, book_size)
         else:
-            orders = None
+            orders = {'asks': [], 'bids': []}
         return orders
 
     def is_orderbook_thread_alive(self):
@@ -46,17 +46,20 @@ class BitstampOrderbook(OrderbookBase):
 
     def handle_q(self):
         trade_types = {1: "sell", 0: "buy"}
-        asset_pair_dict = {'BTCUSD': 'BTC-USD', 'BCHUSD': 'BCH-USD'}
+        asset_pair_dict = {'BTCUSD': 'BTC-USD', 'BCHUSD': 'BCH-USD', 'LTCUSD': 'LTC-USD'}
         while self.running:
             data = self._bitstamp_wss_listener.data_q.get()
             if data[0] == 'live_trades':
                 pair = data[1]
                 trade_dict = json.loads(data[2])
-                self._last_trade[asset_pair_dict[pair]] = {"price": trade_dict["price"],
-                                                           "type": trade_types[trade_dict["type"]],
-                                                           "time": trade_dict["timestamp"]}
+                bitstamp_pair = pair
+                if pair in asset_pair_dict:
+                    bitstamp_pair = asset_pair_dict[pair]
+                self._last_trade[bitstamp_pair] = {"price": trade_dict["price"],
+                                                   "type": trade_types[trade_dict["type"]],
+                                                   "time": trade_dict["timestamp"]}
                 self._updated_listened_orders(trade_dict)
-                self._track_trade_info(trade_dict, 'BTC-USD')
+                #self._track_trade_info(trade_dict, bitstamp_pair)
             self._bitstamp_wss_listener.data_q.task_done()
 
     def _updated_listened_orders(self, trade_info):
@@ -66,7 +69,6 @@ class BitstampOrderbook(OrderbookBase):
         elif trade_info['sell_order_id'] in self._orders_for_listening:
             order_id = trade_info['sell_order_id']
         if order_id:
-            print("Order id found:", order_id)
             self._orders_for_listening[order_id].order_changed(trade_info['amount'], trade_info['price'],
                                                                trade_info['timestamp'])
 

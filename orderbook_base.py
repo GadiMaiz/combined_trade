@@ -33,7 +33,7 @@ class OrderbookBase:
             self._live_trades[curr_asset_pair] = []
             self._rate_trackers[curr_asset_pair] = {'buy': ExecutionRateTracker(),
                                                     'sell': ExecutionRateTracker()}
-        self._log = logging.getLogger(__name__)
+        self._log = logging.getLogger('smart-trader')
         self._orders_for_listening = {}
 
         for curr_asset_pair in self.get_asset_pairs():
@@ -50,22 +50,23 @@ class OrderbookBase:
         started = False
         while not started:
             try:
+                temp_log_level = self._log.level
                 self._start()
+                self._log.setLevel(temp_log_level)
                 started = True
             except Exception as e:
                 self._log.error("Error starting orderbook: <%s>, retrying", e)
                 time.sleep(1)
-
 
     def stop_orderbook(self):
         self._orderbook_running = False
         self._stop()
 
     def _start(self):
-        print("start")
+        self._log.debug("start")
 
     def _stop(self):
-        print("stop")
+        self._log.debug("stop")
 
     def _get_orderbook_from_exchange(self, asset_pair, size):
         result = {'asks': [],
