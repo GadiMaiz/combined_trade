@@ -118,12 +118,12 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                     execute_result['status'] = 'Finished'
                     execute_result['order_status'] = True
                 elif cancel_not_done:
-                    self.log.debug("Cancelling order <%d>", order_id)
+                    self.log.debug("Cancelling Order %s", order_id)
                     if order_status is not None:
                         cancel_status = self._cancel_order(order_id)
                         if cancel_status:
                                 execute_result['status'] = 'Cancelled'
-                                self.log.info("Order <%d> cancelled", order_id)
+                                self.log.info("Order %s cancelled", order_id)
 
                 if not cancel_status and not cancel_not_done:
                     execute_result['status'] = 'Open'
@@ -134,14 +134,14 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                         found_transaction = False
                         all_transactions = self._bitstamp_client.user_transactions()
                         asset_pair_key = currency_to.lower() + "_" + currency_from.lower()
-                        self.log.debug("curr transaction <%d> transactions: <%s>", order_id, all_transactions)
+                        self.log.debug("curr transaction %d transactions: %s", order_id, all_transactions)
                         for curr_transaction in all_transactions:
                             if curr_transaction['order_id'] == order_id or curr_transaction['order_id'] == int(order_id):
                                 execute_result['executed_price_usd'] = curr_transaction[asset_pair_key]
                                 found_transaction = True
                                 break
                         if not found_transaction:
-                            self.log.warning("Transaction for <%d> not found", order_id)
+                            self.log.warning("Transaction for %d not found", order_id)
                         execute_result['order_status'] = True
                     except Exception as e:
                         self.log.error("Exception while getting transactions data: <%s>", str(e))
@@ -222,7 +222,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
     def get_order_status_from_transactions(self, order_id, currency_from, currency_to):
         results = {'executed_size': 0, 'transactions': []}
         all_transactions = self.transactions(500)
-        self.log.debug("curr transaction <%d> transactions: <%s>", order_id, all_transactions)
+        self.log.debug("curr transaction %d transactions: %s", order_id, all_transactions)
         for curr_transaction in all_transactions:
             if 'order_id' in curr_transaction and int(curr_transaction['order_id']) == int(order_id):
                 results['executed_size'] += abs(float(curr_transaction[(currency_to.lower())]))
