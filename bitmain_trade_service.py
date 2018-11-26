@@ -175,15 +175,19 @@ def is_time_order_running():
 @app.route('/GetTimedOrderStatus')
 def get_timed_order_status():
     account = request.args.get('account')
-    result = exchanges_manager.get_timed_order_status(account)
+    currency_to = request.args.get('currencyTo')
+    result = exchanges_manager.get_timed_order_status(account, currency_to)
     result['timed_order_running'] = str(result['timed_order_running'])
-    return str(result)
+    return jsonify(result)
 
 
 @app.route('/CancelTimedOrder')
 def cancel_timed_order():
     account = request.args.get('account')
-    result = {'cancel_time_order_result': str(exchanges_manager.cancel_timed_order(account))}
+    currency_to = request.args.get('currencyTo')
+    external_order_id = request.args.get('externalOrderId')
+    result = {'cancel_time_order_result': str(exchanges_manager.cancel_timed_order(account, currency_to,
+                                                                                   external_order_id))}
     log.info(result)
     return str(result)
 

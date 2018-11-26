@@ -134,7 +134,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                         found_transaction = False
                         all_transactions = self._bitstamp_client.user_transactions()
                         asset_pair_key = currency_to.lower() + "_" + currency_from.lower()
-                        self.log.debug("curr transaction <%d> transactions: <%s>", order_id, all_transactions)
+                        self.log.debug("curr transaction <%s> transactions: <%s>", order_id, all_transactions)
                         for curr_transaction in all_transactions:
                             if curr_transaction['order_id'] == order_id or curr_transaction['order_id'] == int(order_id):
                                 execute_result['executed_price_usd'] = curr_transaction[asset_pair_key]
@@ -169,7 +169,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                 self.log.error("can't get order status for order <%s>: %s", order_id, str(e))
         return order_status
 
-    def _cancel_order(self, order_id):
+    def _cancel_order(self, order_id, expect_to_be_cancelled=True):
         cancel_status = False
         if self._bitstamp_client is not None and self._signed_in_user != "":
             internal_error_exception = True
@@ -231,7 +231,8 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
         return results
 
     def create_order_tracker(self, order, orderbook, order_info, currency_from, currency_to):
-        return BitstampOrderTracker(order, orderbook, self, order_info, currency_from, currency_to)
+        return BitstampOrderTracker(order, orderbook, self, order_info, currency_from, currency_to,
+                                    self._timed_orders[currency_to])
 
     def reconnect(self):
         if self._bitstamp_client is None and self._signed_in_user != "":
