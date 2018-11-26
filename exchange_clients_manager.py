@@ -174,7 +174,8 @@ class ExchangeClientManager:
                                                                      self._watchdog,
                                                                      self._sent_orders_multiple_exchanges_identifier,
                                                                      self, account)
-                    self._multiple_clients[self._sent_orders_multiple_exchanges_identifier] = multiple_client
+                    self._multiple_clients[self._sent_orders_multiple_exchanges_identifier] = \
+                        {'account': account, 'client': multiple_client}
                     self._sent_orders_multiple_exchanges_identifier = \
                         self._sent_orders_multiple_exchanges_identifier + 1
                     result = multiple_client.send_order(
@@ -190,7 +191,7 @@ class ExchangeClientManager:
             result = True
         return result
 
-    def get_timed_order_status(self, account):
+    def get_timed_order_status(self, account, currency_to):
         account = ExchangeClientManager.check_default_account(account)
         result = {'timed_order_running': False,
                   'action_type': "",
@@ -202,21 +203,21 @@ class ExchangeClientManager:
                   'timed_order_duration_sec': 0,
                   'timed_order_price_fiat': 0}
 
-        timed_order_client = self._get_timed_order_client(account)
+        timed_order_client = self._get_timed_order_client(account, currency_to)
         if timed_order_client:
-            result = timed_order_client.get_timed_order_status(account)
+            result = timed_order_client.get_timed_order_status(currency_to)
         elif account in self._last_multiple_client_timed_status and \
                 self._last_multiple_client_timed_status[account] is not None:
             result = self._last_multiple_client_timed_status[account]
         result['server_time'] = time.time()
         return result
 
-    def cancel_timed_order(self, account):
+    def cancel_timed_order(self, account, currency_to, external_order_id):
         account = ExchangeClientManager.check_default_account(account)
         result = False
-        timed_order_client = self._get_timed_order_client(account)
+        timed_order_client = self._get_timed_order_client(account, currency_to)
         if timed_order_client:
-            result = timed_order_client.cancel_timed_order(account)
+            result = timed_order_client.cancel_timed_order(currency_to, external_order_id)
         return result
 
     def get_sent_orders(self, order_type, limit, query_filter=None):
@@ -225,19 +226,21 @@ class ExchangeClientManager:
     def unregister_client(self, identifier):
         self._multiple_clients.pop(identifier, None)
 
-    def _get_timed_order_client(self, account):
+    def _get_timed_order_client(self, account, currency_to):
         account = ExchangeClientManager.check_default_account(account)
         timed_order_client = None
         if account in self._clients:
             for multiple_client_identifier in self._multiple_clients:
-                if self._multiple_clients[multiple_client_identifier].is_timed_order_running(account):
-                    timed_order_client = self._multiple_clients[multiple_client_identifier]
+                if self._multiple_clients[multiple_client_identifier]['account'] == account and\
+                        self._multiple_clients[multiple_client_identifier]['client'].is_timed_order_running(
+                            currency_to):
+                    timed_order_client = self._multiple_clients[multiple_client_identifier]['client']
                     break
 
             if not timed_order_client:
                 for curr_exchange in self._clients[account]:
-                    if self._clients[account][curr_exchange]['client'].is_timed_order_running():
-                        timed_order_client = self._clients[curr_exchange]['client']
+                    if self._clients[account][curr_exchange]['client'].is_timed_order_running(currency_to):
+                        timed_order_client = self._clients[account][curr_exchange]['client']
                         break
 
         return timed_order_client

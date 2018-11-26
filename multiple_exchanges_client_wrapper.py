@@ -121,10 +121,10 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         return super().send_order(action_type, size_coin, currency_to, price, currency_from, duration_sec,
                                   max_order_size, report_status, external_order_id, user_quote_price, user_id)
 
-    def _order_complete(self, is_timed_order, report_status):
+    def _order_complete(self, is_timed_order, report_status, currency_to):
         self._watchdog.unregister_orderbook(self._sent_order_identifier)
         self._clients_manager.unregister_client(self._sent_order_identifier)
-        super()._order_complete(is_timed_order, report_status)
+        super()._order_complete(is_timed_order, report_status, currency_to)
 
     def get_exchange_name(self):
         all_names = ""
@@ -170,28 +170,27 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         if parent_trade_order_id == -1:
             parent_trade_order_id = db_trade_order_id
         self._reserved_crypto_type = currency_from
-        self._timed_order_action = action_type
-        self._timed_order_price = price
-        start_timestamp = datetime.datetime.utcnow()
-        self._timed_order_start_time = time.time()#start_timestamp.strftime('%Y-%m-%d %H:%M:%S')
-        self._timed_order_execution_start_time = ''
-        self._timed_order_required_size = size_coin
+        timed_order = self._timed_orders[currency_to]
+        timed_order.action = action_type
+        timed_order.price = price
+        timed_order.start_time = time.time()
+        timed_order.execution_start_time = ''
+        timed_order.required_size = size_coin
         asset_pair = currency_to + "-" + currency_from
-        self._timed_order_done_size = 0
-        self._timed_order_elapsed_time = 0
-        self._timed_order_duration_sec = duration_sec
+        timed_order.done_size = 0
+        timed_order.elapsed_time = 0
+        timed_order.duration_sec = duration_sec
         timed_order_start_time = time.time()
-        start_timestamp = datetime.datetime.utcnow()
-        self._timed_order_execution_start_time = time.time()#start_timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        timed_order.execution_start_time = time.time()
         for exchange in self._clients:
             client_for_order = self._clients[exchange]
-            client_for_order.set_timed_command_listener(self)
+            client_for_order.set_timed_command_listener(self, currency_to)
         prev_time = 0
         curr_rate = 0
         limit_price_difference = 0
         prev_run_size = 0
-        while self.is_timed_order_running():
-            remaining_size = self._timed_order_required_size - self._timed_order_done_size
+        while timed_order.running:
+            remaining_size = timed_order.required_size - timed_order.done_size
             curr_time = time.time()
             curr_run_size = 0
             if prev_time == 0:
@@ -202,22 +201,22 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
             else:
                 for exchange in self._clients:
                     client_for_order = self._clients[exchange]
-                    client_status = client_for_order.get_timed_order_status()
+                    client_status = client_for_order.get_timed_order_status(currency_to)
                     curr_run_size += client_status['timed_order_done_size']
                     client_for_order.cancel_timed_order()
                 curr_run_size -= prev_run_size
                 prev_run_size = curr_run_size
                 for exchange in self._clients:
                     client_for_order = self._clients[exchange]
-                    client_for_order.join_timed_make_thread()
+                    client_for_order.join_timed_make_thread(currency_to)
 
-                self._timed_order_elapsed_time = time.time() - timed_order_start_time
+                timed_order.elapsed_time = time.time() - timed_order_start_time
                 time_from_prev_time = prev_time - curr_time
-                required_rate = remaining_size / (self._timed_order_duration_sec - self._timed_order_elapsed_time)
+                required_rate = remaining_size / (timed_order.duration_sec - timed_order.elapsed_time)
                 curr_rate = curr_rate * MultipleExchangesClientWrapper.RATE_TIME_RATIO + \
                             (1 - MultipleExchangesClientWrapper.RATE_TIME_RATIO) * curr_run_size / time_from_prev_time
 
-                if curr_rate < required_rate or self._timed_order_elapsed_time > duration_sec:
+                if curr_rate < required_rate or timed_order.elapsed_time > duration_sec:
                     limit_price_difference -= MultipleExchangesClientWrapper.TIMED_MAKE_PRICE_CHANGE_USD
                     self.log.debug("Current rate is too slow, decreasing price difference to <%f>",
                                    limit_price_difference)
@@ -257,14 +256,14 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
             min_order_sorted_clients = sorted(client_prices.values(), key=operator.itemgetter('minimum_order_size'))
             self.log.debug("Order size sorted clients: <%s>", str(min_order_sorted_clients))
             if remaining_size <= ClientWrapperBase.MINIMUM_REMAINING_SIZE:
-                self._is_timed_order_running = False
+                timed_order.running = False
                 order_info['status'] = 'Make Order Finished'
             else:
                 num_of_exchanges = 1
                 orders_big_enough = False
                 exchange_size = remaining_size
                 change_sizes_for_balance = False
-                while not orders_big_enough and self.is_timed_order_running():
+                while not orders_big_enough and timed_order.running:
                     num_of_exchanges = len(min_order_sorted_clients)
                     exchange_size = float(Decimal(remaining_size / num_of_exchanges).quantize(Decimal('1e-4')))
                     orders_big_enough = True
@@ -283,7 +282,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                             change_sizes_for_balance = True
 
                     if not orders_big_enough and len(min_order_sorted_clients) == 1:
-                        self._is_timed_order_running = False
+                        timed_order.running = False
                         self.log.info("Order size <%f> is too small for all exchanges, cancelling", remaining_size)
                     elif not orders_big_enough:
                         self.log.debug("Removing exchange <%s> because its minimum size is too small",
@@ -317,7 +316,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                     if balance_for_order > 0.0001:
                         self.log.debug("Not enough available balance in the exchanges for executing the order, "
                                        "missing <%f>", balance_for_order)
-                        self._is_timed_order_running = False
+                        timed_order.order_running = False
                         order_info['status'] = 'Make Order Incomplete'
                 elif change_sizes_for_balance and action_type == 'buy_limit':
                     balance_sorted_clients = sorted(min_order_sorted_clients, key=operator.itemgetter('usd_balance'))
@@ -344,7 +343,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                         self._is_timed_order_running = False
                         order_info['status'] = 'Make Order Incomplete'
 
-                if self.is_timed_order_running():
+                if timed_order.running:
                     self.log.debug("Min order sorted clients: <%s>", min_order_sorted_clients)
                     price_sorted_clients = sorted(min_order_sorted_clients, key=operator.itemgetter('price'))
                     best_price = abs(price_sorted_clients[0]['price'])
@@ -367,7 +366,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                                                                   external_order_id, user_quote_price,
                                                                                   user_id, parent_trade_order_id)
 
-            if self.is_timed_order_running():
+            if timed_order.running:
                 sleep_interval = random.uniform(MultipleExchangesClientWrapper.TIMED_MAKE_SLEEP_FACTOR *
                                                 MultipleExchangesClientWrapper.TIMED_MAKE_SLEEP_INTERVAL_SEC,
                                                 MultipleExchangesClientWrapper.TIMED_MAKE_SLEEP_INTERVAL_SEC)
@@ -377,12 +376,12 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                 prev_time = curr_time
         for exchange in self._clients:
             client_for_order = self._clients[exchange]
-            client_for_order.set_timed_command_listener(None)
+            client_for_order.set_timed_command_listener(None, currency_to)
             client_for_order.cancel_timed_order()
 
         for exchange in self._clients:
             client_for_order = self._clients[exchange]
-            client_for_order.join_timed_make_thread()
+            client_for_order.join_timed_make_thread(currency_to)
 
         self._db_interface.write_order_to_db(order_info)
-        self._order_complete(True, True)
+        self._order_complete(True, True, currency_to)
