@@ -125,7 +125,8 @@ class ClientWrapperBase:
         return result
 
     def send_order(self, action_type, size_coin, currency_to, price, currency_from, duration_sec, max_order_size,
-                   report_status, external_order_id, user_quote_price, user_id, parent_trade_order_id=-1):
+                   report_status, external_order_id, user_quote_price, user_id, parent_trade_order_id=-1,
+                   max_exchange_sizes=dict()):
         order_sent = {'order_status': False, 'execution_size': 0, 'execution_message': ''}
         if not self.is_client_initialized():
             order_sent['execution_message'] = 'Exchange client not initialized'
@@ -142,8 +143,9 @@ class ClientWrapperBase:
                                                            user_id)
                     self._order_complete(False, True, currency_to, external_order_id)
                 else:
-                    actions_dict = {'buy': 'buy', 'sell': 'sell', 'timed_sell': 'sell', 'timed_buy': 'buy', 'sell_limit': 'sell_limit',
-                                    'buy_limit': 'buy_limit', "buy_market": "buy_market", "sell_market": "sell_market"}
+                    actions_dict = {'buy': 'buy', 'sell': 'sell', 'timed_sell': 'sell', 'timed_buy': 'buy',
+                                    'sell_limit': 'sell_limit', 'buy_limit': 'buy_limit', "buy_market": "buy_market",
+                                    "sell_market": "sell_market"}
                     self.log.info("Time order, action: <%s>, size_coin: <%f>, currency_to: <%s>, price: <%f> "
                                   "currency_from: <%s>, duration_sec: <%f>, max_order_size: <%f>",
                                   actions_dict[action_type], size_coin, currency_to, price, currency_from,
@@ -156,12 +158,12 @@ class ClientWrapperBase:
                                                                        currency_from, currency_to, price,
                                                                        duration_sec, max_order_size, report_status,
                                                                        external_order_id, user_quote_price, user_id,
-                                                                       parent_trade_order_id)
+                                                                       parent_trade_order_id, max_exchange_sizes)
                         else:
                             order_sent = self.execute_timed_take_order(actions_dict[action_type], size_coin,
                                                                        currency_from, currency_to, price,
                                                                        duration_sec, max_order_size, external_order_id,
-                                                                       user_quote_price, user_id)
+                                                                       user_quote_price, user_id, max_exchange_sizes)
                     else:
                         self.log.warning("Timed order already running, ignoring new timed order")
         return order_sent
@@ -229,7 +231,7 @@ class ClientWrapperBase:
         return result, refuse_reason
 
     def execute_timed_take_order(self, action_type, size_coin, currency_from, currency_to, price, duration_sec,
-                                 max_order_size, external_order_id, user_quote_price, user_id):
+                                 max_order_size, external_order_id, user_quote_price, user_id, max_exchange_sizes):
         if currency_to in self._timed_orders and self._timed_orders[currency_to].thread is not None and\
                 self._timed_orders[currency_to].thread.is_alive():
             if self._timed_orders[currency_to].running:
@@ -243,7 +245,8 @@ class ClientWrapperBase:
         self._timed_orders[currency_to].thread = Thread(target=self._execute_timed_take_order_in_thread,
                                                         args=(action_type, size_coin, currency_from, currency_to,
                                                               price, duration_sec, max_order_size,
-                                                              external_order_id, user_quote_price, user_id),
+                                                              external_order_id, user_quote_price, user_id,
+                                                              max_exchange_sizes),
                                                         daemon=True,
                                                         name='Execute Timed Take Order Thread for {}'.format(
                                                             currency_to))
@@ -252,7 +255,8 @@ class ClientWrapperBase:
         return {'order_status': True, 'execution_size': 0, 'execution_message': "Pending execution"}
 
     def _execute_timed_take_order_in_thread(self, action_type, size_coin, currency_from, currency_to, price,
-                                            duration_sec, max_order_size, external_order_id, user_quote_price, user_id):
+                                            duration_sec, max_order_size, external_order_id, user_quote_price, user_id,
+                                            max_exchange_sizes):
         self.log.debug("Executing timed take order")
         order_timestamp = datetime.datetime.utcnow()
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
@@ -264,7 +268,8 @@ class ClientWrapperBase:
                       'currency_to': currency_to,
                       'balance': self.account_balance(),
                       'external_order_id': external_order_id,
-                      'user_quote_price': user_quote_price, 'user_id': user_id, 'account': self._account}
+                      'user_quote_price': user_quote_price, 'user_id': user_id, 'account': self._account,
+                      'max_exchange_sizes': max_exchange_sizes}
         self.log.debug("order info before execution: <%s>", order_info)
         parent_trade_id = self._db_interface.write_order_to_db(order_info)
         self._reserved_crypto_type = currency_to
@@ -285,12 +290,14 @@ class ClientWrapperBase:
         timed_order.elapsed_time = 0
         timed_order.duration_sec = duration_sec
         timed_order_cancelled = True
+        done_size_exchanges = []
         while timed_order.running:
             try:
                 sleep_time = self.TIMED_EXECUTION_SLEEP_SEC
                 self.log.debug("Timed execution status: done_size=<%f>, elapsed_time=<%f>", timed_order.done_size,
                                timed_order.elapsed_time)
-                timed_order_executer = self._create_timed_order_executer(asset_pair, action_type)
+                timed_order_executer = self._create_timed_order_executer(asset_pair, action_type, max_exchange_sizes,
+                                                                         done_size_exchanges)
                 current_price_and_spread = timed_order_executer.get_current_spread_and_price()
                 if not (current_price_and_spread['ask'] and current_price_and_spread['bid']):
                     self.log.warning("Missing price for <%s>", asset_pair)
@@ -345,6 +352,9 @@ class ClientWrapperBase:
                             if execution_factor > random_value:
                                 relative_order = True
                                 curr_order_size = size_coin - timed_order.done_size
+                                execute_exchange_name = timed_order_executer.get_client_for_order().get_exchange_name()
+                                if execute_exchange_name in max_exchange_sizes:
+                                    curr_order_size = max(curr_order_size, max_exchange_sizes[execute_exchange_name])
 
                                 # Making sure that after executing the order the remaining size will be
                                 # allowed by the exchange
@@ -356,6 +366,11 @@ class ClientWrapperBase:
                                     max_order_size, True, parent_trade_id, external_order_id, user_quote_price, user_id)
                                 if sent_order is not None and sent_order['execution_size'] > 0:
                                     timed_order.done_size += sent_order['execution_size']
+                                    if execute_exchange_name in max_exchange_sizes:
+                                        max_exchange_sizes[execute_exchange_name] -= sent_order['execution_size']
+                                        if max_exchange_sizes[execute_exchange_name] <= 0:
+                                            done_size_exchanges.append(execute_exchange_name)
+
                                     sleep_time += random.uniform(self.EXECUTED_ORDER_MIN_DELAY_SEC,
                                                                  self.EXECUTED_ORDER_MAX_DELAY_SEC)
 
@@ -586,7 +601,7 @@ class ClientWrapperBase:
 
     def execute_timed_make_order(self, action_type, size_coin, currency_from, currency_to, price, duration_sec,
                                  max_order_size, report_status, external_order_id, user_quote_price, user_id,
-                                 parent_trade_order_id):
+                                 parent_trade_order_id, max_exchange_sizes):
         if currency_to in self._timed_orders and self._timed_orders[currency_to].thread is not None and\
                 self._timed_orders[currency_to].thread.is_alive():
             if self._timed_orders[currency_to].running:
@@ -604,7 +619,7 @@ class ClientWrapperBase:
                                                               currency_to, float(price), int(duration_sec),
                                                               float(max_order_size), 0.2, 0, bool(report_status),
                                                               external_order_id, user_quote_price, user_id,
-                                                              parent_trade_order_id),
+                                                              parent_trade_order_id, max_exchange_sizes),
                                                             daemon=True,
                                                             name='Execute Timed Make Order Thread for {}'.format(
                                                                 currency_to))
@@ -615,7 +630,7 @@ class ClientWrapperBase:
     def _execute_timed_make_order_in_thread(self, action_type, size_coin, currency_from, currency_to, price,
                                             duration_sec, max_order_size, max_relative_spread_factor,
                                             relative_to_best_order_ratio, report_status, external_order_id,
-                                            user_quote_price, user_id, parent_trade_order_id):
+                                            user_quote_price, user_id, parent_trade_order_id, max_exchange_sizes):
         self.log.debug("Executing timed make order")
         order_timestamp = datetime.datetime.utcnow()
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
@@ -626,7 +641,8 @@ class ClientWrapperBase:
                       'currency_from': currency_from, 'currency_to': currency_to,
                       'balance': self.account_balance(), 'external_order_id': external_order_id,
                       'user_quote_price': user_quote_price, 'user_id': user_id,
-                      'parent_trade_order_id': parent_trade_order_id, 'account': self._account}
+                      'parent_trade_order_id': parent_trade_order_id, 'account': self._account,
+                      'max_exchange_sizes': max_exchange_sizes}
         self.log.info("order info before execution: <%s>", order_info)
         db_trade_order_id = self._db_interface.write_order_to_db(order_info)
         if parent_trade_order_id == -1:
@@ -696,6 +712,7 @@ class ClientWrapperBase:
             if active_order is not None and (price_changed or not execute_order_on_current_market):
                 self.log.debug("Done size: <%f> cancelling order if not done: <%s>", timed_order.done_size,
                                str(active_order))
+                active_order_tracker.unregister_order()
                 cancel_status = None
                 try:
                     self._client_mutex.acquire()
@@ -722,7 +739,11 @@ class ClientWrapperBase:
                         # Reducing the current size because it will be recalculated from the transactions
                         self.add_order_executed_size(-1 * executed_size_before_check_from_transactions,
                                                      None, None, None)
+                    self._order['updated_from_transactions'] = False
                     active_order_tracker.update_order_from_transactions()
+                    if self._order['updated_from_transactions']:
+                        if 'executed_price' in active_order:
+                            tracked_order['price'] = active_order['executed_price']
                     self.log.debug("Tracked order after update from transactions: <%s> <%s>", active_order,
                                    tracked_order)
                     if active_order['executed_size'] == 0:
@@ -737,7 +758,6 @@ class ClientWrapperBase:
                     self.log.debug("Writing order to DB: <%s>", str(tracked_order))
                     trade_order_id = self._db_interface.write_order_to_db(tracked_order)
                     tracked_order['trade_order_id'] = trade_order_id
-                active_order_tracker.unregister_order()
                 active_order = None
                 active_order_tracker = None
             elif execute_order_on_current_market and tracked_order is not None:
@@ -806,7 +826,7 @@ class ClientWrapperBase:
                         active_order = None
 
             if timed_order.done_size >= size_coin - ClientWrapperBase.MINIMUM_REMAINING_SIZE:
-                order_info['status'] = 'Finished'
+                order_info['status'] = 'Make Order Finished'
                 finish_timestamp = datetime.datetime.utcnow()
                 (dt, micro) = finish_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
                 order_info['order_time'] = "%s.%02d" % (dt, int(micro) / 1000)
@@ -879,7 +899,7 @@ class ClientWrapperBase:
                                                       external_order_id, currency_to)
                 self.log.debug("Setting last status <%s>", str(self.get_timed_order_status(currency_to)))
 
-    def _create_timed_order_executer(self, asset_pair, action_type):
+    def _create_timed_order_executer(self, asset_pair, action_type, max_exchange_sizes, done_size_exchanges):
         return TimedOrderExecuter(self, self._orderbook, asset_pair)
 
     def buy_limit(self, execute_size_coin, price, currency_from, currency_to):

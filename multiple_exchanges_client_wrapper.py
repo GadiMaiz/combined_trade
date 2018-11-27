@@ -116,10 +116,12 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         return are_clients_init
 
     def send_order(self, action_type, size_coin, currency_to, price, currency_from, duration_sec, max_order_size,
-                   report_status, external_order_id, user_quote_price, user_id):
+                   report_status, external_order_id, user_quote_price, user_id, parent_order_id=-1,
+                   max_exchange_sizes=dict()):
         self._watchdog.register_orderbook(self._sent_order_identifier, self._orderbook['orderbook'])
         return super().send_order(action_type, size_coin, currency_to, price, currency_from, duration_sec,
-                                  max_order_size, report_status, external_order_id, user_quote_price, user_id)
+                                  max_order_size, report_status, external_order_id, user_quote_price, user_id,
+                                  parent_order_id, max_exchange_sizes)
 
     def _order_complete(self, is_timed_order, report_status, currency_to, external_order_id):
         self._watchdog.unregister_orderbook(self._sent_order_identifier)
@@ -135,9 +137,10 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                 all_names = all_names + ", " + curr_client
         return all_names
 
-    def _create_timed_order_executer(self, asset_pair, action_type):
-        orders = self._orderbook['orderbook'].get_unified_orderbook(asset_pair, 1, OrderbookFee.TAKER_FEE)
-        self.log.debug("Orders: <%s>", str(orders))
+    def _create_timed_order_executer(self, asset_pair, action_type, max_exchange_sizes, done_size_exchanges):
+        orders = self._orderbook['orderbook'].get_unified_orderbook(asset_pair, 1, OrderbookFee.TAKER_FEE,
+                                                                    done_size_exchanges)
+        self.log.debug("Orders: <%s>", orders)
         exchange = ""
         executer = None
         if action_type == 'buy' and len(orders['asks']) > 0:
@@ -154,7 +157,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
     def _execute_timed_make_order_in_thread(self, action_type, size_coin, currency_from, currency_to, price,
                                             duration_sec, max_order_size, max_relative_spread_factor,
                                             relative_to_best_order_ratio, report_status, external_order_id,
-                                            user_quote_price, user_id, parent_trade_order_id):
+                                            user_quote_price, user_id, parent_trade_order_id, max_exchange_sizes):
         self.log.debug("executing timed make order")
         order_timestamp = datetime.datetime.utcnow()
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
@@ -189,6 +192,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         curr_rate = 0
         limit_price_difference = 0
         prev_run_size = 0
+        prev_balances = {}
         while timed_order.running:
             remaining_size = timed_order.required_size - timed_order.done_size
             curr_time = time.time()
@@ -247,6 +251,13 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                     client_crypto_balance = 0
                     if 'balances' in client_balance and currency_to.upper() in client_balance['balances']:
                         client_crypto_balance = client_balance['balances'][currency_to.upper()]['available']
+                    prev_balance_difference = 0
+                    if exchange in prev_balances:
+                        prev_balance_difference = prev_balances - client_crypto_balance
+                    prev_balances[exchange] = client_crypto_balance
+                    if exchange in max_exchange_sizes:
+                        max_exchange_sizes[exchange] -= prev_balance_difference
+                        client_crypto_balance = min(client_crypto_balance, max_exchange_sizes[exchange])
                     client_prices[exchange] = {'client': client_for_order,
                                                'price': client_price_usd * sort_factor,
                                                'exchange': exchange,
