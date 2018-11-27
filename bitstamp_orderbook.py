@@ -58,7 +58,8 @@ class BitstampOrderbook(OrderbookBase):
                 self._last_trade[bitstamp_pair] = {"price": trade_dict["price"],
                                                    "type": trade_types[trade_dict["type"]],
                                                    "time": trade_dict["timestamp"]}
-                self._updated_listened_orders(trade_dict)
+                if trade_dict['amount'] > 0:
+                    self._updated_listened_orders(trade_dict)
                 #self._track_trade_info(trade_dict, bitstamp_pair)
             self._bitstamp_wss_listener.data_q.task_done()
 

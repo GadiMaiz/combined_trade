@@ -176,7 +176,8 @@ def is_time_order_running():
 def get_timed_order_status():
     account = request.args.get('account')
     currency_to = request.args.get('currencyTo')
-    result = exchanges_manager.get_timed_order_status(account, currency_to)
+    external_order_id = request.args.get('externalOrderId')
+    result = exchanges_manager.get_timed_order_status(account, currency_to, external_order_id)
     result['timed_order_running'] = str(result['timed_order_running'])
     return jsonify(result)
 
@@ -189,13 +190,13 @@ def cancel_timed_order():
     result = {'cancel_time_order_result': str(exchanges_manager.cancel_timed_order(account, currency_to,
                                                                                    external_order_id))}
     log.info(result)
-    return str(result)
+    return jsonify(result)
 
 
 @app.route('/SendOrder', methods=['POST'])
 @app.route('/sendOrder', methods=['POST'])
 def send_order():
-    log.debug("Send Order")
+    log.debug("Send Order %s %s", request.args, request.data)
     account = request.args.get('account')
     request_params = json.loads(request.data)
     #print("Sending order in web service")
@@ -218,6 +219,7 @@ def send_order():
         user_id = request_params["userId"]                           if "userId"  in request_params else ''
         max_order_size = float(request_params["maxOrderSize"])       if "maxOrderSize" in request_params else 0
         duration_sec = int(request_params['durationSec'])            if "durationSec" in request_params else 0
+        max_exchange_sizes = request_params["maxExchangeSizes"]      if "maxExchangeSizes" in request_params else dict()
         asset_pair = request_params['assetPair']
         if asset_pair in VALID_PAIRS:
             asset_pair_split = asset_pair.split('-')
@@ -234,7 +236,8 @@ def send_order():
                                                         account,
                                                         external_order_id,
                                                         user_quote_price,
-                                                        user_id)
+                                                        user_id, max_exchange_sizes)
+            result = order_status
     ####################################################
     else:
         duration_sec = 0
@@ -248,9 +251,9 @@ def send_order():
                                                     float(request_params['price_fiat']), request_params['fiat_type'],
                                                     duration_sec,
                                                     max_order_size, account)
-    result = order_status
+        result = order_status
+    log.debug("order sent %s", result)
     result['order_status'] = str(result['order_status'])
-    log.info("command sent")
     return jsonify(result)
 
 
@@ -685,4 +688,4 @@ if __name__ == '__main__':
     #app.run(host= '0.0.0.0', ssl_context='adhoc')
     log.info("Active exchanges: <%s>", active_exchanges)
 
-    app.run(host=bind_ip, port=listener_port)
+    app.run(host='0.0.0.0', port=listener_port)

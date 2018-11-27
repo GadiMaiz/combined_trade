@@ -26,6 +26,7 @@ class TimedOrder:
         self.duration_sec = 0
         self.running = False
         self.listener = None
+        #self.notify_cancel = False
 
 
 class ClientWrapperBase:
@@ -139,7 +140,7 @@ class ClientWrapperBase:
                     order_sent = self.send_immediate_order(action_type, size_coin, currency_to, price, currency_from,
                                                            False, 0, False, -1, external_order_id, user_quote_price,
                                                            user_id)
-                    self._order_complete(False, True, currency_to)
+                    self._order_complete(False, True, currency_to, external_order_id)
                 else:
                     actions_dict = {'buy': 'buy', 'sell': 'sell', 'timed_sell': 'sell', 'timed_buy': 'buy', 'sell_limit': 'sell_limit',
                                     'buy_limit': 'buy_limit', "buy_market": "buy_market", "sell_market": "sell_market"}
@@ -229,25 +230,30 @@ class ClientWrapperBase:
 
     def execute_timed_take_order(self, action_type, size_coin, currency_from, currency_to, price, duration_sec,
                                  max_order_size, external_order_id, user_quote_price, user_id):
-        if currency_to in self._timed_orders and self._timed_orders[currency_to].thread is not None and \
+        if currency_to in self._timed_orders and self._timed_orders[currency_to].thread is not None and\
                 self._timed_orders[currency_to].thread.is_alive():
-            return False
-        else:
-            self._timed_orders[currency_to] = TimedOrder()
-            self._timed_orders[currency_to].thread = Thread(target=self._execute_timed_take_order_in_thread,
-                                                            args=(action_type, size_coin, currency_from, currency_to,
-                                                                  price, duration_sec, max_order_size,
-                                                                  external_order_id, user_quote_price, user_id),
-                                                            daemon=True,
-                                                            name='Execute Timed Take Order Thread for {}'.format(
-                                                                currency_to))
-            self._timed_orders[currency_to].running = True
-            self._timed_orders[currency_to].thread.start()
-            return {'order_status': True, 'execution_size': 0, 'execution_message': "Pending execution"}
+            if self._timed_orders[currency_to].running:
+                self.log.debug("Previous order for %s still running", currency_to)
+                return {'order_status': False,
+                        'execution_size': 0, 'execution_message': "Existing order still being executed"}
+            else:
+                self.log.debug("Waiting for previous thread for %s to shutdown", currency_to)
+                self._timed_orders[currency_to].thread.join()
+        self._timed_orders[currency_to] = TimedOrder()
+        self._timed_orders[currency_to].thread = Thread(target=self._execute_timed_take_order_in_thread,
+                                                        args=(action_type, size_coin, currency_from, currency_to,
+                                                              price, duration_sec, max_order_size,
+                                                              external_order_id, user_quote_price, user_id),
+                                                        daemon=True,
+                                                        name='Execute Timed Take Order Thread for {}'.format(
+                                                            currency_to))
+        self._timed_orders[currency_to].running = True
+        self._timed_orders[currency_to].thread.start()
+        return {'order_status': True, 'execution_size': 0, 'execution_message': "Pending execution"}
 
     def _execute_timed_take_order_in_thread(self, action_type, size_coin, currency_from, currency_to, price,
                                             duration_sec, max_order_size, external_order_id, user_quote_price, user_id):
-        self.log.debug("executing timed take order")
+        self.log.debug("Executing timed take order")
         order_timestamp = datetime.datetime.utcnow()
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
         order_time = "%s.%02d" % (dt, int(micro) / 1000)
@@ -278,7 +284,8 @@ class ClientWrapperBase:
         timed_order.done_size = 0
         timed_order.elapsed_time = 0
         timed_order.duration_sec = duration_sec
-        while self.is_timed_order_running(currency_to):
+        timed_order_cancelled = True
+        while timed_order.running:
             try:
                 sleep_time = self.TIMED_EXECUTION_SLEEP_SEC
                 self.log.debug("Timed execution status: done_size=<%f>, elapsed_time=<%f>", timed_order.done_size,
@@ -361,17 +368,21 @@ class ClientWrapperBase:
 
                 if timed_order.done_size >= size_coin:
                     timed_order.running = False
+                    timed_order_cancelled = False
                 else:
-                    #self._cancel_event.wait(sleep_time)
-                    time.sleep(sleep_time)
+                    self._cancel_event.wait(sleep_time)
+                    #time.sleep(sleep_time)
             except Exception as e:
                 self.log.error("Unexpected error during timed order: %s, %s",
                                str(e), traceback.extract_tb(sys.exc_info()))
         self._reserved_crypto = 0
         self._reserved_usd = 0
-        order_info['status'] = "Timed Take Order Finished"
+        if timed_order_cancelled:
+            order_info['status'] = "Cancelled"
+        else:
+            order_info['status'] = "Finished"
         self._db_interface.write_order_to_db(order_info)
-        self._order_complete(True, True, currency_to)
+        self._order_complete(True, True, currency_to, external_order_id)
 
         self.log.info("Timed action finished")
 
@@ -547,8 +558,9 @@ class ClientWrapperBase:
 
         result = False
         if currency_to in self._timed_orders and self._timed_orders[currency_to].running:
+            #self._timed_orders[currency_to].notify_cancel = True
             self._timed_orders[currency_to].running = False
-            #self._cancel_event.set()
+            self._cancel_event.set()
             result = True
 
         return result
@@ -577,27 +589,34 @@ class ClientWrapperBase:
                                  parent_trade_order_id):
         if currency_to in self._timed_orders and self._timed_orders[currency_to].thread is not None and\
                 self._timed_orders[currency_to].thread.is_alive():
-            return False
-        else:
-            self._timed_orders[currency_to] = TimedOrder()
-            self._timed_orders[currency_to].thread = Thread(target=self._execute_timed_make_order_in_thread,
-                                                            args=(action_type, float(size_coin), currency_from,
-                                                                  currency_to, float(price), int(duration_sec),
-                                                                  float(max_order_size), 0.2, 0, bool(report_status),
-                                                                  external_order_id, user_quote_price, user_id,
-                                                                  parent_trade_order_id),
-                                                                daemon=True,
-                                                                name='Execute Timed Make Order Thread for {}'.format(
-                                                                    currency_to))
-            self._timed_orders[currency_to].running = True
-            self._timed_orders[currency_to].thread.start()
-            return {'order_status': True, 'execution_size': 0, 'execution_message': "Pending execution"}
+            if self._timed_orders[currency_to].running:
+                self.log.debug("Previous order for %s still running", currency_to)
+                return {'order_status': False,
+                        'execution_size': 0, 'execution_message': "Existing order still being executed"}
+            else:
+                self.log.debug("Waiting for previous thread for %s to shutdown", currency_to)
+                self._timed_orders[currency_to].thread.join()
+
+        self.log.debug("Creating new make timed order thread for %s", currency_to)
+        self._timed_orders[currency_to] = TimedOrder()
+        self._timed_orders[currency_to].thread = Thread(target=self._execute_timed_make_order_in_thread,
+                                                        args=(action_type, float(size_coin), currency_from,
+                                                              currency_to, float(price), int(duration_sec),
+                                                              float(max_order_size), 0.2, 0, bool(report_status),
+                                                              external_order_id, user_quote_price, user_id,
+                                                              parent_trade_order_id),
+                                                            daemon=True,
+                                                            name='Execute Timed Make Order Thread for {}'.format(
+                                                                currency_to))
+        self._timed_orders[currency_to].running = True
+        self._timed_orders[currency_to].thread.start()
+        return {'order_status': True, 'execution_size': 0, 'execution_message': "Pending execution"}
 
     def _execute_timed_make_order_in_thread(self, action_type, size_coin, currency_from, currency_to, price,
                                             duration_sec, max_order_size, max_relative_spread_factor,
                                             relative_to_best_order_ratio, report_status, external_order_id,
                                             user_quote_price, user_id, parent_trade_order_id):
-        self.log.debug("executing timed make order")
+        self.log.debug("Executing timed make order")
         order_timestamp = datetime.datetime.utcnow()
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
         order_time = "%s.%02d" % (dt, int(micro) / 1000)
@@ -635,6 +654,7 @@ class ClientWrapperBase:
         timed_order.execution_start_time = time.time()
         prev_order_price = 0
         tracked_order = None
+        timed_order_cancelled = True
         while timed_order.running:
             timed_order.elapsed_time = time.time() - timed_order_start_time
             if active_order_tracker and tracked_order['status'] != 'Finished':
@@ -786,17 +806,18 @@ class ClientWrapperBase:
                         active_order = None
 
             if timed_order.done_size >= size_coin - ClientWrapperBase.MINIMUM_REMAINING_SIZE:
-                order_info['status'] = 'Make Order Finished'
+                order_info['status'] = 'Finished'
                 finish_timestamp = datetime.datetime.utcnow()
                 (dt, micro) = finish_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
                 order_info['order_time'] = "%s.%02d" % (dt, int(micro) / 1000)
                 timed_order.running = False
+                timed_order_cancelled = False
             else:
                 make_order_sleep = random.uniform(
                     ClientWrapperBase.MAKE_ORDER_MINIMUM_SLEEP_SEC, ClientWrapperBase.MAKE_ORDER_MAXIMUM_SLEEP_SEC) + \
                                    additional_sleep_time_for_cancel
-                #self._cancel_event.wait(make_order_sleep)
-                time.sleep(make_order_sleep)
+                self._cancel_event.wait(make_order_sleep)
+                #time.sleep(make_order_sleep)
 
         if active_order and active_order['status'] != 'Finished':
             self.log.info("Done size: <%f>, Cancelling order: <%s>", timed_order.done_size, str(active_order))
@@ -808,8 +829,12 @@ class ClientWrapperBase:
                 self._client_mutex.release()
             active_order_tracker.unregister_order()
 
+        if timed_order_cancelled:
+            order_info['status'] = 'Cancelled'
+
+        order_info['trade_order_id'] = db_trade_order_id
         self._db_interface.write_order_to_db(order_info)
-        self._order_complete(True, report_status, currency_to)
+        self._order_complete(True, report_status, currency_to, external_order_id)
 
     def _get_balance_from_exchange(self):
         return {}
@@ -845,10 +870,13 @@ class ClientWrapperBase:
     def is_client_initialized(self):
         return self._is_client_init
 
-    def _order_complete(self, is_timed_order, report_status, currency_to):
+    def _order_complete(self, is_timed_order, report_status, currency_to, external_order_id):
+        self.log.debug("Order complete timed=<%s>, repost_status=<%s>, currency_to=<%s>, external_order_id=<%s>",
+                       is_timed_order, report_status, currency_to, external_order_id)
         if self._clients_manager:
             if is_timed_order and report_status:
-                self._clients_manager.set_last_status(self.get_timed_order_status(currency_to), self._account)
+                self._clients_manager.set_last_status(self.get_timed_order_status(currency_to), self._account,
+                                                      external_order_id, currency_to)
                 self.log.debug("Setting last status <%s>", str(self.get_timed_order_status(currency_to)))
 
     def _create_timed_order_executer(self, asset_pair, action_type):
