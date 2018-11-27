@@ -118,7 +118,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                     execute_result['status'] = 'Finished'
                     execute_result['order_status'] = True
                 elif cancel_not_done:
-                    self.log.debug("Cancelling Order %s", order_id)
+                    self.log.debug("Cancelling order <%s>", order_id)
                     if order_status is not None:
                         cancel_status = self._cancel_order(order_id)
                         if cancel_status:

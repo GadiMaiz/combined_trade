@@ -18,7 +18,10 @@ class ExchangeClientManager:
         self._watchdog = watchdog
         self._sent_orders_multiple_exchanges_identifier = 0
         self._multiple_clients = dict()
+        self._multiple_clients_by_external_order_id = dict()
         self._last_multiple_client_timed_status = dict()
+        self._last_status_by_currency_to = dict()
+        self._last_status_by_external_order_id = dict()
         self._exchange_params = exchanges_params
         self._create_account_exchange_clients(self._default_account)
         for curr_exchange in exchanges_params:
@@ -128,7 +131,7 @@ class ExchangeClientManager:
 
     def send_order(self, exchanges, action_type, currency_to_size, currency_to_type, currency_from_size,
                    currency_from_type, duration_sec, max_order_size, account, external_order_id='', user_quote_price=0,
-                   user_id=''):
+                   user_id='', max_exchange_size=dict()):
         account = ExchangeClientManager.check_default_account(account)
         self.log.info("send_order: exchanges: <%s>, action_type: <%s>, currency_to_size: <%f>, currency_to_type: <%s> "
                       "currency_from_size: <%f> for account <%s>", exchanges, action_type, currency_to_size,
@@ -160,6 +163,7 @@ class ExchangeClientManager:
                 for exchange in order_exchanges:
                     if exchange in account_clients:
                         order_clients[exchange] = account_clients[exchange]['client']
+                        print(account, exchange, order_clients[exchange].is_client_initialized())
                         curr_order_orderbooks[exchange] = self._orderbooks[exchange]['orderbook']
                     else:
                         result = {'order_status': "Exchange {} doesn't exist".format(exchange)}
@@ -178,6 +182,8 @@ class ExchangeClientManager:
                         {'account': account, 'client': multiple_client}
                     self._sent_orders_multiple_exchanges_identifier = \
                         self._sent_orders_multiple_exchanges_identifier + 1
+                    if external_order_id:
+                        self._multiple_clients_by_external_order_id[external_order_id] = multiple_client
                     result = multiple_client.send_order(
                         action_type, currency_to_size, currency_to_type,  currency_from_size, currency_from_type,
                         duration_sec, max_order_size, True, external_order_id, user_quote_price, user_id)
@@ -186,12 +192,12 @@ class ExchangeClientManager:
     def is_timed_order_running(self, account):
         account = ExchangeClientManager.check_default_account(account)
         result = False
-        timed_order_client = self._get_timed_order_client(account)
+        timed_order_client = self._get_timed_order_client(account, None, None)
         if timed_order_client:
             result = True
         return result
 
-    def get_timed_order_status(self, account, currency_to):
+    def get_timed_order_status(self, account, currency_to, external_order_id):
         account = ExchangeClientManager.check_default_account(account)
         result = {'timed_order_running': False,
                   'action_type': "",
@@ -203,7 +209,7 @@ class ExchangeClientManager:
                   'timed_order_duration_sec': 0,
                   'timed_order_price_fiat': 0}
 
-        timed_order_client = self._get_timed_order_client(account, currency_to)
+        timed_order_client = self._get_timed_order_client(account, currency_to, external_order_id)
         if timed_order_client:
             result = timed_order_client.get_timed_order_status(currency_to)
         elif account in self._last_multiple_client_timed_status and \
@@ -215,7 +221,7 @@ class ExchangeClientManager:
     def cancel_timed_order(self, account, currency_to, external_order_id):
         account = ExchangeClientManager.check_default_account(account)
         result = False
-        timed_order_client = self._get_timed_order_client(account, currency_to)
+        timed_order_client = self._get_timed_order_client(account, currency_to, external_order_id)
         if timed_order_client:
             result = timed_order_client.cancel_timed_order(currency_to, external_order_id)
         return result
@@ -223,13 +229,17 @@ class ExchangeClientManager:
     def get_sent_orders(self, order_type, limit, query_filter=None):
         return self._db_interface.get_sent_orders(order_type, limit, query_filter)
 
-    def unregister_client(self, identifier):
+    def unregister_client(self, identifier, external_order_id):
         self._multiple_clients.pop(identifier, None)
+        if external_order_id:
+            self._multiple_clients_by_external_order_id.pop(external_order_id, None)
 
-    def _get_timed_order_client(self, account, currency_to):
+    def _get_timed_order_client(self, account, currency_to, external_order_id):
         account = ExchangeClientManager.check_default_account(account)
         timed_order_client = None
-        if account in self._clients:
+        if external_order_id in self._multiple_clients_by_external_order_id:
+            timed_order_client = self._multiple_clients_by_external_order_id[external_order_id]
+        elif account in self._clients:
             for multiple_client_identifier in self._multiple_clients:
                 if self._multiple_clients[multiple_client_identifier]['account'] == account and\
                         self._multiple_clients[multiple_client_identifier]['client'].is_timed_order_running(
@@ -245,6 +255,12 @@ class ExchangeClientManager:
 
         return timed_order_client
 
-    def set_last_status(self, last_status, account):
+    def set_last_status(self, last_status, account, external_order_id, currency_to):
         account = ExchangeClientManager.check_default_account(account)
         self._last_multiple_client_timed_status[account] = last_status
+        if currency_to:
+            if account not in self._last_status_by_currency_to:
+                self._last_status_by_currency_to[account] = dict()
+            self._last_status_by_currency_to[account][currency_to] = last_status
+        if last_status:
+            self._last_status_by_external_order_id[external_order_id] = last_status

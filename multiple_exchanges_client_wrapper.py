@@ -121,10 +121,10 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         return super().send_order(action_type, size_coin, currency_to, price, currency_from, duration_sec,
                                   max_order_size, report_status, external_order_id, user_quote_price, user_id)
 
-    def _order_complete(self, is_timed_order, report_status, currency_to):
+    def _order_complete(self, is_timed_order, report_status, currency_to, external_order_id):
         self._watchdog.unregister_orderbook(self._sent_order_identifier)
-        self._clients_manager.unregister_client(self._sent_order_identifier)
-        super()._order_complete(is_timed_order, report_status, currency_to)
+        self._clients_manager.unregister_client(self._sent_order_identifier, external_order_id)
+        super()._order_complete(is_timed_order, report_status, currency_to, external_order_id)
 
     def get_exchange_name(self):
         all_names = ""
@@ -371,8 +371,8 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                                 MultipleExchangesClientWrapper.TIMED_MAKE_SLEEP_INTERVAL_SEC,
                                                 MultipleExchangesClientWrapper.TIMED_MAKE_SLEEP_INTERVAL_SEC)
                 self.log.debug("Sleeping for <%f> seconds", sleep_interval)
-                #self._cancel_event.wait(sleep_interval)
-                time.sleep(sleep_interval)
+                self._cancel_event.wait(sleep_interval)
+                #time.sleep(sleep_interval)
                 prev_time = curr_time
         for exchange in self._clients:
             client_for_order = self._clients[exchange]
@@ -384,4 +384,4 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
             client_for_order.join_timed_make_thread(currency_to)
 
         self._db_interface.write_order_to_db(order_info)
-        self._order_complete(True, True, currency_to)
+        self._order_complete(True, True, currency_to, external_order_id)

@@ -92,7 +92,6 @@ class TradeDB:
                                       'userId': order_info['user_id'], 'internalOrderId':
                                           order_info['external_order_id']}
                 self.log.debug("Sending trade notification <%s>", trade_notification)
-                # notification_request = requests.post(self._trades_update_url, data=json.dumps(trade_notification))
                 notification_request = requests.post(self._trades_update_url, json=trade_notification)
                 self.log.debug("Trade notification sent with result <%s>", notification_request)
             except Exception as e:
