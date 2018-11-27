@@ -131,7 +131,7 @@ class ExchangeClientManager:
 
     def send_order(self, exchanges, action_type, currency_to_size, currency_to_type, currency_from_size,
                    currency_from_type, duration_sec, max_order_size, account, external_order_id='', user_quote_price=0,
-                   user_id='', max_exchange_size=dict()):
+                   user_id='', max_exchange_sizes=dict()):
         account = ExchangeClientManager.check_default_account(account)
         self.log.info("send_order: exchanges: <%s>, action_type: <%s>, currency_to_size: <%f>, currency_to_type: <%s> "
                       "currency_from_size: <%f> for account <%s>", exchanges, action_type, currency_to_size,
@@ -163,7 +163,6 @@ class ExchangeClientManager:
                 for exchange in order_exchanges:
                     if exchange in account_clients:
                         order_clients[exchange] = account_clients[exchange]['client']
-                        print(account, exchange, order_clients[exchange].is_client_initialized())
                         curr_order_orderbooks[exchange] = self._orderbooks[exchange]['orderbook']
                     else:
                         result = {'order_status': "Exchange {} doesn't exist".format(exchange)}
@@ -186,7 +185,8 @@ class ExchangeClientManager:
                         self._multiple_clients_by_external_order_id[external_order_id] = multiple_client
                     result = multiple_client.send_order(
                         action_type, currency_to_size, currency_to_type,  currency_from_size, currency_from_type,
-                        duration_sec, max_order_size, True, external_order_id, user_quote_price, user_id)
+                        duration_sec, max_order_size, True, external_order_id, user_quote_price, user_id, -1,
+                        max_exchange_sizes)
         return result
 
     def is_timed_order_running(self, account):

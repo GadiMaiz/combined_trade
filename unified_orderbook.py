@@ -22,15 +22,16 @@ class UnifiedOrderbook:
         finally:
             self._orders_mutex.release()
 
-    def get_unified_orderbook(self, symbol, size, include_fees_in_price):
+    def get_unified_orderbook(self, symbol, size, include_fees_in_price, exclude_exchanges):
         client_orderbooks = []
         try:
             self._orders_mutex.acquire()
             for curr_orderbook in self._orderbooks:
-                orders = self._orderbooks[curr_orderbook].get_current_partial_book(
-                    symbol, size, include_fees_in_price)
-                #self._log.debug("orderbook: %s, orders: %s", curr_orderbook, orders)
-                client_orderbooks.append(orders)
+                if curr_orderbook not in exclude_exchanges:
+                    orders = self._orderbooks[curr_orderbook].get_current_partial_book(
+                        symbol, size, include_fees_in_price)
+                    #self._log.debug("orderbook: %s, orders: %s", curr_orderbook, orders)
+                    client_orderbooks.append(orders)
 
             best_orders = {'asks': [], 'bids': []}
             price_sort = 'price'
