@@ -123,7 +123,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                         cancel_status = self._cancel_order(order_id)
                         if cancel_status:
                                 execute_result['status'] = 'Cancelled'
-                                self.log.info("Order <%d> cancelled", order_id)
+                                self.log.info("Order %s cancelled", order_id)
 
                 if not cancel_status and not cancel_not_done:
                     execute_result['status'] = 'Open'
@@ -141,7 +141,7 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
                                 found_transaction = True
                                 break
                         if not found_transaction:
-                            self.log.warning("Transaction for <%d> not found", order_id)
+                            self.log.warning("Transaction for %d not found", order_id)
                         execute_result['order_status'] = True
                     except Exception as e:
                         self.log.error("Exception while getting transactions data: <%s>", str(e))
