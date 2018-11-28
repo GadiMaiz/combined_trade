@@ -275,6 +275,8 @@ class ClientWrapperBase:
                       'max_exchange_sizes': max_exchange_sizes}
         self.log.debug("order info before execution: <%s>", order_info)
         parent_trade_id = self._db_interface.write_order_to_db(order_info)
+        order_info['trade_order_id'] = parent_trade_id
+        order_info['parent_trade_order_id'] = parent_trade_id
         self._reserved_crypto_type = currency_to
         if action_type == 'sell':
             self._reserved_crypto = size_coin
