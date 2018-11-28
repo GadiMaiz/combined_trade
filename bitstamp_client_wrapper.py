@@ -222,12 +222,8 @@ class BitstampClientWrapper(client_wrapper_base.ClientWrapperBase):
     def get_order_status_from_transactions(self, order_id, currency_from, currency_to):
         results = {'executed_size': 0, 'transactions': []}
         all_transactions = self.transactions(500)
-<<<<<<< HEAD
-        self.log.debug("curr transaction %d transactions: %s", order_id, all_transactions)
-=======
         asset_pair = currency_to.lower + "_" + currency_from
         self.log.debug("curr transaction <%d> transactions: <%s>", order_id, all_transactions)
->>>>>>> cd8289e0532a58ef239f0e2ed8514e318d783c7e
         for curr_transaction in all_transactions:
             if 'order_id' in curr_transaction and int(curr_transaction['order_id']) == int(order_id):
                 transaction_size = abs(float(curr_transaction[(currency_to.lower())]))
