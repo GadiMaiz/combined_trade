@@ -81,6 +81,7 @@ class BitstampOrderTracker(OrderTracker):
         self._client_wrapper.set_order_executed_size(order_transactions['executed_size'] + self._initial_size,
                                                      self._timed_order)
         self._order['executed_size'] = order_transactions['executed_size']
-        self._order['executed_price'] = order_transactions['transaction_price']
+        if 'transaction_price' in order_transactions:
+            self._order['executed_price'] = order_transactions['transaction_price']
         self._order['updated_from_transactions'] = True
         self._log.debug("Updated Bitstamp order from transactions: <%s>", order_transactions)
