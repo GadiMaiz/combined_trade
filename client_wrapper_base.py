@@ -184,6 +184,9 @@ class ClientWrapperBase:
                 if price:
                     balance_before_order = self.account_balance()
                     self.log.debug("balance_before_order <%s>", str(balance_before_order))
+                    if crypto_type not in balance_before_order['balances']:
+                        result = False
+                        refuse_reason = "{} balance unavailable".format(crypto_type)
                     if result and check_action_type == 'sell' and size_coin > \
                             balance_before_order['balances'][crypto_type]['available']:
                         refuse_reason = "Available balance " + \
