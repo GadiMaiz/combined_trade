@@ -22,7 +22,7 @@ class UnifiedOrderbook:
         finally:
             self._orders_mutex.release()
 
-    def get_unified_orderbook(self, symbol, size, include_fees_in_price, exclude_exchanges):
+    def get_unified_orderbook(self, symbol, size, include_fees_in_price, exclude_exchanges=[]):
         client_orderbooks = []
         try:
             self._orders_mutex.acquire()
