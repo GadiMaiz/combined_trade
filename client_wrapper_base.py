@@ -739,9 +739,9 @@ class ClientWrapperBase:
                         # Reducing the current size because it will be recalculated from the transactions
                         self.add_order_executed_size(-1 * executed_size_before_check_from_transactions,
                                                      None, None, None)
-                    self._order['updated_from_transactions'] = False
+                    active_order['updated_from_transactions'] = False
                     active_order_tracker.update_order_from_transactions()
-                    if self._order['updated_from_transactions']:
+                    if active_order['updated_from_transactions']:
                         if 'executed_price' in active_order:
                             tracked_order['price'] = active_order['executed_price']
                     self.log.debug("Tracked order after update from transactions: <%s> <%s>", active_order,
