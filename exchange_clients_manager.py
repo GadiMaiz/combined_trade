@@ -154,7 +154,7 @@ class ExchangeClientManager:
                 self.log.info("Sending order to <%s>", order_exchanges[0])
                 result = self._clients[account][order_exchanges[0]]['client'].send_order(
                     action_type, currency_to_size, currency_to_type, currency_from_size, currency_from_type,
-                    duration_sec, max_order_size, True, external_order_id, user_quote_price, user_id)
+                    duration_sec, max_order_size, True, external_order_id, user_quote_price, user_id, -1, dict(), None)
             else:
                 account_clients = self._clients[account]
                 valid_exchanges = True
@@ -186,7 +186,7 @@ class ExchangeClientManager:
                     result = multiple_client.send_order(
                         action_type, currency_to_size, currency_to_type,  currency_from_size, currency_from_type,
                         duration_sec, max_order_size, True, external_order_id, user_quote_price, user_id, -1,
-                        max_exchange_sizes)
+                        max_exchange_sizes, None)
         return result
 
     def is_timed_order_running(self, account):

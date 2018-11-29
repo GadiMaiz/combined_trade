@@ -3,7 +3,7 @@ import datetime
 
 class OrderTracker:
     def __init__(self, order, orderbook, client_wrapper, order_info, currency_from, currency_to, tracked_order):
-        self._log = self.log = logging.getLogger('smart-trader')
+        self._log = logging.getLogger('smart-trader')
         self._order = order
         self._orderbook = orderbook
         self._client_wrapper = client_wrapper
@@ -67,7 +67,8 @@ class KrakenOrderTracker(OrderTracker):
                 tracked_order_timestamp = datetime.datetime.utcfromtimestamp(order_status[self._order['id']]['closetm'])
                 (dt, micro) = tracked_order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
                 self._order_info['order_time'] = "%s.%02d" % (dt, int(micro) / 1000)
-        self._client_wrapper.set_order_executed_size(executed_size + self._initial_size, self._timed_order)
+        if executed_size > 0:
+            self._client_wrapper.set_order_executed_size(executed_size + self._initial_size, self._timed_order)
 
 
 class BitstampOrderTracker(OrderTracker):

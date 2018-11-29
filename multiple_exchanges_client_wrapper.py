@@ -117,11 +117,11 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
 
     def send_order(self, action_type, size_coin, currency_to, price, currency_from, duration_sec, max_order_size,
                    report_status, external_order_id, user_quote_price, user_id, parent_order_id=-1,
-                   max_exchange_sizes=dict()):
+                   max_exchange_sizes=dict(), order_listener=None):
         self._watchdog.register_orderbook(self._sent_order_identifier, self._orderbook['orderbook'])
         return super().send_order(action_type, size_coin, currency_to, price, currency_from, duration_sec,
                                   max_order_size, report_status, external_order_id, user_quote_price, user_id,
-                                  parent_order_id, max_exchange_sizes)
+                                  parent_order_id, max_exchange_sizes, order_listener)
 
     def _order_complete(self, is_timed_order, report_status, currency_to, external_order_id):
         self._watchdog.unregister_orderbook(self._sent_order_identifier)
@@ -157,7 +157,8 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
     def _execute_timed_make_order_in_thread(self, action_type, size_coin, currency_from, currency_to, price,
                                             duration_sec, max_order_size, max_relative_spread_factor,
                                             relative_to_best_order_ratio, report_status, external_order_id,
-                                            user_quote_price, user_id, parent_trade_order_id, max_exchange_sizes):
+                                            user_quote_price, user_id, parent_trade_order_id, max_exchange_sizes,
+                                            order_listener):
         self.log.debug("executing timed make order")
         order_timestamp = datetime.datetime.utcnow()
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
@@ -187,7 +188,6 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         timed_order.execution_start_time = time.time()
         for exchange in self._clients:
             client_for_order = self._clients[exchange]
-            client_for_order.set_timed_command_listener(self, currency_to)
         prev_time = 0
         curr_rate = 0
         limit_price_difference = 0
@@ -253,7 +253,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                         client_crypto_balance = client_balance['balances'][currency_to.upper()]['available']
                     prev_balance_difference = 0
                     if exchange in prev_balances:
-                        prev_balance_difference = prev_balances - client_crypto_balance
+                        prev_balance_difference = prev_balances[exchange] - client_crypto_balance
                     prev_balances[exchange] = client_crypto_balance
                     if exchange in max_exchange_sizes:
                         max_exchange_sizes[exchange] -= prev_balance_difference
@@ -375,7 +375,9 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                                                                   best_price, currency_from,
                                                                                   duration_sec, max_order_size, False,
                                                                                   external_order_id, user_quote_price,
-                                                                                  user_id, parent_trade_order_id)
+                                                                                  user_id, parent_trade_order_id,
+                                                                                  dict(), { 'listener': self,
+                                                                                  'order': timed_order})
 
             if timed_order.running:
                 sleep_interval = random.uniform(MultipleExchangesClientWrapper.TIMED_MAKE_SLEEP_FACTOR *
@@ -387,7 +389,6 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                 prev_time = curr_time
         for exchange in self._clients:
             client_for_order = self._clients[exchange]
-            client_for_order.set_timed_command_listener(None, currency_to)
             client_for_order.cancel_timed_order()
 
         for exchange in self._clients:
