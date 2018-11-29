@@ -400,7 +400,7 @@ class ClientWrapperBase:
         if timed_order_cancelled:
             order_info['status'] = "Cancelled"
         else:
-            order_info['status'] = "Finished"
+            order_info['status'] = "Timed Take Finished"
         self._db_interface.write_order_to_db(order_info)
         self._order_complete(True, True, currency_to, external_order_id)
 
