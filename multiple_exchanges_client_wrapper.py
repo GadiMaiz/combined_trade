@@ -257,7 +257,11 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                     prev_balances[exchange] = client_crypto_balance
                     if exchange in max_exchange_sizes:
                         max_exchange_sizes[exchange] -= prev_balance_difference
+                        self.log.debug("Max order size for exchange <%s> is <%f>", exchange,
+                                       max_exchange_sizes[exchange])
                         client_crypto_balance = min(client_crypto_balance, max_exchange_sizes[exchange])
+                    else:
+                        self.log.debug("No max size for exchange <%s>", exchange)
                     client_prices[exchange] = {'client': client_for_order,
                                                'price': client_price_usd * sort_factor,
                                                'exchange': exchange,
