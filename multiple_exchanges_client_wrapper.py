@@ -164,7 +164,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         (dt, micro) = order_timestamp.strftime('%Y-%m-%d %H:%M:%S.%f').split('.')
         order_time = "%s.%02d" % (dt, int(micro) / 1000)
         order_info = {'exchange': self.get_exchange_name(), 'action_type': action_type, 'size': size_coin,
-                      'price' : price, 'exchange_id': 0, 'order_time' : order_time,
+                      'price' : price, 'exchange_id': 0, 'order_time': order_time,
                       'timed_order': self.TIMED_ORDERS_DICT[True], 'status': "Timed Order", 'currency_to': currency_to,
                       'currency_from': currency_from,
                       'balance': self.account_balance(), 'external_order_id': external_order_id,
@@ -255,13 +255,11 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                     if exchange in prev_balances:
                         prev_balance_difference = prev_balances[exchange] - client_crypto_balance
                     prev_balances[exchange] = client_crypto_balance
-                    if exchange in max_exchange_sizes:
+                    if action_type == 'sell_limit' and exchange in max_exchange_sizes:
                         max_exchange_sizes[exchange] -= prev_balance_difference
                         self.log.debug("Max order size for exchange <%s> is <%f>", exchange,
                                        max_exchange_sizes[exchange])
                         client_crypto_balance = min(client_crypto_balance, max_exchange_sizes[exchange])
-                    else:
-                        self.log.debug("No max size for exchange <%s>", exchange)
                     client_prices[exchange] = {'client': client_for_order,
                                                'price': client_price_usd * sort_factor,
                                                'exchange': exchange,
