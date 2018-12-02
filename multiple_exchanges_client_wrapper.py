@@ -173,6 +173,8 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         db_trade_order_id = self._db_interface.write_order_to_db(order_info)
         if parent_trade_order_id == -1:
             parent_trade_order_id = db_trade_order_id
+        order_info['trade_order_id'] = db_trade_order_id
+        order_info['parent_trade_order_id'] = parent_trade_order_id
         self._reserved_crypto_type = currency_from
         timed_order = self._timed_orders[currency_to]
         timed_order.action = action_type
@@ -193,6 +195,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
         limit_price_difference = 0
         prev_run_size = 0
         prev_balances = {}
+        order_cancelled = True
         while timed_order.running:
             remaining_size = timed_order.required_size - timed_order.done_size
             curr_time = time.time()
@@ -271,6 +274,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
             if remaining_size <= ClientWrapperBase.MINIMUM_REMAINING_SIZE:
                 timed_order.running = False
                 order_info['status'] = 'Make Order Finished'
+                order_cancelled = False
             else:
                 num_of_exchanges = 1
                 orders_big_enough = False
@@ -296,6 +300,7 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
 
                     if not orders_big_enough and len(min_order_sorted_clients) == 1:
                         timed_order.running = False
+                        order_cancelled = False
                         self.log.info("Order size <%f> is too small for all exchanges, cancelling", remaining_size)
                     elif not orders_big_enough:
                         self.log.debug("Removing exchange <%s> because its minimum size is too small",
@@ -329,8 +334,9 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                     if balance_for_order > 0.0001:
                         self.log.debug("Not enough available balance in the exchanges for executing the order, "
                                        "missing <%f>", balance_for_order)
-                        timed_order.order_running = False
+                        timed_order.running = False
                         order_info['status'] = 'Make Order Incomplete'
+                        order_cancelled = False
                 elif change_sizes_for_balance and action_type == 'buy_limit':
                     balance_sorted_clients = sorted(min_order_sorted_clients, key=operator.itemgetter('usd_balance'))
                     balance_for_order = remaining_size
@@ -353,8 +359,9 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                                         num_of_exchanges - client_index - 1)).quantize(Decimal('1e-4')))
                     if balance_for_order > 0.0001:
                         self.log.debug("Not enough available usd in the exchanges for executing the order")
-                        self._is_timed_order_running = False
+                        timed_order.running = False
                         order_info['status'] = 'Make Order Incomplete'
+                        order_cancelled = False
 
                 if timed_order.running:
                     self.log.debug("Min order sorted clients: <%s>", min_order_sorted_clients)
@@ -389,6 +396,9 @@ class MultipleExchangesClientWrapper(ClientWrapperBase):
                 self._cancel_event.wait(sleep_interval)
                 #time.sleep(sleep_interval)
                 prev_time = curr_time
+        if order_cancelled:
+            order_info['status'] = 'Cancelled'
+
         for exchange in self._clients:
             client_for_order = self._clients[exchange]
             client_for_order.cancel_timed_order()
