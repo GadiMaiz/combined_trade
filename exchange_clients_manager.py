@@ -134,8 +134,8 @@ class ExchangeClientManager:
                    user_id='', max_exchange_sizes=dict()):
         account = ExchangeClientManager.check_default_account(account)
         self.log.info("send_order: exchanges: <%s>, action_type: <%s>, currency_to_size: <%f>, currency_to_type: <%s> "
-                      "currency_from_size: <%f> for account <%s>", exchanges, action_type, currency_to_size,
-                      currency_to_type, currency_from_size, account)
+                      "currency_from_size: <%f> for account <%s>, max_exchange_size: <%s>", exchanges, action_type,
+                      currency_to_size, currency_to_type, currency_from_size, account, max_exchange_sizes)
         if account not in self._clients:
             self.log.error("Account <%s> doesn't existm can't send order", account)
             result = {'order_status': "Account {} doesn't exist".format(account)}
